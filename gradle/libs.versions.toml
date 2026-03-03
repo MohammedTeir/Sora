@@ -117,6 +117,7 @@ mlkit-text-recognition = { module = "com.google.mlkit:text-recognition", version
 mlkit-text-recognition-chinese = { module = "com.google.mlkit:text-recognition-chinese", version.ref = "mlkit-text-recognition-version" }
 mlkit-text-recognition-japanese = { module = "com.google.mlkit:text-recognition-japanese", version.ref = "mlkit-text-recognition-version" }
 mlkit-text-recognition-korean = { module = "com.google.mlkit:text-recognition-korean", version.ref = "mlkit-text-recognition-version" }
+mlkit-text-recognition-devanagari = { module = "com.google.mlkit:text-recognition-devanagari", version.ref = "mlkit-text-recognition-version" }
 mlkit-text-translate = { module = "com.google.mlkit:translate", version.ref = "mlkit-text-translate-version" }
 google-generativeai = { module = "com.google.ai.client.generativeai:generativeai", version.ref = "google-generativeai-version" }
 

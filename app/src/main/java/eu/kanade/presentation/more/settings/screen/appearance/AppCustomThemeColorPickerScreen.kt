@@ -31,24 +31,7 @@ class AppCustomThemeColorPickerScreen : Screen() {
 
     @Composable
     override fun Content() {
-        val uiPreferences: UiPreferences = Injekt.get()
-
-        val context = LocalContext.current
         val navigator = LocalNavigator.currentOrThrow
-        val controller = rememberColorPickerController()
-
-        val customColorPref = uiPreferences.colorTheme()
-        val customColor by customColorPref.collectAsState()
-
-        val appThemePref = uiPreferences.appTheme()
-
-        val currentColor by remember {
-            mutableIntStateOf(customColor)
-        }
-
-        LaunchedEffect(customColorPref) {
-            customColorPref.set(currentColor)
-        }
 
         Scaffold(
             topBar = { scrollBehavior ->
@@ -62,15 +45,7 @@ class AppCustomThemeColorPickerScreen : Screen() {
             Column(
                 modifier = Modifier.padding(contentPadding),
             ) {
-                ThemeColorPickerWidget(
-                    controller = controller,
-                    initialColor = Color(currentColor),
-                    onItemClick = { color, appTheme ->
-                        customColorPref.set(color.toArgb())
-                        appThemePref.set(appTheme)
-                        (context as? Activity)?.let { ActivityCompat.recreate(it) }
-                    },
-                )
+                // Custom theme color picker is disabled — Sora uses a fixed theme
             }
         }
     }

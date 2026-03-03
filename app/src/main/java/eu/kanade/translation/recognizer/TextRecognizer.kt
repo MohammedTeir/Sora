@@ -14,6 +14,7 @@ class TextRecognizer(val language: TextRecognizerLanguage) : Closeable {
 
     private val recognizer = TextRecognition.getClient(
         when (language) {
+            TextRecognizerLanguage.ARABIC -> TextRecognizerOptions.DEFAULT_OPTIONS
             TextRecognizerLanguage.ENGLISH -> TextRecognizerOptions.DEFAULT_OPTIONS
             TextRecognizerLanguage.CHINESE -> ChineseTextRecognizerOptions.Builder().build()
             TextRecognizerLanguage.JAPANESE -> JapaneseTextRecognizerOptions.Builder().build()

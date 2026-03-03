@@ -1,46 +1,33 @@
 package eu.kanade.presentation.more.onboarding
 
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import eu.kanade.domain.ui.UiPreferences
-import eu.kanade.domain.ui.model.setAppCompatDelegateThemeMode
-import eu.kanade.presentation.more.settings.widget.AppThemeModePreferenceWidget
-import eu.kanade.presentation.more.settings.widget.AppThemePreferenceWidget
-import tachiyomi.presentation.core.util.collectAsState
-import uy.kohesive.injekt.Injekt
-import uy.kohesive.injekt.api.get
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import tachiyomi.i18n.MR
+import tachiyomi.presentation.core.i18n.stringResource
 
 internal class ThemeStep : OnboardingStep {
 
     override val isComplete: Boolean = true
 
-    private val uiPreferences: UiPreferences = Injekt.get()
-
     @Composable
     override fun Content() {
-        val themeModePref = uiPreferences.themeMode()
-        val themeMode by themeModePref.collectAsState()
-
-        val appThemePref = uiPreferences.appTheme()
-        val appTheme by appThemePref.collectAsState()
-
-        val amoledPref = uiPreferences.themeDarkAmoled()
-        val amoled by amoledPref.collectAsState()
-
-        Column {
-            AppThemeModePreferenceWidget(
-                value = themeMode,
-                onItemClick = {
-                    themeModePref.set(it)
-                    setAppCompatDelegateThemeMode(it)
-                },
-            )
-
-            AppThemePreferenceWidget(
-                value = appTheme,
-                amoled = amoled,
-                onItemClick = { appThemePref.set(it) },
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = stringResource(MR.strings.app_name),
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.primary,
             )
         }
     }

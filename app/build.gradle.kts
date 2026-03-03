@@ -289,6 +289,7 @@ dependencies {
     implementation(libs.mlkit.text.recognition.japanese)
     implementation(libs.mlkit.text.recognition.korean)
     implementation(libs.mlkit.text.recognition.chinese)
+    implementation(libs.mlkit.text.recognition.devanagari)
     implementation(libs.mlkit.text.translate)
     implementation(libs.google.generativeai)
 

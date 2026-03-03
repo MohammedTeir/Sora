@@ -97,10 +97,7 @@ private fun AppThemesList(
                     .width(114.dp)
                     .padding(top = 8.dp),
             ) {
-                TachiyomiTheme(
-                    appTheme = appTheme,
-                    amoled = amoled,
-                ) {
+                TachiyomiTheme {
                     AppThemePreviewItem(
                         selected = currentTheme == appTheme,
                         onClick = {
@@ -262,7 +259,7 @@ fun AppThemePreviewItem(
 private fun AppThemesListPreview() {
     var appTheme by remember { mutableStateOf(AppTheme.DEFAULT) }
     Injekt.addSingleton(fullType<UiPreferences>(), UiPreferences(InMemoryPreferenceStore()))
-    TachiyomiTheme(appTheme = appTheme) {
+    TachiyomiTheme {
         Surface {
             AppThemesList(
                 currentTheme = appTheme,
