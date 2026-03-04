@@ -152,7 +152,7 @@
         <activity
             android:name=".ui.security.UnlockActivity"
             android:exported="false"
-            android:theme="@style/Theme.Tachiyomi" />
+            android:theme="@style/Theme.Tachiyomi.SplashScreen" />
 
         <activity
             android:name=".ui.webview.WebViewActivity"
