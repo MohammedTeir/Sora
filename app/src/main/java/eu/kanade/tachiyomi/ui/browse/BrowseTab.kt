@@ -23,8 +23,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.FilterList
-import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,6 +45,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,6 +63,7 @@ import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import eu.kanade.presentation.browse.SourceUiModel
 import eu.kanade.presentation.browse.components.BrowseSourceComfortableGrid
+import eu.kanade.presentation.theme.SoraBlue
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.browse.source.SourcesScreenModel
@@ -77,7 +79,6 @@ import tachiyomi.domain.manga.model.Manga
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 
-private val SoraBlue = Color(0xFF2977FF)
 
 data object BrowseTab : Tab {
 
@@ -117,7 +118,7 @@ data object BrowseTab : Tab {
             .map { it.source }
 
         // Track which source chip is selected (default to first)
-        val selectedSourceId = remember(availableSources) {
+        val selectedSourceId = rememberSaveable(availableSources.map { it.id }) {
             mutableStateOf(availableSources.firstOrNull()?.id)
         }
 
@@ -144,7 +145,7 @@ data object BrowseTab : Tab {
                         title = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    imageVector = Icons.Outlined.MenuBook,
+                                    imageVector = Icons.AutoMirrored.Outlined.MenuBook,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurface,
                                 )
@@ -160,7 +161,11 @@ data object BrowseTab : Tab {
                             }
                         },
                         actions = {
-                            IconButton(onClick = { /* open filter */ }) {
+                            IconButton(onClick = {
+                                currentSourceId?.let { id ->
+                                    navigator.push(BrowseSourceScreen(id, null))
+                                }
+                            }) {
                                 Icon(
                                     imageVector = Icons.Outlined.FilterList,
                                     contentDescription = "Filter",

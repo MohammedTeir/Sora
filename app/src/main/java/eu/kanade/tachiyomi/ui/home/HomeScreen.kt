@@ -146,7 +146,6 @@ object HomeScreen : Screen() {
             LaunchedEffect(Unit) {
                 launch {
                     librarySearchEvent.receiveAsFlow().collectLatest {
-                        goToHomeTab() // Switch to home or keep library if needed for search
                         LibraryTab.search(it)
                         tabNavigator.current = LibraryTab
                     }

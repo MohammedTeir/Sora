@@ -69,9 +69,11 @@ import coil3.compose.AsyncImage
 import eu.kanade.presentation.history.HistoryUiModel
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
 import eu.kanade.presentation.theme.LocalDarkTheme
+import eu.kanade.presentation.theme.SoraBlue
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.download.model.Download
+import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
 import eu.kanade.tachiyomi.ui.history.HistoryScreenModel
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
@@ -82,7 +84,6 @@ import tachiyomi.domain.history.model.HistoryWithRelations
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 
-private val SoraBlue = Color(0xFF2977FF)
 
 data object HomeTab : Tab {
 
@@ -92,7 +93,7 @@ data object HomeTab : Tab {
             val isSelected = LocalTabNavigator.current.current.key == key
             val image = AnimatedImageVector.animatedVectorResource(R.drawable.anim_library_enter)
             return TabOptions(
-                index = 0u,
+                index = 5u,
                 title = stringResource(MR.strings.label_home),
                 icon = rememberAnimatedVectorPainter(image, isSelected),
             )
@@ -155,7 +156,7 @@ data object HomeTab : Tab {
                             tint = MaterialTheme.colorScheme.onSurface,
                         )
                     }
-                    IconButton(onClick = {}) {
+                    IconButton(onClick = { navigator.push(GlobalSearchScreen()) }) {
                         Icon(
                             imageVector = Icons.Outlined.Search,
                             contentDescription = "Search",
@@ -220,6 +221,7 @@ data object HomeTab : Tab {
                                 text = "View All",
                                 color = SoraBlue,
                                 style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.clickable { navigator.push(GlobalSearchScreen()) },
                             )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
@@ -337,7 +339,7 @@ private fun ContinueReadingCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = "Chapter ${manga.chapterNumber.toInt()}",
+                    text = "Chapter ${if (manga.chapterNumber % 1.0 == 0.0) manga.chapterNumber.toInt().toString() else manga.chapterNumber.toString()}",
                     style = MaterialTheme.typography.bodySmall.copy(color = Color.White.copy(alpha = 0.7f)),
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -388,7 +390,7 @@ private fun RecentMangaCard(
             overflow = TextOverflow.Ellipsis,
         )
         Text(
-            text = "Ch. ${history.chapterNumber.toInt()}",
+            text = "Ch. ${if (history.chapterNumber % 1.0 == 0.0) history.chapterNumber.toInt().toString() else history.chapterNumber.toString()}",
             style = MaterialTheme.typography.labelSmall.copy(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
             ),

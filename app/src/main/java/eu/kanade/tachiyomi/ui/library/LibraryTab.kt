@@ -35,6 +35,7 @@ import eu.kanade.presentation.library.components.LibraryContent
 import eu.kanade.presentation.library.components.LibraryToolbar
 import eu.kanade.presentation.manga.components.LibraryBottomActionMenu
 import eu.kanade.presentation.more.onboarding.GETTING_STARTED_URL
+import eu.kanade.presentation.theme.SoraBlue
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.library.LibraryUpdateJob
@@ -144,7 +145,7 @@ data object LibraryTab : Tab {
                 if (!state.selectionMode) {
                     androidx.compose.material3.FloatingActionButton(
                         onClick = { navigator.push(CategoryScreen()) },
-                        containerColor = androidx.compose.ui.graphics.Color(0xFF2977FF), // Sora Blue
+                        containerColor = SoraBlue,
                         contentColor = androidx.compose.ui.graphics.Color.White,
                     ) {
                         androidx.compose.material3.Icon(
