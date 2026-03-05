@@ -71,6 +71,7 @@ import eu.kanade.presentation.manga.components.ChapterDownloadAction
 import eu.kanade.presentation.theme.LocalDarkTheme
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
+import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.ui.history.HistoryScreenModel
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
@@ -450,7 +451,7 @@ private fun UpdateListItem(
         val downloadProgress = item.downloadProgressProvider()
 
         when {
-            downloadState == eu.kanade.tachiyomi.data.download.model.Download.State.DOWNLOADED -> {
+            downloadState == Download.State.DOWNLOADED -> {
                 Icon(
                     imageVector = Icons.Outlined.CheckCircle,
                     contentDescription = "Downloaded",
@@ -458,7 +459,7 @@ private fun UpdateListItem(
                     modifier = Modifier.size(24.dp),
                 )
             }
-            downloadState == eu.kanade.tachiyomi.data.download.model.Download.State.DOWNLOADING -> {
+            downloadState == Download.State.DOWNLOADING -> {
                 CircularProgressIndicator(
                     progress = { downloadProgress / 100f },
                     modifier = Modifier.size(24.dp),
@@ -466,7 +467,7 @@ private fun UpdateListItem(
                     color = SoraBlue,
                 )
             }
-            downloadState == eu.kanade.tachiyomi.data.download.model.Download.State.QUEUE -> {
+            downloadState == Download.State.QUEUE -> {
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
                     strokeWidth = 2.dp,
