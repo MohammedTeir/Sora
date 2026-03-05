@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Home
@@ -35,6 +36,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,6 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -51,6 +54,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -69,8 +73,10 @@ import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.history.HistoryScreenModel
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
+import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.ui.updates.UpdatesItem
 import eu.kanade.tachiyomi.ui.updates.UpdatesScreenModel
+import kotlinx.coroutines.flow.collectLatest
 import tachiyomi.domain.history.model.HistoryWithRelations
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
@@ -97,6 +103,7 @@ data object HomeTab : Tab {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val context = LocalContext.current
 
         // Dark/Light theme toggle state
         val darkThemeState = LocalDarkTheme.current
@@ -245,6 +252,22 @@ data object HomeTab : Tab {
                             },
                         )
                     }
+                }
+            }
+        }
+
+        // ─── Collect Continue Reading events ────────────────────────────
+        LaunchedEffect(Unit) {
+            historyModel.events.collectLatest { event ->
+                when (event) {
+                    is HistoryScreenModel.Event.OpenChapter -> {
+                        val chapter = event.chapter
+                        if (chapter != null) {
+                            val intent = ReaderActivity.newIntent(context, chapter.mangaId, chapter.id)
+                            context.startActivity(intent)
+                        }
+                    }
+                    else -> {}
                 }
             }
         }
@@ -422,12 +445,43 @@ private fun UpdateListItem(
                 ),
             )
         }
-        IconButton(onClick = onDownload) {
-            Icon(
-                imageVector = Icons.Outlined.Download,
-                contentDescription = "Download",
-                tint = SoraBlue,
-            )
+        // Download button with status
+        val downloadState = item.downloadStateProvider()
+        val downloadProgress = item.downloadProgressProvider()
+
+        when {
+            downloadState == eu.kanade.tachiyomi.data.download.model.Download.State.DOWNLOADED -> {
+                Icon(
+                    imageVector = Icons.Outlined.CheckCircle,
+                    contentDescription = "Downloaded",
+                    tint = Color(0xFF34C759),
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+            downloadState == eu.kanade.tachiyomi.data.download.model.Download.State.DOWNLOADING -> {
+                CircularProgressIndicator(
+                    progress = { downloadProgress / 100f },
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp,
+                    color = SoraBlue,
+                )
+            }
+            downloadState == eu.kanade.tachiyomi.data.download.model.Download.State.QUEUE -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp,
+                    color = SoraBlue,
+                )
+            }
+            else -> {
+                IconButton(onClick = onDownload) {
+                    Icon(
+                        imageVector = Icons.Outlined.Download,
+                        contentDescription = "Download",
+                        tint = SoraBlue,
+                    )
+                }
+            }
         }
     }
 }
