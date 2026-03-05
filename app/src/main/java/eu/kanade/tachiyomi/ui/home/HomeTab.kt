@@ -77,6 +77,7 @@ import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
 import eu.kanade.tachiyomi.ui.history.HistoryScreenModel
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
+import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
 import eu.kanade.tachiyomi.ui.updates.UpdatesItem
 import eu.kanade.tachiyomi.ui.updates.UpdatesScreenModel
 import kotlinx.coroutines.flow.collectLatest
@@ -91,7 +92,7 @@ data object HomeTab : Tab {
         @Composable
         get() {
             val isSelected = LocalTabNavigator.current.current.key == key
-            val image = AnimatedImageVector.animatedVectorResource(R.drawable.anim_library_enter)
+            val image = AnimatedImageVector.animatedVectorResource(R.drawable.anim_updates_enter)
             return TabOptions(
                 index = 5u,
                 title = stringResource(MR.strings.label_home),
@@ -153,6 +154,13 @@ data object HomeTab : Tab {
                         Icon(
                             imageVector = if (isDark) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
                             contentDescription = if (isDark) "Switch to Light Mode" else "Switch to Dark Mode",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    IconButton(onClick = { navigator.push(DownloadQueueScreen) }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Download,
+                            contentDescription = "Downloads",
                             tint = MaterialTheme.colorScheme.onSurface,
                         )
                     }

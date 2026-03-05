@@ -3,80 +3,56 @@ package eu.kanade.tachiyomi.ui.browse
 import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.MenuBook
-import androidx.compose.material.icons.outlined.FilterList
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Tab
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.zIndex
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
-import eu.kanade.presentation.browse.SourceUiModel
-import eu.kanade.presentation.browse.components.BrowseSourceComfortableGrid
-import eu.kanade.presentation.theme.SoraBlue
+import eu.kanade.presentation.components.AppBar
+import eu.kanade.presentation.components.SearchToolbar
+import eu.kanade.presentation.components.AppBarTitle
+import eu.kanade.presentation.components.AppBarActions
+import eu.kanade.presentation.components.TabContent
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
-import eu.kanade.tachiyomi.ui.browse.source.SourcesScreenModel
-import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen
-import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreenModel
+import eu.kanade.tachiyomi.ui.browse.extension.ExtensionsScreenModel
+import eu.kanade.tachiyomi.ui.browse.extension.extensionsTab
+import eu.kanade.tachiyomi.ui.browse.migration.sources.migrateSourceTab
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
+import eu.kanade.tachiyomi.ui.browse.source.sourcesTab
 import eu.kanade.tachiyomi.ui.main.MainActivity
-import eu.kanade.tachiyomi.ui.manga.MangaScreen
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
-import mihon.presentation.core.util.collectAsLazyPagingItems
-import tachiyomi.domain.manga.model.Manga
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
 import tachiyomi.i18n.MR
+import tachiyomi.presentation.core.components.material.Scaffold
+import tachiyomi.presentation.core.components.material.TabText
 import tachiyomi.presentation.core.i18n.stringResource
 
 
@@ -104,200 +80,87 @@ data object BrowseTab : Tab {
         switchToExtensionTabChannel.trySend(Unit)
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     override fun Content() {
         val context = LocalContext.current
-        val navigator = LocalNavigator.currentOrThrow
+        val scope = rememberCoroutineScope()
 
-        // Sources list for the horizontal chips row
-        val sourcesScreenModel = rememberScreenModel { SourcesScreenModel() }
-        val sourcesState by sourcesScreenModel.state.collectAsState()
-        val availableSources = sourcesState.items
-            .filterIsInstance<SourceUiModel.Item>()
-            .map { it.source }
+        // Create screen models for Extension tab
+        val extensionsScreenModel = rememberScreenModel { ExtensionsScreenModel() }
 
-        // Track which source chip is selected (default to first)
-        val selectedSourceId = rememberSaveable(availableSources.map { it.id }) {
-            mutableStateOf(availableSources.firstOrNull()?.id)
-        }
+        // Build the tabs
+        val sourcesTabContent = sourcesTab()
+        val extensionsTabContent = extensionsTab(extensionsScreenModel)
+        val migrateTabContent = migrateSourceTab()
 
-        // BrowseSourceScreenModel — must be inside a key() so it recreates
-        // when the user selects a different source chip.
-        val currentSourceId = selectedSourceId.value
-        val browseSourceModel: BrowseSourceScreenModel? = if (currentSourceId != null) {
-            key(currentSourceId) {
-                rememberScreenModel(tag = currentSourceId.toString()) {
-                    BrowseSourceScreenModel(currentSourceId, null)
-                }
-            }
-        } else {
-            null
+        val tabs = persistentListOf(sourcesTabContent, extensionsTabContent, migrateTabContent)
+        val pagerState = rememberPagerState { tabs.size }
+        val snackbarHostState = remember { SnackbarHostState() }
+
+        // Handle extension search query
+        val searchQuery = extensionsScreenModel.state.let {
+            @Suppress("StateFlowValueCalledInComposition")
+            it.value.searchQuery
         }
 
         Scaffold(
             topBar = {
-                Column(
-                    modifier = Modifier.background(MaterialTheme.colorScheme.background),
-                ) {
-                    // ─── Top App Bar ───────────────────────────────────────
-                    TopAppBar(
-                        title = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Outlined.MenuBook,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = "Sora",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 22.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                            }
-                        },
-                        actions = {
-                            IconButton(onClick = {
-                                currentSourceId?.let { id ->
-                                    navigator.push(BrowseSourceScreen(id, null))
-                                }
-                            }) {
-                                Icon(
-                                    imageVector = Icons.Outlined.FilterList,
-                                    contentDescription = "Filter",
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                )
-                            }
-                            IconButton(onClick = {}) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Person,
-                                        contentDescription = "Profile",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                }
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = Color.Transparent,
-                        ),
-                    )
+                val tab = tabs[pagerState.currentPage]
+                val searchEnabled = tab.searchEnabled
 
-                    // ─── Search Pill ───────────────────────────────────────
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                            .clickable { navigator.push(GlobalSearchScreen()) },
-                        shape = RoundedCornerShape(50),
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Search,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(end = 12.dp),
-                            )
-                            Text(
-                                text = "Search for manga or authors...",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            },
-        ) { paddingValues ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-            ) {
-                // ─── SOURCES Section ───────────────────────────────────────
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "SOURCES",
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    ),
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                SearchToolbar(
+                    titleContent = { AppBarTitle(stringResource(MR.strings.browse)) },
+                    searchEnabled = searchEnabled,
+                    searchQuery = if (searchEnabled) searchQuery else null,
+                    onChangeSearchQuery = { extensionsScreenModel.search(it) },
+                    actions = { AppBarActions(tab.actions) },
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+            },
+            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        ) { contentPadding ->
+            Column(
+                modifier = Modifier.padding(
+                    top = contentPadding.calculateTopPadding(),
+                    start = contentPadding.calculateStartPadding(LocalLayoutDirection.current),
+                    end = contentPadding.calculateEndPadding(LocalLayoutDirection.current),
+                ),
+            ) {
+                PrimaryTabRow(
+                    selectedTabIndex = pagerState.currentPage,
+                    modifier = Modifier.zIndex(1f),
                 ) {
-                    items(availableSources) { source ->
-                        val isSelected = selectedSourceId.value == source.id
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { selectedSourceId.value = source.id },
-                            label = { Text(text = source.name) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            ),
-                            shape = RoundedCornerShape(8.dp),
+                    tabs.forEachIndexed { index, tab ->
+                        Tab(
+                            selected = pagerState.currentPage == index,
+                            onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                            text = {
+                                TabText(
+                                    text = stringResource(tab.titleRes),
+                                    badgeCount = tab.badgeNumber,
+                                )
+                            },
+                            unselectedContentColor = MaterialTheme.colorScheme.onSurface,
                         )
                     }
                 }
 
-                // ─── POPULAR Section ───────────────────────────────────────
-                Spacer(modifier = Modifier.height(24.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = "Popular",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                        ),
-                    )
-                    Text(
-                        text = "View All",
-                        style = MaterialTheme.typography.labelLarge.copy(color = SoraBlue),
-                        modifier = Modifier.clickable {
-                            currentSourceId?.let { id ->
-                                navigator.push(BrowseSourceScreen(id, null))
-                            }
-                        },
+                HorizontalPager(
+                    modifier = Modifier.fillMaxSize(),
+                    state = pagerState,
+                    verticalAlignment = Alignment.Top,
+                ) { page ->
+                    tabs[page].content(
+                        PaddingValues(bottom = contentPadding.calculateBottomPadding()),
+                        snackbarHostState,
                     )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
 
-                // Popular Grid
-                if (browseSourceModel != null) {
-                    val pagingItems = browseSourceModel.mangaPagerFlowFlow.collectAsLazyPagingItems()
-                    BrowseSourceComfortableGrid(
-                        mangaList = pagingItems,
-                        columns = GridCells.Fixed(3),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                        onMangaClick = { manga -> navigator.push(MangaScreen(manga.id, true)) },
-                        onMangaLongClick = {},
-                    )
-                }
+        // Listen for requests to switch to the Extensions tab
+        LaunchedEffect(Unit) {
+            switchToExtensionTabChannel.receiveAsFlow().collectLatest {
+                pagerState.animateScrollToPage(1) // Extensions tab is index 1
             }
         }
 

@@ -370,6 +370,7 @@ class MainActivity : BaseActivity() {
                     addUpdateListener { va ->
                         val value = va.animatedValue as Float
                         root.translationY = value * 16.dpToPx
+                        root.alpha = 1f - (value * 0.3f)
                     }
                 }
 
@@ -379,10 +380,12 @@ class MainActivity : BaseActivity() {
                     addUpdateListener { va ->
                         val value = va.animatedValue as Float
                         splashProvider.view.alpha = value
-                        // Zoom in scale effect along with fade
-                        val scale = 1.0f + ((1f - value) * 0.2f)
+                        // Zoom in scale + rotation for a dynamic exit
+                        val scale = 1.0f + ((1f - value) * 0.5f)
                         splashProvider.iconView.scaleX = scale
                         splashProvider.iconView.scaleY = scale
+                        splashProvider.iconView.rotation = (1f - value) * 15f
+                        splashProvider.iconView.alpha = value
                     }
                     doOnEnd {
                         splashProvider.remove()
@@ -475,6 +478,6 @@ class MainActivity : BaseActivity() {
 }
 
 // Splash screen
-private const val SPLASH_MIN_DURATION = 1200 // ms
+private const val SPLASH_MIN_DURATION = 1500 // ms
 private const val SPLASH_MAX_DURATION = 5000 // ms
-private const val SPLASH_EXIT_ANIM_DURATION = 400L // ms
+private const val SPLASH_EXIT_ANIM_DURATION = 600L // ms
