@@ -53,7 +53,7 @@
             android:name=".ui.main.MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
-            android:theme="@style/Theme.Tachiyomi.SplashScreen">
+            android:theme="@style/Theme.Tachiyomi">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -152,7 +152,7 @@
         <activity
             android:name=".ui.security.UnlockActivity"
             android:exported="false"
-            android:theme="@style/Theme.Tachiyomi.SplashScreen" />
+            android:theme="@style/Theme.Tachiyomi" />
 
         <activity
             android:name=".ui.webview.WebViewActivity"

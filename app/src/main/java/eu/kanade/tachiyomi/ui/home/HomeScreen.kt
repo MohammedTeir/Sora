@@ -18,6 +18,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
+import androidx.compose.material3.surfaceColorAtElevation
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -38,6 +40,7 @@ import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.ui.browse.BrowseTab
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
+import eu.kanade.tachiyomi.ui.download.DownloadTab
 import eu.kanade.tachiyomi.ui.home.HomeTab
 import eu.kanade.tachiyomi.ui.library.LibraryTab
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
@@ -74,6 +77,7 @@ object HomeScreen : Screen() {
     private val TABS = listOf(
         HomeTab,
         LibraryTab,
+        DownloadTab,
         BrowseTab,
         UpdatesTab,
         MoreTab,
@@ -156,6 +160,7 @@ object HomeScreen : Screen() {
                             is Tab.Home -> HomeTab
                             is Tab.Library -> LibraryTab
                             Tab.Updates -> UpdatesTab
+                            Tab.Downloads -> DownloadTab
                             Tab.History -> HomeTab // Redirect history to Home
                             is Tab.Browse -> {
                                 if (it.toExtensions) {
@@ -184,6 +189,7 @@ object HomeScreen : Screen() {
         val navigator = LocalNavigator.currentOrThrow
         val scope = rememberCoroutineScope()
         val selected = tabNavigator.current::class == tab::class
+        
         NavigationBarItem(
             selected = selected,
             onClick = {
@@ -197,11 +203,18 @@ object HomeScreen : Screen() {
             label = {
                 Text(
                     text = tab.options.title,
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             },
+            colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
+                selectedIconColor = eu.kanade.presentation.theme.SoraBlue,
+                selectedTextColor = eu.kanade.presentation.theme.SoraBlue,
+                indicatorColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
+                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            ),
             alwaysShowLabel = true,
         )
     }
@@ -306,6 +319,7 @@ object HomeScreen : Screen() {
     sealed interface Tab {
         data object Home : Tab
         data class Library(val mangaIdToOpen: Long? = null) : Tab
+        data object Downloads : Tab
         data object Updates : Tab
         data object History : Tab
         data class Browse(val toExtensions: Boolean = false) : Tab

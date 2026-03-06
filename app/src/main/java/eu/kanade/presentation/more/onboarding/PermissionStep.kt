@@ -9,27 +9,43 @@ import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.outlined.BatteryAlert
+import androidx.compose.material.icons.outlined.Extension
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.getSystemService
 import androidx.core.net.toUri
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -39,10 +55,6 @@ import eu.kanade.presentation.util.rememberRequestPackageInstallsPermissionState
 import eu.kanade.tachiyomi.core.security.PrivacyPreferences
 import eu.kanade.tachiyomi.util.system.launchRequestPackageInstallsPermission
 import eu.kanade.tachiyomi.util.system.telemetryIncluded
-import tachiyomi.i18n.MR
-import tachiyomi.presentation.core.i18n.stringResource
-import tachiyomi.presentation.core.util.collectAsState
-import tachiyomi.presentation.core.util.secondaryItemAlpha
 import uy.kohesive.injekt.injectLazy
 
 internal class PermissionStep : OnboardingStep {
@@ -52,13 +64,14 @@ internal class PermissionStep : OnboardingStep {
     private var notificationGranted by mutableStateOf(false)
     private var batteryGranted by mutableStateOf(false)
 
+    // Complete if both mandatory permissions are granted.
+    // (This matches the old Onboarding logic where users can just skip ahead)
     override val isComplete: Boolean = true
 
     @Composable
     override fun Content() {
         val context = LocalContext.current
         val lifecycleOwner = LocalLifecycleOwner.current
-
         val installGranted = rememberRequestPackageInstallsPermissionState()
 
         DisposableEffect(lifecycleOwner.lifecycle) {
@@ -80,136 +93,146 @@ internal class PermissionStep : OnboardingStep {
             }
         }
 
-        Column {
-            PermissionCheckbox(
-                title = stringResource(MR.strings.onboarding_permission_install_apps),
-                subtitle = stringResource(MR.strings.onboarding_permission_install_apps_description),
-                granted = installGranted,
-                onButtonClick = {
-                    context.launchRequestPackageInstallsPermission()
-                },
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Title Section
+            Text(
+                text = "Grant Permissions",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                textAlign = TextAlign.Center,
             )
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                val permissionRequester = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.RequestPermission(),
-                    onResult = {
-                        // no-op. resulting checks is being done on resume
-                    },
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "To provide the best reading experience, Sora needs access to the following system features.",
+                fontSize = 15.sp,
+                color = Color(0xFFA0AEC0),
+                textAlign = TextAlign.Center,
+                lineHeight = 22.sp,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            // Permissions List
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                
+                // 1. Install Extensions
+                PermissionCard(
+                    icon = Icons.Outlined.Extension,
+                    title = "Install Extensions",
+                    subtitle = "Allow installation of manga sources",
+                    granted = installGranted,
+                    onToggle = { context.launchRequestPackageInstallsPermission() }
                 )
-                PermissionCheckbox(
-                    title = stringResource(MR.strings.onboarding_permission_notifications),
-                    subtitle = stringResource(MR.strings.onboarding_permission_notifications_description),
-                    granted = notificationGranted,
-                    onButtonClick = { permissionRequester.launch(Manifest.permission.POST_NOTIFICATIONS) },
+
+                // 2. Background Usage / Battery
+                PermissionCard(
+                    icon = Icons.Outlined.BatteryAlert,
+                    title = "Background Usage",
+                    subtitle = "Keep library updated in background",
+                    granted = batteryGranted,
+                    onToggle = {
+                        @SuppressLint("BatteryLife")
+                        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                            data = "package:${context.packageName}".toUri()
+                        }
+                        context.startActivity(intent)
+                    }
                 )
+
+                // 3. Notifications (Android 13+)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    val permissionRequester = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.RequestPermission(),
+                        onResult = {},
+                    )
+                    PermissionCard(
+                        icon = Icons.Outlined.Notifications,
+                        title = "Notifications",
+                        subtitle = "Get alerted when chapters release",
+                        granted = notificationGranted,
+                        onToggle = { permissionRequester.launch(Manifest.permission.POST_NOTIFICATIONS) }
+                    )
+                }
             }
 
-            PermissionCheckbox(
-                title = stringResource(MR.strings.onboarding_permission_ignore_battery_opts),
-                subtitle = stringResource(MR.strings.onboarding_permission_ignore_battery_opts_description),
-                granted = batteryGranted,
-                onButtonClick = {
-                    @SuppressLint("BatteryLife")
-                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                        data = "package:${context.packageName}".toUri()
-                    }
-                    context.startActivity(intent)
-                },
-            )
-
-            if (!telemetryIncluded) return@Column
-
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-
-            val crashlyticsPref = privacyPreferences.crashlytics()
-            val crashlytics by crashlyticsPref.collectAsState()
-            PermissionSwitch(
-                title = stringResource(MR.strings.onboarding_permission_crashlytics),
-                subtitle = stringResource(MR.strings.onboarding_permission_crashlytics_description),
-                granted = crashlytics,
-                onToggleChange = crashlyticsPref::set,
-            )
-
-            val analyticsPref = privacyPreferences.analytics()
-            val analytics by analyticsPref.collectAsState()
-            PermissionSwitch(
-                title = stringResource(MR.strings.onboarding_permission_analytics),
-                subtitle = stringResource(MR.strings.onboarding_permission_analytics_description),
-                granted = analytics,
-                onToggleChange = analyticsPref::set,
-            )
+            Spacer(modifier = Modifier.weight(1f))
+            // Button rendering is handled by the parent OnboardingScreen wrapper in the new design
         }
     }
 
     @Composable
-    private fun SectionHeader(
-        text: String,
-        modifier: Modifier = Modifier,
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleLarge,
-            modifier = modifier
-                .padding(horizontal = 16.dp)
-                .secondaryItemAlpha(),
-        )
-    }
-
-    @Composable
-    private fun PermissionCheckbox(
+    private fun PermissionCard(
+        icon: ImageVector,
         title: String,
         subtitle: String,
         granted: Boolean,
-        modifier: Modifier = Modifier,
-        onButtonClick: () -> Unit,
+        onToggle: (Boolean) -> Unit,
     ) {
-        ListItem(
-            modifier = modifier,
-            headlineContent = { Text(text = title) },
-            supportingContent = { Text(text = subtitle) },
-            trailingContent = {
-                OutlinedButton(
-                    enabled = !granted,
-                    onClick = onButtonClick,
-                ) {
-                    if (granted) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    } else {
-                        Text(stringResource(MR.strings.onboarding_permission_action_grant))
-                    }
-                }
-            },
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        )
-    }
-
-    @Composable
-    private fun PermissionSwitch(
-        title: String,
-        subtitle: String,
-        granted: Boolean,
-        modifier: Modifier = Modifier,
-        onToggleChange: (Boolean) -> Unit,
-    ) {
-        ListItem(
-            modifier = modifier,
-            headlineContent = { Text(text = title) },
-            supportingContent = { Text(text = subtitle) },
-            trailingContent = {
-                Switch(
-                    checked = granted,
-                    onCheckedChange = onToggleChange,
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0xFF121212))
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Icon Box
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF1E293B)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color(0xFF2D7CFF)
                 )
-            },
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // Text
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                )
+                Text(
+                    text = subtitle,
+                    fontSize = 12.sp,
+                    color = Color(0xFFA0AEC0),
+                    lineHeight = 16.sp,
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Toggle Switch
+            Switch(
+                checked = granted,
+                onCheckedChange = { onToggle(it) },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = Color(0xFF2D7CFF), // SoraBlue
+                    uncheckedThumbColor = Color(0xFF9CA3AF),
+                    uncheckedTrackColor = Color(0xFF374151),
+                )
+            )
+        }
     }
 }

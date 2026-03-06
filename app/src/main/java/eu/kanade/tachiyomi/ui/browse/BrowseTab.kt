@@ -1,46 +1,86 @@
 package eu.kanade.tachiyomi.ui.browse
 
-import androidx.compose.animation.graphics.res.animatedVectorResource
-import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
-import androidx.compose.animation.graphics.vector.AnimatedImageVector
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Book
+import androidx.compose.material.icons.outlined.FilterList
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
-import eu.kanade.presentation.components.AppBar
-import eu.kanade.presentation.components.SearchToolbar
-import eu.kanade.presentation.components.AppBarTitle
-import eu.kanade.presentation.components.AppBarActions
+import coil3.compose.AsyncImage
+import eu.kanade.presentation.browse.SourceUiModel
 import eu.kanade.presentation.components.TabContent
 import eu.kanade.presentation.util.Tab
-import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.browse.extension.ExtensionsScreenModel
 import eu.kanade.tachiyomi.ui.browse.extension.extensionsTab
 import eu.kanade.tachiyomi.ui.browse.migration.sources.migrateSourceTab
+import eu.kanade.tachiyomi.ui.browse.source.SourcesScreenModel
+import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen
+import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreenModel.Listing
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
 import eu.kanade.tachiyomi.ui.browse.source.sourcesTab
 import eu.kanade.tachiyomi.ui.main.MainActivity
@@ -50,23 +90,23 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import tachiyomi.domain.source.model.Source
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.components.material.TabText
 import tachiyomi.presentation.core.i18n.stringResource
 
+private val SoraBlue = Color(0xFF2D7CFF)
 
 data object BrowseTab : Tab {
 
     override val options: TabOptions
         @Composable
         get() {
-            val isSelected = LocalTabNavigator.current.current.key == key
-            val image = AnimatedImageVector.animatedVectorResource(R.drawable.anim_browse_enter)
             return TabOptions(
                 index = 3u,
                 title = stringResource(MR.strings.browse),
-                icon = rememberAnimatedVectorPainter(image, isSelected),
+                icon = rememberVectorPainter(Icons.Outlined.Book),
             )
         }
 
@@ -83,51 +123,129 @@ data object BrowseTab : Tab {
     @Composable
     override fun Content() {
         val context = LocalContext.current
+        val navigator = LocalNavigator.currentOrThrow
         val scope = rememberCoroutineScope()
+        val layoutDirection = LocalLayoutDirection.current
 
-        // Create screen models for Extension tab
         val extensionsScreenModel = rememberScreenModel { ExtensionsScreenModel() }
+        val sourcesScreenModel = rememberScreenModel { SourcesScreenModel() }
+        val sourcesState by sourcesScreenModel.state.collectAsState()
 
-        // Build the tabs
-        val sourcesTabContent = sourcesTab()
+        // Extract source list from state for the chips row
+        val sourceItems = sourcesState.items.filterIsInstance<SourceUiModel.Item>()
+        var selectedSourceId by remember { mutableStateOf<Long?>(null) }
+
+        LaunchedEffect(sourceItems) {
+            if (selectedSourceId == null && sourceItems.isNotEmpty()) {
+                selectedSourceId = sourceItems.first().source.id
+            }
+        }
+
+        val sourcesTabContent = sourcesTab(selectedSourceId)
         val extensionsTabContent = extensionsTab(extensionsScreenModel)
         val migrateTabContent = migrateSourceTab()
-
         val tabs = persistentListOf(sourcesTabContent, extensionsTabContent, migrateTabContent)
         val pagerState = rememberPagerState { tabs.size }
         val snackbarHostState = remember { SnackbarHostState() }
 
-        // Handle extension search query
-        val searchQuery = extensionsScreenModel.state.let {
-            @Suppress("StateFlowValueCalledInComposition")
-            it.value.searchQuery
-        }
-
         Scaffold(
-            topBar = {
-                val tab = tabs[pagerState.currentPage]
-                val searchEnabled = tab.searchEnabled
-
-                SearchToolbar(
-                    titleContent = { AppBarTitle(stringResource(MR.strings.browse)) },
-                    searchEnabled = searchEnabled,
-                    searchQuery = if (searchEnabled) searchQuery else null,
-                    onChangeSearchQuery = { extensionsScreenModel.search(it) },
-                    actions = { AppBarActions(tab.actions) },
-                )
-            },
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         ) { contentPadding ->
             Column(
-                modifier = Modifier.padding(
-                    top = contentPadding.calculateTopPadding(),
-                    start = contentPadding.calculateStartPadding(LocalLayoutDirection.current),
-                    end = contentPadding.calculateEndPadding(LocalLayoutDirection.current),
-                ),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(
+                        top = contentPadding.calculateTopPadding() +
+                            WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
+                        start = contentPadding.calculateStartPadding(layoutDirection),
+                        end = contentPadding.calculateEndPadding(layoutDirection),
+                    ),
             ) {
+                // ─── Header ────────────────────────────────────────────────
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Outlined.Book,
+                            contentDescription = null,
+                            tint = SoraBlue,
+                            modifier = Modifier.size(24.dp),
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Sora",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        IconButton(onClick = { navigator.push(GlobalSearchScreen()) }) {
+                            Icon(
+                                imageVector = Icons.Outlined.FilterList,
+                                contentDescription = stringResource(MR.strings.action_filter),
+                                tint = MaterialTheme.colorScheme.onBackground,
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Person,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
+                }
+
+                // ─── Search Bar ────────────────────────────────────────────
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            shape = RoundedCornerShape(50),
+                        )
+                        .clip(RoundedCornerShape(50))
+                        .clickable { navigator.push(GlobalSearchScreen()) }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = stringResource(MR.strings.action_search_hint),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 14.sp,
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // ─── Tabs ──────────────────────────────────────────────────
                 PrimaryTabRow(
                     selectedTabIndex = pagerState.currentPage,
-                    modifier = Modifier.zIndex(1f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .zIndex(1f),
+                    containerColor = Color.Transparent,
+                    contentColor = SoraBlue,
                 ) {
                     tabs.forEachIndexed { index, tab ->
                         Tab(
@@ -139,11 +257,59 @@ data object BrowseTab : Tab {
                                     badgeCount = tab.badgeNumber,
                                 )
                             },
+                            selectedContentColor = SoraBlue,
                             unselectedContentColor = MaterialTheme.colorScheme.onSurface,
                         )
                     }
                 }
 
+                // ─── Source Chips (shown only on Sources tab) ───────────
+                if (pagerState.currentPage == 0 && sourceItems.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        sourceItems.take(8).forEach { item ->
+                            val isSelected = selectedSourceId == item.source.id ||
+                                (selectedSourceId == null && item == sourceItems.firstOrNull())
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { selectedSourceId = item.source.id },
+                                label = {
+                                    Text(
+                                        text = item.source.name,
+                                        fontSize = 12.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = SoraBlue,
+                                    selectedLabelColor = Color.White,
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    labelColor = MaterialTheme.colorScheme.onSurface,
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = isSelected,
+                                    selectedBorderWidth = 0.dp,
+                                    borderWidth = 0.dp,
+                                ),
+                                shape = RoundedCornerShape(50),
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                // ─── Content Pager ─────────────────────────────────────────
                 HorizontalPager(
                     modifier = Modifier.fillMaxSize(),
                     state = pagerState,
@@ -157,15 +323,10 @@ data object BrowseTab : Tab {
             }
         }
 
-        // Listen for requests to switch to the Extensions tab
         LaunchedEffect(Unit) {
             switchToExtensionTabChannel.receiveAsFlow().collectLatest {
-                pagerState.animateScrollToPage(1) // Extensions tab is index 1
+                pagerState.animateScrollToPage(1)
             }
-        }
-
-        LaunchedEffect(Unit) {
-            (context as? MainActivity)?.ready = true
         }
     }
 }

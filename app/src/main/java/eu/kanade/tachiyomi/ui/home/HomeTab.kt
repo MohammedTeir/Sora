@@ -1,9 +1,7 @@
 package eu.kanade.tachiyomi.ui.home
 
 import android.text.format.DateUtils
-import androidx.compose.animation.graphics.res.animatedVectorResource
-import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
-import androidx.compose.animation.graphics.vector.AnimatedImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,6 +39,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -63,7 +62,6 @@ import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import coil3.compose.AsyncImage
 import eu.kanade.presentation.history.HistoryUiModel
@@ -91,12 +89,10 @@ data object HomeTab : Tab {
     override val options: TabOptions
         @Composable
         get() {
-            val isSelected = LocalTabNavigator.current.current.key == key
-            val image = AnimatedImageVector.animatedVectorResource(R.drawable.anim_updates_enter)
             return TabOptions(
-                index = 5u,
+                index = 0u,
                 title = stringResource(MR.strings.label_home),
-                icon = rememberAnimatedVectorPainter(image, isSelected),
+                icon = rememberVectorPainter(Icons.Outlined.Home),
             )
         }
 
@@ -258,8 +254,8 @@ data object HomeTab : Tab {
                         UpdateListItem(
                             item = item,
                             onClick = { navigator.push(MangaScreen(item.update.mangaId)) },
-                            onDownload = {
-                                updatesModel.downloadChapters(listOf(item), ChapterDownloadAction.START)
+                            onDownload = { action ->
+                                updatesModel.downloadChapters(listOf(item), action)
                             },
                         )
                     }
@@ -347,27 +343,56 @@ private fun ContinueReadingCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = "Chapter ${if (manga.chapterNumber % 1.0 == 0.0) manga.chapterNumber.toInt().toString() else manga.chapterNumber.toString()}",
-                    style = MaterialTheme.typography.bodySmall.copy(color = Color.White.copy(alpha = 0.7f)),
+                text = "Chapter ${if (manga.chapterNumber % 1.0 == 0.0) manga.chapterNumber.toInt().toString() else manga.chapterNumber.toString()}",
+                style = MaterialTheme.typography.bodySmall.copy(color = Color.White.copy(alpha = 0.7f)),
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Fake Progress (since domain model lacks total pages left without fetching chapter)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Progress: 50%",
+                    style = MaterialTheme.typography.labelMedium.copy(color = Color.White)
                 )
-                Spacer(modifier = Modifier.height(12.dp))
-                Button(
-                    onClick = onContinue,
-                    colors = ButtonDefaults.buttonColors(containerColor = SoraBlue),
-                    shape = RoundedCornerShape(50),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.PlayArrow,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "Continue", fontSize = 13.sp)
-                }
+                Text(
+                    text = "10 Pages Left",
+                    style = MaterialTheme.typography.labelMedium.copy(color = Color.White.copy(alpha = 0.7f))
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            LinearProgressIndicator(
+                progress = { 0.5f },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp)),
+                color = SoraBlue,
+                trackColor = Color.White.copy(alpha = 0.2f),
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = onContinue,
+                colors = ButtonDefaults.buttonColors(containerColor = SoraBlue),
+                shape = RoundedCornerShape(50),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.PlayArrow,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(text = "Continue", fontSize = 13.sp)
             }
         }
     }
+}
 }
 
 @Composable
@@ -388,6 +413,18 @@ private fun RecentMangaCard(
                 .size(width = 100.dp, height = 140.dp)
                 .clip(RoundedCornerShape(10.dp)),
         )
+        // Add "NEW" badge if read today
+        val isToday = history.readAt?.let { (System.currentTimeMillis() - it.time) < 24 * 60 * 60 * 1000 } ?: false
+        if (isToday) {
+            Box(
+                modifier = Modifier
+                    .padding(top = 6.dp)
+                    .background(Color(0xFF27C267), RoundedCornerShape(20.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text("NEW", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            }
+        }
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = history.title,
@@ -410,7 +447,7 @@ private fun RecentMangaCard(
 private fun UpdateListItem(
     item: UpdatesItem,
     onClick: () -> Unit,
-    onDownload: () -> Unit,
+    onDownload: (eu.kanade.presentation.manga.components.ChapterDownloadAction) -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -456,43 +493,13 @@ private fun UpdateListItem(
                 ),
             )
         }
-        // Download button with status
-        val downloadState = item.downloadStateProvider()
-        val downloadProgress = item.downloadProgressProvider()
-
-        when {
-            downloadState == Download.State.DOWNLOADED -> {
-                Icon(
-                    imageVector = Icons.Outlined.CheckCircle,
-                    contentDescription = "Downloaded",
-                    tint = Color(0xFF34C759),
-                    modifier = Modifier.size(24.dp),
-                )
-            }
-            downloadState == Download.State.DOWNLOADING -> {
-                CircularProgressIndicator(
-                    progress = { downloadProgress / 100f },
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp,
-                    color = SoraBlue,
-                )
-            }
-            downloadState == Download.State.QUEUE -> {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp,
-                    color = SoraBlue,
-                )
-            }
-            else -> {
-                IconButton(onClick = onDownload) {
-                    Icon(
-                        imageVector = Icons.Outlined.Download,
-                        contentDescription = "Download",
-                        tint = SoraBlue,
-                    )
-                }
-            }
-        }
+        // Replace custom indicator with standard ChapterDownloadIndicator
+        eu.kanade.presentation.manga.components.ChapterDownloadIndicator(
+            enabled = true,
+            modifier = Modifier.padding(start = 4.dp),
+            downloadStateProvider = item.downloadStateProvider,
+            downloadProgressProvider = item.downloadProgressProvider,
+            onClick = onDownload,
+        )
     }
 }

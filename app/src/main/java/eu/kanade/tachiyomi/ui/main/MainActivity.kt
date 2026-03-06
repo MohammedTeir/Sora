@@ -43,8 +43,6 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.animation.doOnEnd
 import androidx.core.net.toUri
-import androidx.core.splashscreen.SplashScreen
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.util.Consumer
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
@@ -114,9 +112,6 @@ class MainActivity : BaseActivity() {
 
     private val getIncognitoState: GetIncognitoState by injectLazy()
 
-    // To be checked by splash screen. If true then splash screen will be removed.
-    var ready = false
-
     private var navigator: Navigator? = null
 
     init {
@@ -125,9 +120,6 @@ class MainActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val isLaunch = savedInstanceState == null
-
-        // Prevent splash screen showing up on configuration changes
-        val splashScreen = if (isLaunch) installSplashScreen() else null
 
         super.onCreate(savedInstanceState)
 
@@ -138,9 +130,16 @@ class MainActivity : BaseActivity() {
         }
 
         setComposeContent {
+            var showSplash by remember { mutableStateOf(isLaunch) }
             var didMigration by remember { mutableStateOf<Boolean?>(null) }
             LaunchedEffect(Unit) {
+                val startTime = System.currentTimeMillis()
                 didMigration = Migrator.awaitAndRelease()
+                val elapsed = System.currentTimeMillis() - startTime
+                if (elapsed < SPLASH_MIN_DURATION) {
+                    kotlinx.coroutines.delay(SPLASH_MIN_DURATION - elapsed)
+                }
+                showSplash = false
             }
 
             val context = LocalContext.current
@@ -245,6 +244,14 @@ class MainActivity : BaseActivity() {
                 ShowOnboarding()
             }
 
+            androidx.compose.animation.AnimatedVisibility(
+                visible = showSplash,
+                enter = androidx.compose.animation.fadeIn(),
+                exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(500)),
+            ) {
+                SplashContent()
+            }
+
             var showChangelog by remember { mutableStateOf(didMigration == true && !BuildConfig.DEBUG) }
             if (showChangelog) {
                 AlertDialog(
@@ -263,13 +270,6 @@ class MainActivity : BaseActivity() {
                 )
             }
         }
-
-        val startTime = System.currentTimeMillis()
-        splashScreen?.setKeepOnScreenCondition {
-            val elapsed = System.currentTimeMillis() - startTime
-            elapsed <= SPLASH_MIN_DURATION || (!ready && elapsed <= SPLASH_MAX_DURATION)
-        }
-        setSplashScreenExitAnimation(splashScreen)
 
         if (isLaunch && libraryPreferences.autoClearChapterCache().get()) {
             lifecycleScope.launchIO {
@@ -346,58 +346,6 @@ class MainActivity : BaseActivity() {
         }
     }
 
-    /**
-     * Sets custom splash screen exit animation on devices prior to Android 12.
-     *
-     * When custom animation is used, status and navigation bar color will be set to transparent and will be restored
-     * after the animation is finished.
-     */
-    private fun setSplashScreenExitAnimation(splashScreen: SplashScreen?) {
-        val root = findViewById<View>(android.R.id.content)
-        if (splashScreen != null) {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-                window.statusBarColor = Color.TRANSPARENT
-                window.navigationBarColor = Color.TRANSPARENT
-            }
-
-            splashScreen.setOnExitAnimationListener { splashProvider ->
-                // For some reason the SplashScreen applies (incorrect) Y translation to the iconView
-                splashProvider.iconView.translationY = 0F
-
-                val activityAnim = ValueAnimator.ofFloat(1F, 0F).apply {
-                    interpolator = LinearOutSlowInInterpolator()
-                    duration = SPLASH_EXIT_ANIM_DURATION
-                    addUpdateListener { va ->
-                        val value = va.animatedValue as Float
-                        root.translationY = value * 16.dpToPx
-                        root.alpha = 1f - (value * 0.3f)
-                    }
-                }
-
-                val splashAnim = ValueAnimator.ofFloat(1F, 0F).apply {
-                    interpolator = FastOutSlowInInterpolator()
-                    duration = SPLASH_EXIT_ANIM_DURATION
-                    addUpdateListener { va ->
-                        val value = va.animatedValue as Float
-                        splashProvider.view.alpha = value
-                        // Zoom in scale + rotation for a dynamic exit
-                        val scale = 1.0f + ((1f - value) * 0.5f)
-                        splashProvider.iconView.scaleX = scale
-                        splashProvider.iconView.scaleY = scale
-                        splashProvider.iconView.rotation = (1f - value) * 15f
-                        splashProvider.iconView.alpha = value
-                    }
-                    doOnEnd {
-                        splashProvider.remove()
-                    }
-                }
-
-                activityAnim.start()
-                splashAnim.start()
-            }
-        }
-    }
-
     private fun handleIntentAction(intent: Intent, navigator: Navigator): Boolean {
         val notificationId = intent.getIntExtra("notificationId", -1)
         if (notificationId > -1) {
@@ -466,7 +414,6 @@ class MainActivity : BaseActivity() {
             lifecycleScope.launch { HomeScreen.openTab(tabToOpen) }
         }
 
-        ready = true
         return true
     }
 
@@ -474,10 +421,7 @@ class MainActivity : BaseActivity() {
         const val INTENT_SEARCH = "eu.kanade.tachiyomi.SEARCH"
         const val INTENT_SEARCH_QUERY = "query"
         const val INTENT_SEARCH_FILTER = "filter"
+
+        private const val SPLASH_MIN_DURATION = 2000L // ms
     }
 }
-
-// Splash screen
-private const val SPLASH_MIN_DURATION = 1500 // ms
-private const val SPLASH_MAX_DURATION = 5000 // ms
-private const val SPLASH_EXIT_ANIM_DURATION = 600L // ms

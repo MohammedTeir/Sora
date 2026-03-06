@@ -9,6 +9,17 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Book
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -92,18 +103,49 @@ private fun UpcomingToolbar() {
     val navigator = LocalNavigator.currentOrThrow
     val uriHandler = LocalUriHandler.current
 
-    AppBar(
-        title = stringResource(MR.strings.label_upcoming),
-        navigateUp = navigator::pop,
-        actions = {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                top = androidx.compose.foundation.layout.WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
+            )
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = navigator::pop) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = stringResource(MR.strings.action_bar_up_description),
+                    tint = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                imageVector = Icons.Outlined.Book,
+                contentDescription = null,
+                tint = androidx.compose.ui.graphics.Color(0xFF2D7CFF),
+                modifier = Modifier.size(24.dp),
+            )
+            androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "Sora",
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             IconButton(onClick = { uriHandler.openUri(Constants.URL_HELP_UPCOMING) }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
                     contentDescription = stringResource(MR.strings.upcoming_guide),
+                    tint = MaterialTheme.colorScheme.onBackground,
                 )
             }
-        },
-    )
+        }
+    }
 }
 
 @Composable
@@ -125,8 +167,8 @@ private fun DateHeading(
             style = MaterialTheme.typography.bodyMedium,
         )
         Badge(
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
+            containerColor = androidx.compose.ui.graphics.Color(0xFF2D7CFF),
+            contentColor = androidx.compose.ui.graphics.Color.White,
         ) {
             Text("$mangaCount")
         }

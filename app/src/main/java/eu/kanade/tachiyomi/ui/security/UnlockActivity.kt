@@ -3,7 +3,6 @@ package eu.kanade.tachiyomi.ui.security
 import android.os.Bundle
 import androidx.biometric.BiometricPrompt
 import androidx.fragment.app.FragmentActivity
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import eu.kanade.tachiyomi.ui.base.activity.BaseActivity
 import eu.kanade.tachiyomi.ui.base.delegate.SecureActivityDelegate
 import eu.kanade.tachiyomi.util.system.AuthenticatorUtil
@@ -19,8 +18,6 @@ import tachiyomi.i18n.MR
 class UnlockActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        val splashScreen = installSplashScreen()
-        splashScreen.setKeepOnScreenCondition { true }
         super.onCreate(savedInstanceState)
         startAuthentication(
             stringResource(MR.strings.unlock_app_title, stringResource(MR.strings.app_name)),

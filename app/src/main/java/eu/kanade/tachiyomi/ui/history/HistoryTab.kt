@@ -127,9 +127,7 @@ data object HistoryTab : Tab {
         }
 
         LaunchedEffect(state.list) {
-            if (state.list != null) {
-                (context as? MainActivity)?.ready = true
-            }
+            // Nothing here since ready was removed
         }
 
         LaunchedEffect(Unit) {

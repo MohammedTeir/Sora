@@ -59,6 +59,7 @@ fun TabbedDialog(
                     modifier = Modifier.weight(1f),
                     selectedTabIndex = pagerState.currentPage,
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = androidx.compose.ui.graphics.Color(0xFF2D7CFF),
                     divider = {},
                 ) {
                     tabTitles.fastForEachIndexed { index, tab ->
@@ -66,7 +67,8 @@ fun TabbedDialog(
                             selected = pagerState.currentPage == index,
                             onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
                             text = { TabText(text = tab) },
-                            unselectedContentColor = MaterialTheme.colorScheme.onSurface,
+                            selectedContentColor = androidx.compose.ui.graphics.Color(0xFF2D7CFF),
+                            unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
