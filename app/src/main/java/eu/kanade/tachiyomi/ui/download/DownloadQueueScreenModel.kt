@@ -28,6 +28,9 @@ class DownloadQueueScreenModel(
     private val _state = MutableStateFlow(emptyList<DownloadHeaderItem>())
     val state = _state.asStateFlow()
 
+    private val _completedDownloads = MutableStateFlow(emptyList<Download>())
+    val completedDownloads = _completedDownloads.asStateFlow()
+
     /**
      * Map of jobs for active downloads.
      */
@@ -69,6 +72,11 @@ class DownloadQueueScreenModel(
 
     fun clearQueue() {
         downloadManager.clearQueue()
+        _completedDownloads.value = emptyList()
+    }
+
+    fun clearCompleted() {
+        _completedDownloads.value = emptyList()
     }
 
     fun reorder(downloads: List<Download>) {
@@ -97,7 +105,16 @@ class DownloadQueueScreenModel(
             Download.State.DOWNLOADING -> {
                 launchProgressJob(download)
             }
-            Download.State.DOWNLOADED, Download.State.ERROR -> {
+            Download.State.DOWNLOADED -> {
+                cancelProgressJob(download)
+                // Add to completed list
+                val current = _completedDownloads.value.toMutableList()
+                if (current.none { it.chapter.id == download.chapter.id }) {
+                    current.add(0, download) // Prepend
+                    _completedDownloads.value = current
+                }
+            }
+            Download.State.ERROR -> {
                 cancelProgressJob(download)
             }
             else -> { /* unused */ }

@@ -22,8 +22,10 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Sort
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.DownloadForOffline
 import androidx.compose.material.icons.outlined.Pause
@@ -81,6 +83,7 @@ object DownloadQueueScreen : Screen() {
         val screenModel = rememberScreenModel { DownloadQueueScreenModel() }
         val downloadList by screenModel.state.collectAsState()
         val isRunning by screenModel.isDownloaderRunning.collectAsState()
+        val completedDownloads by screenModel.completedDownloads.collectAsState()
 
         val allDownloads = remember(downloadList) {
             downloadList.flatMap { header -> header.subItems.map { it.download } }
@@ -98,16 +101,18 @@ object DownloadQueueScreen : Screen() {
             topBar = {
                 DownloadQueueHeader(
                     onBack = navigator::pop,
-                    onClearAll = screenModel::clearQueue,
-                    hasDownloads = allDownloads.isNotEmpty()
+                    isRunning = isRunning,
+                    onToggleAll = {
+                        if (isRunning) screenModel.pauseDownloads() else screenModel.startDownloads()
+                    }
                 )
             },
             containerColor = MaterialTheme.colorScheme.background,
         ) { contentPadding ->
-            if (allDownloads.isEmpty()) {
+            if (allDownloads.isEmpty() && completedDownloads.isEmpty()) {
                 EmptyScreen(
                     message = "Your download queue is currently empty.\nBeautiful manga adventures await you!",
-                    image = androidx.compose.ui.res.painterResource(id = eu.kanade.tachiyomi.R.drawable.empty_downloads_anime),
+                    icon = Icons.Outlined.DownloadForOffline,
                     modifier = Modifier.padding(contentPadding)
                 )
                 return@Scaffold
@@ -124,39 +129,38 @@ object DownloadQueueScreen : Screen() {
                     bottom = 32.dp
                 ),
             ) {
-                // ─── Download Status Card ──────────────────────────────────────
-                item(key = "status_card") {
-                    DownloadStatusCard(
-                        isRunning = isRunning,
-                        onToggle = { checked ->
-                            if (checked) screenModel.startDownloads() else screenModel.pauseDownloads()
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
-
                 // ─── Active Section ────────────────────────────────────────────
-                if (activeDownloads.isNotEmpty()) {
+                if (activeDownloads.isNotEmpty() || pendingDownloads.isNotEmpty()) {
                     item(key = "active_header") {
-                        SectionHeader("ACTIVE")
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "ACTIVE (${activeDownloads.size + pendingDownloads.size})",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                letterSpacing = 1.sp
+                            )
+                        }
                     }
+                    
                     items(
                         items = activeDownloads,
                         key = { it.chapter.id },
                     ) { download ->
                         ActiveDownloadCard(
                             download = download,
-                            onCancel = { screenModel.cancel(listOf(download)) }
+                            isRunning = isRunning,
+                            onToggle = { if (isRunning) screenModel.pauseDownloads() else screenModel.startDownloads() }
                         )
                     }
-                    item { Spacer(modifier = Modifier.height(24.dp)) }
                 }
 
                 // ─── Pending Section ───────────────────────────────────────────
                 if (pendingDownloads.isNotEmpty()) {
-                    item(key = "pending_header") {
-                        SectionHeader("PENDING")
-                    }
                     items(
                         items = pendingDownloads,
                         key = { it.chapter.id },
@@ -168,16 +172,52 @@ object DownloadQueueScreen : Screen() {
                     }
                 }
 
-                // ─── Remaining Info ────────────────────────────────────────────
-                item(key = "remaining_info") {
-                    Spacer(modifier = Modifier.height(32.dp))
-                    Text(
-                        text = "${allDownloads.size} items remaining",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    )
+                // ─── Completed Section ─────────────────────────────────────────
+                if (completedDownloads.isNotEmpty()) {
+                    item(key = "completed_header") {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text(
+                            text = "RECENTLY COMPLETED",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            letterSpacing = 1.sp,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
+                        )
+                    }
+
+                    item(key = "completed_list") {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFF141A29))
+                                .padding(vertical = 8.dp)
+                        ) {
+                            completedDownloads.forEach { download ->
+                                CompletedItem(download = download)
+                            }
+                        }
+                    }
+
+                    item(key = "clear_completed") {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            androidx.compose.material3.TextButton(
+                                onClick = { screenModel.clearCompleted() }
+                            ) {
+                                Text(
+                                    text = "Clear Completed",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -188,135 +228,278 @@ object DownloadQueueScreen : Screen() {
 @Composable
 private fun DownloadQueueHeader(
     onBack: () -> Unit,
-    onClearAll: () -> Unit,
-    hasDownloads: Boolean,
+    isRunning: Boolean,
+    onToggleAll: () -> Unit,
 ) {
-    androidx.compose.material3.CenterAlignedTopAppBar(
-        title = {
-            Text(
-                text = "Download Queue",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        },
-        navigationIcon = {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
-                    .padding(start = 16.dp)
-                    .size(40.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
                     .clickable(onClick = onBack),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.onSurface,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
             }
-        },
-        actions = {
-            if (hasDownloads) {
-                androidx.compose.material3.TextButton(
-                    onClick = onClearAll,
-                    modifier = Modifier.padding(end = 8.dp)
-                ) {
-                    Text(
-                        text = "Clear All",
-                        color = SoraBlue,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-        },
-        colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.Transparent
-        )
-    )
-}
-
-@Composable
-private fun DownloadStatusCard(
-    isRunning: Boolean,
-    onToggle: (Boolean) -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(16.dp))
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column {
+            Spacer(modifier = Modifier.width(16.dp))
             Text(
-                text = "Download Status",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
+                text = "Download Queue",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(modifier = Modifier.height(4.dp))
+        }
+        
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .clickable(onClick = onToggleAll)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
             Text(
-                text = if (isRunning) "Running" else "Paused",
+                text = if (isRunning) "Pause All" else "Resume All",
                 fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                fontWeight = FontWeight.Medium,
+                color = SoraBlue
             )
         }
-        androidx.compose.material3.Switch(
-            checked = isRunning,
-            onCheckedChange = onToggle,
-            colors = androidx.compose.material3.SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = SoraBlue,
-                uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
-            )
-        )
     }
-}
-
-@Composable
-private fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = 1.5.sp,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(vertical = 4.dp),
-    )
-    Spacer(modifier = Modifier.height(8.dp))
 }
 
 @Composable
 private fun ActiveDownloadCard(
     download: Download,
-    onCancel: () -> Unit,
+    isRunning: Boolean,
+    onToggle: () -> Unit,
 ) {
     val progress by download.progressFlow.collectAsState(initial = download.progress)
     val progressFloat by animateFloatAsState(targetValue = progress / 100f, label = "progress")
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(16.dp))
-            .padding(12.dp),
+            .background(
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(16.dp)
+            )
+            .padding(16.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            MangaThumbnail(download)
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = download.manga.title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = download.chapter.name,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onToggle),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = "Toggle",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = "DOWNLOADING",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = SoraBlue
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "${(progressFloat * 100).toInt()}%",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = SoraBlue
+            )
+            Text(
+                text = "${download.downloadedImages} / ${download.pages?.size ?: "?"} items",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        LinearProgressIndicator(
+            progress = { progressFloat },
+            modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(6.dp)),
+            color = SoraBlue,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+        )
+    }
+}
+
+@Composable
+private fun PendingDownloadItem(
+    download: Download,
+    onCancel: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
+            .padding(16.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            MangaThumbnail(download)
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = download.manga.title,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = download.chapter.name,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onCancel),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Cancel",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Box(
+            modifier = Modifier
+                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(4.dp))
+                .padding(horizontal = 6.dp, vertical = 2.dp)
+        ) {
+            Text(
+                text = "IN QUEUE",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "0%",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "Waiting...",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        LinearProgressIndicator(
+            progress = { 0f },
+            modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(6.dp)),
+            color = SoraBlue,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+        )
+    }
+}
+
+@Composable
+private fun CompletedItem(
+    download: Download,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         MangaThumbnail(download)
-
         Spacer(modifier = Modifier.width(12.dp))
-
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = download.manga.title,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -328,100 +511,19 @@ private fun ActiveDownloadCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                LinearProgressIndicator(
-                    progress = { progressFloat },
-                    modifier = Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(6.dp)),
-                    color = SoraBlue,
-                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "${(progressFloat * 100).toInt()}%",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
         }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
-                .clickable(onClick = onCancel),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Cancel",
-                tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(16.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun PendingDownloadItem(
-    download: Download,
-    onCancel: () -> Unit, // Re-using swipe to cancel logic or an explicit button 
-) {
-    // We will use SwipeToDismiss logic for the pending items to allow cancelling natively.
-    // However, for simplicity and immediate functionality, we'll provide a cleaner layout 
-    // that uses a Drag handle visual as requested, but standard click-to-cancel
-    // due to SwipeToDismiss complexity with LazyColumn items in vanilla M3.
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(12.dp))
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        MangaThumbnail(download)
-        
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = download.manga.title,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = download.chapter.name.uppercase(),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        // We use the Drag handle visual. In a real-world drag-n-drop we'd wrap this 
-        // with `Modifier.draggable` or use a ReorderableLazyColumn wrapper.
+        Spacer(modifier = Modifier.width(8.dp))
         Icon(
-            imageVector = Icons.Filled.DragHandle,
-            contentDescription = "Reorder",
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            imageVector = Icons.Default.CheckCircle,
+            contentDescription = "Completed",
+            tint = Color(0xFF22C55E),
+            modifier = Modifier.size(24.dp)
         )
     }
 }
 
 @Composable
 private fun MangaThumbnail(download: Download) {
-    // using MangaCover.Square to get the correct aspect ratio and loading functionality
     eu.kanade.presentation.manga.components.MangaCover.Square(
         modifier = Modifier
             .size(60.dp)

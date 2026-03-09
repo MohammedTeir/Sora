@@ -7,7 +7,6 @@ import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.FlipToBack
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.SelectAll
-import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
@@ -102,14 +101,6 @@ private fun LibraryRegularToolbar(
                     Icons.Outlined.FilterList,
                     contentDescription = stringResource(MR.strings.action_filter),
                     tint = filterTint
-                )
-            }
-            
-            IconButton(onClick = { /* Avatar click */ }) {
-                Icon(
-                    Icons.Outlined.AccountCircle,
-                    contentDescription = "Profile",
-                    tint = LocalContentColor.current
                 )
             }
         },

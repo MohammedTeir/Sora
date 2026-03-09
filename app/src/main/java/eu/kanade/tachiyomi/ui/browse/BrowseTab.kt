@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.Book
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -61,6 +62,9 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import eu.kanade.presentation.more.settings.screen.browse.ExtensionReposScreen
+import eu.kanade.tachiyomi.ui.browse.source.SourcesFilterScreen
+import eu.kanade.tachiyomi.ui.browse.source.SourcesScreenModel
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -77,8 +81,8 @@ import eu.kanade.presentation.components.TabContent
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.ui.browse.extension.ExtensionsScreenModel
 import eu.kanade.tachiyomi.ui.browse.extension.extensionsTab
+import eu.kanade.tachiyomi.ui.browse.feed.feedTab
 import eu.kanade.tachiyomi.ui.browse.migration.sources.migrateSourceTab
-import eu.kanade.tachiyomi.ui.browse.source.SourcesScreenModel
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreenModel.Listing
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
@@ -96,7 +100,7 @@ import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.components.material.TabText
 import tachiyomi.presentation.core.i18n.stringResource
 
-private val SoraBlue = Color(0xFF2D7CFF)
+private val SoraBlue = Color(0xFF3B82F6)
 
 data object BrowseTab : Tab {
 
@@ -129,22 +133,11 @@ data object BrowseTab : Tab {
 
         val extensionsScreenModel = rememberScreenModel { ExtensionsScreenModel() }
         val sourcesScreenModel = rememberScreenModel { SourcesScreenModel() }
-        val sourcesState by sourcesScreenModel.state.collectAsState()
-
-        // Extract source list from state for the chips row
-        val sourceItems = sourcesState.items.filterIsInstance<SourceUiModel.Item>()
-        var selectedSourceId by remember { mutableStateOf<Long?>(null) }
-
-        LaunchedEffect(sourceItems) {
-            if (selectedSourceId == null && sourceItems.isNotEmpty()) {
-                selectedSourceId = sourceItems.first().source.id
-            }
-        }
-
-        val sourcesTabContent = sourcesTab(selectedSourceId)
+        val feedTabContent = feedTab()
+        val sourcesTabContent = sourcesTab()
         val extensionsTabContent = extensionsTab(extensionsScreenModel)
         val migrateTabContent = migrateSourceTab()
-        val tabs = persistentListOf(sourcesTabContent, extensionsTabContent, migrateTabContent)
+        val tabs = persistentListOf(feedTabContent, sourcesTabContent, extensionsTabContent, migrateTabContent)
         val pagerState = rememberPagerState { tabs.size }
         val snackbarHostState = remember { SnackbarHostState() }
 
@@ -165,64 +158,50 @@ data object BrowseTab : Tab {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = "Browse",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 28.sp,
-                        color = MaterialTheme.colorScheme.onBackground,
+                        fontSize = 32.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         IconButton(
-                            onClick = { navigator.push(GlobalSearchScreen()) },
+                            onClick = {
+                                when (pagerState.currentPage) {
+                                    0 -> navigator.push(GlobalSearchScreen()) // Feed tab search
+                                    1 -> navigator.push(SourcesFilterScreen())
+                                    2 -> navigator.push(ExtensionReposScreen())
+                                    else -> navigator.push(GlobalSearchScreen())
+                                }
+                            },
                             modifier = Modifier
-                                .background(Color(0xFF202020), CircleShape)
+                                .size(44.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.FilterList,
                                 contentDescription = stringResource(MR.strings.action_filter),
-                                tint = MaterialTheme.colorScheme.onBackground,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        IconButton(
+                            onClick = { /* TODO: More Action */ },
+                            modifier = Modifier
+                                .size(44.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "More",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
                 }
-
-                // ─── Search Bar ────────────────────────────────────────────
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            shape = RoundedCornerShape(50),
-                        )
-                        .clip(RoundedCornerShape(50))
-                        .clickable { navigator.push(GlobalSearchScreen()) }
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Search,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = when (pagerState.currentPage) {
-                            1 -> "Search extensions..."
-                            2 -> "Search library to migrate..."
-                            else -> stringResource(MR.strings.action_search_hint)
-                        },
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 14.sp,
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
 
                 // ─── Tabs ──────────────────────────────────────────────────
                 PrimaryTabRow(
@@ -232,6 +211,7 @@ data object BrowseTab : Tab {
                         .zIndex(1f),
                     containerColor = Color.Transparent,
                     contentColor = SoraBlue,
+                    divider = {}
                 ) {
                     tabs.forEachIndexed { index, tab ->
                         Tab(
@@ -244,56 +224,47 @@ data object BrowseTab : Tab {
                                 )
                             },
                             selectedContentColor = SoraBlue,
-                            unselectedContentColor = MaterialTheme.colorScheme.onSurface,
+                            unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
 
-                // ─── Source Chips (shown only on Sources tab) ───────────
-                if (pagerState.currentPage == 0 && sourceItems.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        sourceItems.forEach { item ->
-                            val isSelected = selectedSourceId == item.source.id ||
-                                (selectedSourceId == null && item == sourceItems.firstOrNull())
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = { selectedSourceId = item.source.id },
-                                label = {
-                                    Text(
-                                        text = item.source.name,
-                                        fontSize = 12.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = SoraBlue,
-                                    selectedLabelColor = Color.White,
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    labelColor = MaterialTheme.colorScheme.onSurface,
-                                ),
-                                border = FilterChipDefaults.filterChipBorder(
-                                    enabled = true,
-                                    selected = isSelected,
-                                    selectedBorderWidth = 0.dp,
-                                    borderWidth = 0.dp,
-                                ),
-                                shape = RoundedCornerShape(50),
-                            )
-                        }
-                    }
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // ─── Search Bar ────────────────────────────────────────────
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(24.dp),
+                        )
+                        .clip(RoundedCornerShape(24.dp))
+                        .clickable { navigator.push(GlobalSearchScreen()) }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = when (pagerState.currentPage) {
+                            1 -> "Search sources..."
+                            2 -> "Search extensions..."
+                            3 -> "Search library to migrate..."
+                            else -> "Search popular manga..."
+                        },
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 14.sp,
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(modifier = Modifier.height(10.dp))
 
                 // ─── Content Pager ─────────────────────────────────────────
                 HorizontalPager(

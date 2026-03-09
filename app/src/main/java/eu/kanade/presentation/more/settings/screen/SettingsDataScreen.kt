@@ -43,6 +43,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -97,11 +98,12 @@ object SettingsDataScreen : SearchableSettings {
     val restorePreferenceKeyString = MR.strings.label_backup
     const val HELP_URL = "https://mihon.app/docs/faq/storage"
 
-    private val SoraBlue = Color(0xFF2D7CFF)
-    private val CacheBlue = Color(0xFF1E5BB8)
-    private val FreeGrey = Color(0xFF424242)
-    private val CardBackground = Color(0xFF1A1A1A)
-    private val AmoledBackground = Color(0xFF000000)
+    private val SoraBlue @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.primary
+    private val CacheBlue @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+    private val FreeGrey @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.outline
+    private val CardBackground @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.surfaceVariant
+    private val GrowthGreen = Color(0xFF4ADE80)
+    private val FireOrange = Color(0xFFFFA000)
 
     @ReadOnlyComposable
     @Composable
@@ -204,7 +206,7 @@ object SettingsDataScreen : SearchableSettings {
                     title = {
                         Text(
                             text = "Data & Storage",
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onBackground,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -218,21 +220,21 @@ object SettingsDataScreen : SearchableSettings {
                             modifier = Modifier
                                 .padding(start = 8.dp, end = 8.dp)
                                 .size(44.dp)
-                                .background(Color(0xFF262626), CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                                 contentDescription = "Back",
-                                tint = Color.White
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = AmoledBackground
+                        containerColor = MaterialTheme.colorScheme.background
                     )
                 )
             },
-            containerColor = AmoledBackground
+            containerColor = MaterialTheme.colorScheme.background
         ) { paddingValues ->
             Column(
                 modifier = Modifier
@@ -317,6 +319,9 @@ object SettingsDataScreen : SearchableSettings {
         mangaSpace: Long,
         isCalculating: Boolean
     ) {
+        val soraBlue = SoraBlue
+        val cacheBlue = CacheBlue
+        val freeGrey = FreeGrey
         val context = LocalContext.current
         val safeTotal = totalSpace.coerceAtLeast(1L)
         val usedSpace = (safeTotal - freeSpace).coerceAtLeast(0L)
@@ -348,10 +353,11 @@ object SettingsDataScreen : SearchableSettings {
                 modifier = Modifier.size(260.dp),
                 contentAlignment = Alignment.Center
             ) {
+                val surfaceVariantColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val strokeWidth = 14.dp.toPx()
                     drawArc(
-                        color = Color(0xFF1E1E1E),
+                        color = surfaceVariantColor,
                         startAngle = 0f,
                         sweepAngle = 360f,
                         useCenter = false,
@@ -366,7 +372,7 @@ object SettingsDataScreen : SearchableSettings {
                     val mangaSweep = animManga.value
                     if (mangaSweep > 0f) {
                         drawArc(
-                            color = SoraBlue,
+                            color = soraBlue,
                             startAngle = startAngle,
                             sweepAngle = mangaSweep,
                             useCenter = false,
@@ -374,11 +380,11 @@ object SettingsDataScreen : SearchableSettings {
                         )
                         startAngle += mangaSweep
                     }
-
+ 
                     val cacheSweep = animCache.value
                     if (cacheSweep > 0f) {
                         drawArc(
-                            color = CacheBlue,
+                            color = cacheBlue,
                             startAngle = startAngle,
                             sweepAngle = cacheSweep,
                             useCenter = false,
@@ -386,11 +392,11 @@ object SettingsDataScreen : SearchableSettings {
                         )
                         startAngle += cacheSweep
                     }
-
+ 
                     val freeSweep = animFree.value
                     if (freeSweep > 0f) {
                         drawArc(
-                            color = FreeGrey,
+                            color = freeGrey,
                             startAngle = startAngle,
                             sweepAngle = freeSweep,
                             useCenter = false,
@@ -410,12 +416,12 @@ object SettingsDataScreen : SearchableSettings {
                         text = if (isCalculating) "..." else Formatter.formatFileSize(context, usedSpace),
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
                     )
                     Text(
                         text = if (isCalculating) "OF ..." else "OF ${Formatter.formatFileSize(context, totalSpace).uppercase()}",
                         fontSize = 12.sp,
-                        color = Color.Gray
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -443,8 +449,8 @@ object SettingsDataScreen : SearchableSettings {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Column {
-                Text(text = label, color = Color.Gray, fontSize = 12.sp, letterSpacing = 1.sp)
-                Text(text = value, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(text = label, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, letterSpacing = 1.sp)
+                Text(text = value, color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -455,7 +461,7 @@ object SettingsDataScreen : SearchableSettings {
             text = title,
             fontSize = 12.sp,
             letterSpacing = 2.sp,
-            color = Color.Gray,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
@@ -468,7 +474,7 @@ object SettingsDataScreen : SearchableSettings {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .background(CardBackground, RoundedCornerShape(20.dp))
+                .background(androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(20.dp))
                 .padding(20.dp),
             content = content
         )
@@ -498,10 +504,10 @@ object SettingsDataScreen : SearchableSettings {
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, color = Color.White, fontSize = 16.sp)
-                Text(text = subtitle, color = Color.Gray, fontSize = 12.sp, maxLines = 1)
+                Text(text = title, color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground, fontSize = 16.sp)
+                Text(text = subtitle, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = 1)
             }
-            Icon(imageVector = Icons.Outlined.ChevronRight, contentDescription = null, tint = Color.Gray)
+            Icon(imageVector = Icons.Outlined.ChevronRight, contentDescription = null, tint = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 
@@ -527,8 +533,8 @@ object SettingsDataScreen : SearchableSettings {
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, color = Color.White, fontSize = 16.sp)
-                Text(text = subtitle, color = Color.Gray, fontSize = 12.sp)
+                Text(text = title, color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground, fontSize = 16.sp)
+                Text(text = subtitle, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
             }
             Switch(
                 checked = isChecked,
@@ -537,7 +543,7 @@ object SettingsDataScreen : SearchableSettings {
                     checkedThumbColor = Color.White,
                     checkedTrackColor = SoraBlue,
                     uncheckedThumbColor = Color.Gray,
-                    uncheckedTrackColor = Color(0xFF333333)
+                    uncheckedTrackColor = MaterialTheme.colorScheme.outline
                 )
             )
         }
@@ -568,10 +574,10 @@ object SettingsDataScreen : SearchableSettings {
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, color = Color.White, fontSize = 16.sp)
-                Text(text = subtitle, color = Color.Gray, fontSize = 12.sp)
+                Text(text = title, color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground, fontSize = 16.sp)
+                Text(text = subtitle, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
             }
-            Text(text = trailingText, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(text = trailingText, color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

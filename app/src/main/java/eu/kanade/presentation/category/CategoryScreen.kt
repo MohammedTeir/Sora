@@ -46,6 +46,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material3.Icon
@@ -73,7 +74,7 @@ fun CategoryScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black) // AMOLED Background
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Column(
             modifier = Modifier
@@ -91,12 +92,12 @@ fun CategoryScreen(
                     onClick = navigateUp,
                     modifier = Modifier
                         .size(40.dp)
-                        .background(Color(0xFF1E1E1E), CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                         contentDescription = "Back",
-                        tint = Color.White
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 
@@ -106,7 +107,7 @@ fun CategoryScreen(
                     text = "Categories",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.weight(1f)
                 )
 
@@ -128,7 +129,7 @@ fun CategoryScreen(
             if (state.isEmpty) {
                 EmptyScreen(
                     message = "Your library categories are empty.\nCreate some beautiful floating folders!",
-                    image = androidx.compose.ui.res.painterResource(id = eu.kanade.tachiyomi.R.drawable.empty_categories_anime),
+                    icon = Icons.Outlined.Folder,
                     modifier = Modifier.fillMaxSize(),
                 )
             } else {

@@ -1,6 +1,8 @@
 package eu.kanade.presentation.history
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -12,12 +14,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.DeleteSweep
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -47,9 +47,6 @@ import tachiyomi.presentation.core.screens.LoadingScreen
 import tachiyomi.i18n.MR
 import java.time.LocalDate
 
-private val AppBackground = Color(0xFF0F1117)
-private val SecondaryText = Color(0xFF9AA0A6)
-private val AccentBlue = Color(0xFF2D7CFF)
 
 @Composable
 fun HistoryScreen(
@@ -63,62 +60,65 @@ fun HistoryScreen(
 ) {
     Scaffold(
         topBar = {
-            // ─── Header ──────────────────────────────────────────────────────
+            // ─── Header Section (Top Bar) ────────────────────────────────────
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(AppBackground),
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(horizontal = 20.dp, vertical = 20.dp),
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = "History",
+                        fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 24.sp,
-                        color = Color.White,
-                        modifier = Modifier.weight(1f),
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
-                    // Clear history button
-                    IconButton(onClick = { onDialogChange(HistoryScreenModel.Dialog.DeleteAll) }) {
-                        Icon(
-                            imageVector = Icons.Outlined.DeleteSweep,
-                            contentDescription = "Clear History",
-                            tint = SecondaryText,
-                        )
-                    }
-                    // Refresh icon
-                    IconButton(onClick = { /* refresh */ }) {
-                        Icon(
-                            imageVector = Icons.Outlined.Refresh,
-                            contentDescription = "Refresh",
-                            tint = Color.White,
-                        )
-                    }
-                    // Profile avatar
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                        contentAlignment = Alignment.Center,
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Person,
-                            contentDescription = "Profile",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp),
-                        )
+                        // Search Button
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                                .clickable { onSearchQueryChange("") },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Search,
+                                contentDescription = "Search",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+
+                        // Delete Button
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                                .clickable { onDialogChange(HistoryScreenModel.Dialog.DeleteAll) },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Delete,
+                                contentDescription = "Clear History",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
                     }
                 }
-                HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
             }
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        containerColor = AppBackground,
+        containerColor = MaterialTheme.colorScheme.background,
     ) { contentPadding ->
         state.list.let {
             if (it == null) {
@@ -171,18 +171,17 @@ private fun HistoryScreenContent(
         ) { item ->
             when (item) {
                 is HistoryUiModel.Header -> {
-                    // Styled section header: TODAY / YESTERDAY etc.
+                    // Section Container: TODAY / YESTERDAY etc.
                     Text(
                         text = relativeDateText(item.date).uppercase(),
                         modifier = Modifier
                             .animateItemFastScroll()
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
-                            .padding(top = 8.dp),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 1.5.sp,
-                        color = SecondaryText,
+                            .padding(horizontal = 20.dp)
+                            .padding(top = 12.dp, bottom = 8.dp),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 

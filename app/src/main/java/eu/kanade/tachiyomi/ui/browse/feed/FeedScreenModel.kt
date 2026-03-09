@@ -90,6 +90,7 @@ open class FeedScreenModel(
                 mutableState.update { state ->
                     state.copy(
                         items = items,
+                        seenManga = emptySet(),
                     )
                 }
                 getFeed(items)
@@ -105,6 +106,7 @@ open class FeedScreenModel(
             mutableState.update { state ->
                 state.copy(
                     items = newItems,
+                    seenManga = emptySet(),
                 )
             }
             getFeed(newItems)
@@ -233,7 +235,7 @@ open class FeedScreenModel(
                         if (itemUI.source != null) {
                             withContext(coroutineDispatcher) {
                                 if (itemUI.savedSearch == null) {
-                                    itemUI.source.getLatestUpdates(1)
+                                    itemUI.source.getPopularManga(1)
                                 } else {
                                     itemUI.source.getSearchManga(
                                         1,
@@ -256,8 +258,14 @@ open class FeedScreenModel(
                     }
 
                     mutableState.update { state ->
+                        val filteredResults = result.results?.filter { manga ->
+                            val key = manga.title.lowercase().trim()
+                            !state.seenManga.contains(key)
+                        }
+                        val newSeen = state.seenManga + (filteredResults?.map { it.title.lowercase().trim() } ?: emptyList())
                         state.copy(
-                            items = state.items?.map { if (it.feed.id == result.feed.id) result else it },
+                            items = state.items?.map { if (it.feed.id == result.feed.id) result.copy(results = filteredResults) else it },
+                            seenManga = newSeen,
                         )
                     }
                 }
@@ -313,6 +321,7 @@ open class FeedScreenModel(
 data class FeedScreenState(
     val dialog: FeedScreenModel.Dialog? = null,
     val items: List<FeedItemUI>? = null,
+    val seenManga: Set<String> = emptySet(),
 ) {
     val isLoading
         get() = items == null

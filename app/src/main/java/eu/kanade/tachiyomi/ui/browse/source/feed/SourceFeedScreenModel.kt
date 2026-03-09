@@ -78,6 +78,7 @@ open class SourceFeedScreenModel(
                     mutableState.update { state ->
                         state.copy(
                             items = items,
+                            seenManga = emptySet(),
                         )
                     }
                     getFeed(items)
@@ -161,10 +162,16 @@ open class SourceFeedScreenModel(
                     }
 
                     mutableState.update { state ->
+                        val filteredResults = titles.filter { manga ->
+                            val key = manga.title.lowercase().trim()
+                            !state.seenManga.contains(key)
+                        }
+                        val newSeen = state.seenManga + (filteredResults.map { it.title.lowercase().trim() })
                         state.copy(
                             items = state.items.map { item ->
-                                if (item.id == sourceFeed.id) sourceFeed.withResults(titles) else item
+                                if (item.id == sourceFeed.id) sourceFeed.withResults(filteredResults) else item
                             }.toImmutableList(),
+                            seenManga = newSeen,
                         )
                     }
                 }
@@ -253,6 +260,7 @@ data class SourceFeedState(
     val items: ImmutableList<SourceFeedUI> = persistentListOf(),
     val filters: FilterList = FilterList(),
     val dialog: SourceFeedScreenModel.Dialog? = null,
+    val seenManga: Set<String> = emptySet(),
 ) {
     val isLoading
         get() = items.isEmpty()

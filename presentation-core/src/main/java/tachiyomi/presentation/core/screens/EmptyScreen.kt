@@ -1,35 +1,34 @@
 package tachiyomi.presentation.core.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.paddingFromBaseline
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Inbox
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
+import androidx.compose.foundation.isSystemInDarkTheme
 import dev.icerock.moko.resources.StringResource
 import kotlinx.collections.immutable.ImmutableList
 import tachiyomi.presentation.core.components.ActionButton
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.stringResource
-import tachiyomi.presentation.core.util.secondaryItemAlpha
-import kotlin.random.Random
-import androidx.compose.foundation.Image
-import androidx.compose.ui.graphics.painter.Painter
 
 data class EmptyScreenAction(
     val stringRes: StringResource,
@@ -41,13 +40,13 @@ data class EmptyScreenAction(
 fun EmptyScreen(
     stringRes: StringResource,
     modifier: Modifier = Modifier,
-    image: Painter? = null,
+    icon: ImageVector? = null,
     actions: ImmutableList<EmptyScreenAction>? = null,
 ) {
     EmptyScreen(
         message = stringResource(stringRes),
         modifier = modifier,
-        image = image,
+        icon = icon,
         actions = actions,
     )
 }
@@ -56,10 +55,14 @@ fun EmptyScreen(
 fun EmptyScreen(
     message: String,
     modifier: Modifier = Modifier,
-    image: Painter? = null,
+    icon: ImageVector? = null,
     actions: ImmutableList<EmptyScreenAction>? = null,
 ) {
-    val face = remember { getRandomErrorFace() }
+    val displayIcon = icon ?: Icons.Outlined.Inbox
+    val isDarkTheme = isSystemInDarkTheme()
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val glowColor = primaryColor.copy(alpha = if (isDarkTheme) 0.35f else 0.15f)
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -68,29 +71,46 @@ fun EmptyScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        if (image != null) {
-            Image(
-                painter = image,
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .padding(bottom = 24.dp)
+                .size(120.dp)
+                .drawBehind {
+                    val radius = size.maxDimension * 0.65f
+                    val center = androidx.compose.ui.geometry.Offset(size.width / 2, size.height / 2)
+                    drawCircle(
+                        brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                            colors = listOf(glowColor, androidx.compose.ui.graphics.Color.Transparent),
+                            center = center,
+                            radius = radius
+                        ),
+                        radius = radius,
+                        center = center
+                    )
+                }
+        ) {
+            Icon(
+                imageVector = displayIcon,
                 contentDescription = null,
-                modifier = Modifier
-                    .padding(bottom = 16.dp)
+                tint = primaryColor,
+                modifier = Modifier.size(64.dp)
             )
-        } else {
-            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                Text(
-                    text = face,
-                    modifier = Modifier.secondaryItemAlpha(),
-                    style = MaterialTheme.typography.displayMedium,
-                )
-            }
         }
 
         Text(
             text = message,
-            modifier = Modifier
-                .paddingFromBaseline(top = 24.dp)
-                .secondaryItemAlpha(),
-            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(top = 8.dp),
+            style = MaterialTheme.typography.bodyLarge.copy(
+                fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif,
+                shadow = if (isDarkTheme) {
+                    androidx.compose.ui.graphics.Shadow(
+                        color = glowColor,
+                        blurRadius = 16f
+                    )
+                } else null
+            ),
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
         )
 
@@ -111,23 +131,4 @@ fun EmptyScreen(
             }
         }
     }
-}
-
-private val ErrorFaces = listOf(
-    "(･o･;)",
-    "Σ(ಠ_ಠ)",
-    "ಥ_ಥ",
-    "(˘･_･˘)",
-    "(；￣Д￣)",
-    "(･Д･。",
-    "(╬ಠ益ಠ)",
-    "(╥﹏╥)",
-    "(⋟﹏⋞)",
-    "Ò︵Ó",
-    " ˙ᯅ˙)",
-    "(¬_¬)",
-)
-
-private fun getRandomErrorFace(): String {
-    return ErrorFaces[Random.nextInt(ErrorFaces.size)]
 }

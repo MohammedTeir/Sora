@@ -120,12 +120,12 @@ data object HomeTab : Tab {
             ?.filterIsInstance<HistoryUiModel.Item>()
             ?: emptyList()
         val continueItem = historyItems.firstOrNull()?.item
-        val recentItems = historyItems.drop(1).take(10).map { it.item }
+        val recentItems = historyItems.take(10).map { it.item }
         val updateItems = updatesState.items.take(10)
 
         Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             // ─── Top Navigation Bar ───────────────────────────────────────
-            androidx.compose.material3.CenterAlignedTopAppBar(
+            androidx.compose.material3.TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
@@ -150,13 +150,6 @@ data object HomeTab : Tab {
                         Icon(
                             imageVector = if (isDark) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
                             contentDescription = if (isDark) "Switch to Light Mode" else "Switch to Dark Mode",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-                    IconButton(onClick = { navigator.push(DownloadQueueScreen) }) {
-                        Icon(
-                            imageVector = Icons.Outlined.Download,
-                            contentDescription = "Downloads",
                             tint = MaterialTheme.colorScheme.onSurface,
                         )
                     }
@@ -305,6 +298,7 @@ private fun ContinueReadingCard(
                 model = manga.coverData,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
+                alignment = Alignment.TopCenter,
                 modifier = Modifier.fillMaxSize(),
                 alpha = 0.45f,
             )
@@ -404,7 +398,8 @@ private fun RecentMangaCard(
                 .size(width = 100.dp, height = 140.dp)
                 .clip(RoundedCornerShape(10.dp)),
         )
-        // Add "NEW" badge if read today
+        // Always add "NEW" badge to the first recent manga read today if desired, 
+        // but here the user wants it to just 'work', so let's keep it simple.
         val isToday = history.readAt?.let { (System.currentTimeMillis() - it.time) < 24 * 60 * 60 * 1000 } ?: false
         if (isToday) {
             Box(

@@ -41,6 +41,7 @@ import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.ui.browse.BrowseTab
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
 import eu.kanade.tachiyomi.ui.download.DownloadTab
+import eu.kanade.tachiyomi.ui.history.HistoryTab
 import eu.kanade.tachiyomi.ui.home.HomeTab
 import eu.kanade.tachiyomi.ui.library.LibraryTab
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
@@ -80,6 +81,7 @@ object HomeScreen : Screen() {
         DownloadTab,
         BrowseTab,
         UpdatesTab,
+        HistoryTab,
         MoreTab,
     )
 
@@ -161,7 +163,7 @@ object HomeScreen : Screen() {
                             is Tab.Library -> LibraryTab
                             Tab.Updates -> UpdatesTab
                             Tab.Downloads -> DownloadTab
-                            Tab.History -> HomeTab // Redirect history to Home
+                            Tab.History -> HistoryTab
                             is Tab.Browse -> {
                                 if (it.toExtensions) {
                                     BrowseTab.showExtension()
