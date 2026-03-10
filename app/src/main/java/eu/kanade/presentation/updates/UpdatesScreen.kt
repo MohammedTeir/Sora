@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -114,59 +115,61 @@ fun UpdateScreen(
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
     ) { contentPadding ->
-        when {
-            state.isLoading -> LoadingScreen(Modifier.padding(contentPadding))
-            state.items.isEmpty() -> Column(
-                modifier = Modifier
-                    .padding(contentPadding)
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.AutoAwesome,
-                    contentDescription = null,
-                    modifier = Modifier.size(80.dp),
-                    tint = eu.kanade.presentation.theme.SoraBlue.copy(alpha = 0.6f),
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = "All Caught Up!",
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                    ),
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "No new chapter updates yet.\nCheck back later or refresh your library.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    modifier = Modifier.padding(horizontal = 48.dp),
-                )
-            }
-            else -> {
-                val scope = rememberCoroutineScope()
-                var isRefreshing by remember { mutableStateOf(false) }
+        if (state.isLoading) {
+            LoadingScreen(Modifier.padding(contentPadding))
+        } else {
+            val scope = rememberCoroutineScope()
+            var isRefreshing by remember { mutableStateOf(false) }
 
-                PullRefresh(
-                    refreshing = isRefreshing,
-                    onRefresh = {
-                        val started = onUpdateLibrary()
-                        if (!started) return@PullRefresh
-                        scope.launch {
-                            // Fake refresh status but hide it after a second as it's a long running task
-                            isRefreshing = true
-                            delay(1.seconds)
-                            isRefreshing = false
-                        }
-                    },
-                    enabled = !state.selectionMode,
-                    indicatorPadding = contentPadding,
-                ) {
+            PullRefresh(
+                refreshing = isRefreshing,
+                onRefresh = {
+                    val started = onUpdateLibrary()
+                    if (!started) return@PullRefresh
+                    scope.launch {
+                        // Fake refresh status but hide it after a second as it's a long running task
+                        isRefreshing = true
+                        delay(1.seconds)
+                        isRefreshing = false
+                    }
+                },
+                enabled = !state.selectionMode,
+                indicatorPadding = contentPadding,
+            ) {
+                if (state.items.isEmpty()) {
+                    Column(
+                        modifier = Modifier
+                            .padding(contentPadding)
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.AutoAwesome,
+                            contentDescription = null,
+                            modifier = Modifier.size(80.dp),
+                            tint = eu.kanade.presentation.theme.SoraBlue.copy(alpha = 0.6f),
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text(
+                            text = "All Caught Up!",
+                            style = MaterialTheme.typography.headlineSmall.copy(
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            ),
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "No new chapter updates yet.\nCheck back later or refresh your library.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(horizontal = 48.dp),
+                        )
+                    }
+                } else {
                     FastScrollLazyColumn(
                         contentPadding = contentPadding,
                     ) {
@@ -229,6 +232,7 @@ private fun UpdatesAppBar(
         Row(
             modifier = modifier
                 .fillMaxWidth()
+                .statusBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 20.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically

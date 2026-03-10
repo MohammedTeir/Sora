@@ -291,6 +291,25 @@ class ExtensionManager(
     }
 
     /**
+     * Revokes trust from the given extension. It will be moved to the untrusted list.
+     *
+     * @param extension the extension to revoke trust from
+     */
+    suspend fun revokeTrust(extension: Extension.Installed) {
+        installedExtensionMapFlow.value[extension.pkgName] ?: return
+
+        trustExtension.revoke(extension.pkgName)
+
+        installedExtensionMapFlow.value -= extension.pkgName
+
+        ExtensionLoader.loadExtensionFromPkgName(context, extension.pkgName)
+            .let { it as? LoadResult.Untrusted }
+            ?.let {
+                untrustedExtensionMapFlow.value += it.extension
+            }
+    }
+
+    /**
      * Registers the given extension in this and the source managers.
      *
      * @param extension The extension to be registered.

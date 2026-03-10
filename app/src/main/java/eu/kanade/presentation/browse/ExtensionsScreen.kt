@@ -98,6 +98,7 @@ fun ExtensionScreen(
     onUninstallExtension: (Extension) -> Unit,
     onUpdateExtension: (Extension.Installed) -> Unit,
     onTrustExtension: (Extension.Untrusted) -> Unit,
+    onRevokeTrust: (Extension.Installed) -> Unit,
     onOpenExtension: (Extension.Installed) -> Unit,
     onClickUpdateAll: () -> Unit,
     onRefresh: () -> Unit,
@@ -141,6 +142,7 @@ fun ExtensionScreen(
                     onUninstallExtension = onUninstallExtension,
                     onUpdateExtension = onUpdateExtension,
                     onTrustExtension = onTrustExtension,
+                    onRevokeTrust = onRevokeTrust,
                     onOpenExtension = onOpenExtension,
                     onClickUpdateAll = onClickUpdateAll,
                 )
@@ -160,12 +162,23 @@ private fun ExtensionContent(
     onUninstallExtension: (Extension) -> Unit,
     onUpdateExtension: (Extension.Installed) -> Unit,
     onTrustExtension: (Extension.Untrusted) -> Unit,
+    onRevokeTrust: (Extension.Installed) -> Unit,
     onOpenExtension: (Extension.Installed) -> Unit,
     onClickUpdateAll: () -> Unit,
 ) {
     val context = LocalContext.current
     var trustState by remember { mutableStateOf<Extension.Untrusted?>(null) }
+    var selectedFilter by remember { mutableStateOf<String>("All") }
     val installGranted = rememberRequestPackageInstallsPermissionState(initialValue = true)
+
+    val currentItems = remember(state.items, selectedFilter) {
+        when (selectedFilter) {
+            "Installed" -> state.items.filterKeys { it is ExtensionUiModel.Header.Resource && it.textRes == MR.strings.ext_installed }
+            "Available" -> state.items.filterKeys { it is ExtensionUiModel.Header.Text }
+            "Updates" -> state.items.filterKeys { it is ExtensionUiModel.Header.Resource && it.textRes == MR.strings.ext_updates_pending }
+            else -> state.items
+        }
+    }
 
     FastScrollLazyColumn(
         contentPadding = contentPadding + topSmallPaddingValues,
@@ -191,40 +204,59 @@ private fun ExtensionContent(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 val hasUpdates = state.updates > 0
-                val installedCount = state.items.values.flatten().count { it.extension is Extension.Installed || it.extension is Extension.Untrusted }
+                val installedCount = state.items.values.flatten().count { it.extension is Extension.Installed }
                 val availableCount = state.items.values.flatten().count { it.extension is Extension.Available }
 
                 // Installed Chip
                 Box(
                     modifier = Modifier
-                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(22.dp))
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(if (selectedFilter == "Installed") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable { selectedFilter = if (selectedFilter == "Installed") "All" else "Installed" }
                         .padding(horizontal = 16.dp, vertical = 10.dp)
                 ) {
-                    Text("Installed ($installedCount)", color = MaterialTheme.colorScheme.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Text(
+                        "Installed ($installedCount)", 
+                        color = if (selectedFilter == "Installed") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, 
+                        fontSize = 14.sp, 
+                        fontWeight = FontWeight.Medium
+                    )
                 }
 
                 // Available Chip
                 Box(
                     modifier = Modifier
-                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(22.dp))
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(if (selectedFilter == "Available") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable { selectedFilter = if (selectedFilter == "Available") "All" else "Available" }
                         .padding(horizontal = 16.dp, vertical = 10.dp)
                 ) {
-                    Text("Available ($availableCount)", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Text(
+                        "Available ($availableCount)", 
+                        color = if (selectedFilter == "Available") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, 
+                        fontSize = 14.sp, 
+                        fontWeight = FontWeight.Medium
+                    )
                 }
 
                 // Updates Chip
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(22.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable { if (hasUpdates) onClickUpdateAll() }
+                        .background(if (selectedFilter == "Updates") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable { selectedFilter = if (selectedFilter == "Updates") "All" else "Updates" }
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Updates", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                        Text(
+                            "Updates", 
+                            color = if (selectedFilter == "Updates") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, 
+                            fontSize = 14.sp, 
+                            fontWeight = FontWeight.Medium
+                        )
                         if (hasUpdates) {
-                            Box(modifier = Modifier.background(MaterialTheme.colorScheme.primary, CircleShape).padding(horizontal = 6.dp, vertical = 2.dp), contentAlignment = Alignment.Center) {
-                                Text(state.updates.toString(), color = MaterialTheme.colorScheme.onPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Box(modifier = Modifier.background(if (selectedFilter == "Updates") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary, CircleShape).padding(horizontal = 6.dp, vertical = 2.dp), contentAlignment = Alignment.Center) {
+                                Text(state.updates.toString(), color = if (selectedFilter == "Updates") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -232,7 +264,7 @@ private fun ExtensionContent(
             }
         }
 
-        state.items.forEach { (header, items) ->
+        currentItems.forEach { (header, items) ->
             item(
                 contentType = "header",
                 key = "extensionHeader-${header.hashCode()}",
@@ -316,6 +348,7 @@ private fun ExtensionContent(
                             }
                         }
                     },
+                    onRevokeTrust = onRevokeTrust,
                 )
             }
         }
@@ -345,6 +378,7 @@ private fun ExtensionItem(
     onClickItemCancel: (Extension) -> Unit,
     onClickItemAction: (Extension) -> Unit,
     onClickItemSecondaryAction: (Extension) -> Unit,
+    onRevokeTrust: (Extension.Installed) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val (extension, installStep) = item
@@ -564,6 +598,8 @@ private fun ExtensionItem(
                         onCheckedChange = { 
                             if (extension is Extension.Untrusted) {
                                 onClickItemAction(extension)
+                            } else if (extension is Extension.Installed) {
+                                onRevokeTrust(extension)
                             }
                         },
                         colors = androidx.compose.material3.SwitchDefaults.colors(

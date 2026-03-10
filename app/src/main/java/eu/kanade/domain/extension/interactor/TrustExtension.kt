@@ -26,6 +26,12 @@ class TrustExtension(
         }
     }
 
+    fun revoke(pkgName: String) {
+        preferences.trustedExtensions().getAndSet { exts ->
+            exts.filterNot { it.startsWith("$pkgName:") }.toMutableSet()
+        }
+    }
+
     fun revokeAll() {
         preferences.trustedExtensions().delete()
     }

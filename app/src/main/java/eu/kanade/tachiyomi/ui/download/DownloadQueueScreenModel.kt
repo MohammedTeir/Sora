@@ -11,9 +11,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -25,8 +26,19 @@ class DownloadQueueScreenModel(
     private val downloadManager: DownloadManager = Injekt.get(),
 ) : ScreenModel {
 
-    private val _state = MutableStateFlow(emptyList<DownloadHeaderItem>())
-    val state = _state.asStateFlow()
+    val activeDownloads = combine(
+        downloadManager.queueState,
+        downloadManager.statusFlow().map {}.onStart { emit(Unit) }
+    ) { queue, _ ->
+        queue.filter { it.status == Download.State.DOWNLOADING }
+    }.stateIn(screenModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val pendingDownloads = combine(
+        downloadManager.queueState,
+        downloadManager.statusFlow().map {}.onStart { emit(Unit) }
+    ) { queue, _ ->
+        queue.filter { it.status == Download.State.QUEUE || it.status == Download.State.NOT_DOWNLOADED }
+    }.stateIn(screenModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _completedDownloads = MutableStateFlow(emptyList<Download>())
     val completedDownloads = _completedDownloads.asStateFlow()
@@ -38,17 +50,16 @@ class DownloadQueueScreenModel(
 
     init {
         screenModelScope.launch {
-            downloadManager.queueState
-                .map { downloads ->
-                    downloads
-                        .groupBy { it.source }
-                        .map { entry ->
-                            DownloadHeaderItem(entry.key.id, entry.key.name, entry.value.size).apply {
-                                addSubItems(0, entry.value.map { DownloadItem(it, this) })
-                            }
-                        }
+            // Also listen to queueState to detect items that are finished
+            downloadManager.statusFlow().collect { download ->
+                if (download.status == Download.State.DOWNLOADED) {
+                    val current = _completedDownloads.value.toMutableList()
+                    if (current.none { it.chapter.id == download.chapter.id }) {
+                        current.add(0, download) // Prepend
+                        _completedDownloads.value = current
+                    }
                 }
-                .collect { newList -> _state.update { newList } }
+            }
         }
     }
 
@@ -86,18 +97,13 @@ class DownloadQueueScreenModel(
     fun cancel(downloads: List<Download>) {
         downloadManager.cancelQueuedDownloads(downloads)
     }
-
-    fun <R : Comparable<R>> reorderQueue(selector: (DownloadItem) -> R, reverse: Boolean = false) {
-        val currentList = _state.value
-        val newDownloads = mutableListOf<Download>()
-        currentList.forEach { headerItem ->
-            val sorted = headerItem.subItems.sortedBy(selector).toMutableList().apply {
-                if (reverse) reverse()
-            }
-            headerItem.subItems = sorted
-            newDownloads.addAll(sorted.map { it.download })
+    
+    fun moveDownloadToTop(download: Download) {
+        val currentQueue = downloadManager.queueState.value.toMutableList()
+        if (currentQueue.remove(download)) {
+            currentQueue.add(0, download)
+            downloadManager.reorderQueue(currentQueue)
         }
-        reorder(newDownloads)
     }
 
     fun onStatusChange(download: Download) {
@@ -129,7 +135,7 @@ class DownloadQueueScreenModel(
             val progressFlows = download.pages!!.map(Page::progressFlow)
             combine(progressFlows, Array<Int>::sum)
                 .distinctUntilChanged()
-                .debounce(50)
+                .sample(50)
                 .collectLatest { /* progress flows handled directly in UI via collectAsState */ }
         }
         progressJobs.remove(download)?.cancel()

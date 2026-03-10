@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,6 +23,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Sort
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
@@ -81,20 +83,13 @@ object DownloadQueueScreen : Screen() {
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         val screenModel = rememberScreenModel { DownloadQueueScreenModel() }
-        val downloadList by screenModel.state.collectAsState()
+        val activeDownloads by screenModel.activeDownloads.collectAsState()
+        val pendingDownloads by screenModel.pendingDownloads.collectAsState()
         val isRunning by screenModel.isDownloaderRunning.collectAsState()
         val completedDownloads by screenModel.completedDownloads.collectAsState()
 
-        val allDownloads = remember(downloadList) {
-            downloadList.flatMap { header -> header.subItems.map { it.download } }
-        }
-
-        val activeDownloads = remember(allDownloads) {
-            allDownloads.filter { it.status == Download.State.DOWNLOADING }
-        }
-
-        val pendingDownloads = remember(allDownloads) {
-            allDownloads.filter { it.status == Download.State.QUEUE }
+        val allDownloads = remember(activeDownloads, pendingDownloads) {
+            activeDownloads + pendingDownloads
         }
 
         Scaffold(
@@ -102,6 +97,7 @@ object DownloadQueueScreen : Screen() {
                 DownloadQueueHeader(
                     onBack = navigator::pop,
                     isRunning = isRunning,
+                    showToggle = allDownloads.isNotEmpty() || completedDownloads.isNotEmpty(),
                     onToggleAll = {
                         if (isRunning) screenModel.pauseDownloads() else screenModel.startDownloads()
                     }
@@ -167,6 +163,7 @@ object DownloadQueueScreen : Screen() {
                     ) { download ->
                         PendingDownloadItem(
                             download = download,
+                            onMoveToTop = { screenModel.moveDownloadToTop(download) },
                             onCancel = { screenModel.cancel(listOf(download)) }
                         )
                     }
@@ -229,12 +226,14 @@ object DownloadQueueScreen : Screen() {
 private fun DownloadQueueHeader(
     onBack: () -> Unit,
     isRunning: Boolean,
+    showToggle: Boolean,
     onToggleAll: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 16.dp),
+            .statusBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -257,25 +256,27 @@ private fun DownloadQueueHeader(
             Spacer(modifier = Modifier.width(16.dp))
             Text(
                 text = "Download Queue",
-                fontSize = 24.sp,
+                fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
         }
         
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .clickable(onClick = onToggleAll)
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            Text(
-                text = if (isRunning) "Pause All" else "Resume All",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = SoraBlue
-            )
+        if (showToggle) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable(onClick = onToggleAll)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = if (isRunning) "Pause All" else "Resume All",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = SoraBlue
+                )
+            }
         }
     }
 }
@@ -389,6 +390,7 @@ private fun ActiveDownloadCard(
 @Composable
 private fun PendingDownloadItem(
     download: Download,
+    onMoveToTop: () -> Unit,
     onCancel: () -> Unit,
 ) {
     Column(
@@ -419,19 +421,36 @@ private fun PendingDownloadItem(
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .clickable(onClick = onCancel),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Cancel",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
-                )
+            Row {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onMoveToTop),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowUpward,
+                        contentDescription = "Move to Top",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(4.dp))
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onCancel),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Cancel",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
 

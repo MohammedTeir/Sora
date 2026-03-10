@@ -206,6 +206,12 @@ class ExtensionsScreenModel(
         }
     }
 
+    fun revokeTrust(extension: Extension.Installed) {
+        screenModelScope.launch {
+            extensionManager.revokeTrust(extension)
+        }
+    }
+
     @Immutable
     data class State(
         val isLoading: Boolean = true,

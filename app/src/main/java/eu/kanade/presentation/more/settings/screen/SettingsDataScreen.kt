@@ -36,6 +36,10 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.SettingsBackupRestore
+import androidx.compose.material.icons.outlined.Save
+import androidx.compose.material.icons.outlined.ImportExport
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -62,6 +66,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -84,6 +89,7 @@ import tachiyomi.core.common.storage.displayablePath
 import tachiyomi.core.common.util.lang.launchNonCancellable
 import tachiyomi.core.common.util.lang.withUIContext
 import tachiyomi.core.common.util.system.logcat
+import tachiyomi.domain.backup.service.BackupPreferences
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.storage.service.StoragePreferences
 import tachiyomi.i18n.MR
@@ -92,6 +98,15 @@ import tachiyomi.presentation.core.util.collectAsState
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.File
+import eu.kanade.presentation.more.settings.screen.data.CreateBackupScreen
+import eu.kanade.presentation.more.settings.screen.data.RestoreBackupScreen
+import eu.kanade.tachiyomi.data.backup.create.BackupCreateJob
+import eu.kanade.tachiyomi.data.backup.restore.BackupRestoreJob
+import eu.kanade.tachiyomi.data.export.LibraryExporter
+import tachiyomi.domain.manga.interactor.GetFavorites
+import tachiyomi.domain.manga.model.Manga
+import eu.kanade.presentation.util.relativeTimeSpanString
+import eu.kanade.tachiyomi.util.system.DeviceUtil
 
 object SettingsDataScreen : SearchableSettings {
 
@@ -169,12 +184,56 @@ object SettingsDataScreen : SearchableSettings {
         val scope = rememberCoroutineScope()
         val libraryPreferences = remember { Injekt.get<LibraryPreferences>() }
         val storagePreferences = remember { Injekt.get<StoragePreferences>() }
+        val backupPreferences = remember { Injekt.get<BackupPreferences>() }
+        val getFavorites = remember { Injekt.get<GetFavorites>() }
         val chapterCache = remember { Injekt.get<ChapterCache>() }
         
         val autoClearCache by libraryPreferences.autoClearChapterCache().collectAsState()
         val storageDirPref = storagePreferences.baseStorageDirectory()
         val storageDir by storageDirPref.collectAsState()
         val pickStorageLocation = storageLocationPicker(storageDirPref)
+        
+        val lastAutoBackup by backupPreferences.lastAutoBackupTimestamp().collectAsState()
+
+        val chooseBackup = rememberLauncherForActivityResult(
+            object : ActivityResultContracts.GetContent() {
+                override fun createIntent(context: Context, input: String): Intent {
+                    val intent = super.createIntent(context, input)
+                    return Intent.createChooser(intent, context.stringResource(MR.strings.file_select_backup))
+                }
+            },
+        ) {
+            if (it == null) {
+                context.toast(MR.strings.file_null_uri_error)
+                return@rememberLauncherForActivityResult
+            }
+            navigator.push(RestoreBackupScreen(it.toString()))
+        }
+
+        var favorites by remember { mutableStateOf<List<Manga>>(emptyList()) }
+        LaunchedEffect(Unit) {
+            favorites = getFavorites.await()
+        }
+
+        val saveFileLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.CreateDocument("text/csv"),
+        ) { uri ->
+            uri?.let {
+                scope.launch {
+                    LibraryExporter.exportToCsv(
+                        context = context,
+                        uri = it,
+                        favorites = favorites,
+                        options = LibraryExporter.ExportOptions(includeTitle = true, includeAuthor = true, includeArtist = true),
+                        onExportComplete = {
+                            scope.launch(Dispatchers.Main) {
+                                context.toast(MR.strings.library_exported)
+                            }
+                        },
+                    )
+                }
+            }
+        }
 
         var totalSpace by remember { mutableLongStateOf(0L) }
         var freeSpace by remember { mutableLongStateOf(0L) }
@@ -186,13 +245,14 @@ object SettingsDataScreen : SearchableSettings {
         LaunchedEffect(storageDir, refreshTrigger) {
             withContext(Dispatchers.IO) {
                 isCalculating = true
-                val storages = DiskUtil.getExternalStorages(context)
-                val primaryStorage = storages.firstOrNull() ?: File(context.filesDir.absolutePath)
+                // Use context.filesDir's parent or externalFilesDir if available for accurate storage info
+                val primaryStorage = context.getExternalFilesDir(null)?.parentFile?.parentFile?.parentFile
+                    ?: File(context.filesDir.absolutePath)
                 totalSpace = DiskUtil.getTotalStorageSpace(primaryStorage)
                 freeSpace = DiskUtil.getAvailableStorageSpace(primaryStorage)
                 val cacheDir = File(context.cacheDir, "chapter_disk_cache")
                 cacheSpace = DiskUtil.getDirectorySize(cacheDir)
-                
+
                 val baseFile = UniFile.fromUri(context, storageDir.toUri())
                 val downloadsFile = baseFile?.findFile("downloads")
                 mangaSpace = getUniFileSize(downloadsFile)
@@ -252,6 +312,73 @@ object SettingsDataScreen : SearchableSettings {
                     mangaSpace = mangaSpace,
                     isCalculating = isCalculating
                 )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                SectionTitle(title = "BACKUP & EXPORT")
+                Spacer(modifier = Modifier.height(16.dp))
+                CardContainer {
+                    LocationItem(
+                        iconVector = Icons.Outlined.Save,
+                        title = "Create Backup",
+                        subtitle = "Manually backup your library",
+                        onClick = { navigator.push(CreateBackupScreen()) }
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    LocationItem(
+                        iconVector = Icons.Outlined.SettingsBackupRestore,
+                        title = "Restore Backup",
+                        subtitle = "Restore library from a backup file",
+                        onClick = {
+                            if (!BackupRestoreJob.isRunning(context)) {
+                                if (DeviceUtil.isMiui && DeviceUtil.isMiuiOptimizationDisabled()) {
+                                    context.toast(MR.strings.restore_miui_warning)
+                                }
+                                chooseBackup.launch("*/*")
+                            } else {
+                                context.toast(MR.strings.restore_in_progress)
+                            }
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    run {
+                        val backupInterval by backupPreferences.backupInterval().collectAsState()
+                        val intervalLabel = when (backupInterval) {
+                            0 -> "Disabled"
+                            6 -> "Every 6 hours"
+                            12 -> "Every 12 hours"
+                            24 -> "Daily"
+                            48 -> "Every 2 days"
+                            168 -> "Weekly"
+                            else -> "Every $backupInterval hours"
+                        }
+                        LocationItem(
+                            iconVector = Icons.Outlined.Timer,
+                            title = "Automatic Backup",
+                            subtitle = intervalLabel,
+                            onClick = {
+                                // Cycle through preset intervals: 0 -> 6 -> 12 -> 24 -> 48 -> 168 -> 0
+                                val next = when (backupInterval) {
+                                    0 -> 6
+                                    6 -> 12
+                                    12 -> 24
+                                    24 -> 48
+                                    48 -> 168
+                                    else -> 0
+                                }
+                                backupPreferences.backupInterval().set(next)
+                                BackupCreateJob.setupTask(context, next)
+                            }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    LocationItem(
+                        iconVector = Icons.Outlined.ImportExport,
+                        title = "Export Library List",
+                        subtitle = "Export your library as a CSV file",
+                        onClick = { saveFileLauncher.launch("mihon_library.csv") }
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(32.dp))
 
@@ -330,17 +457,22 @@ object SettingsDataScreen : SearchableSettings {
         val cacheRatio = (cacheSpace.toFloat() / safeTotal).coerceIn(0f, 1f)
         val freeRatio = (freeSpace.toFloat() / safeTotal).coerceIn(0f, 1f)
         
+        val otherRatio = ((usedSpace - mangaSpace - cacheSpace).toFloat() / safeTotal).coerceIn(0f, 1f)
+        
         val animManga = remember { Animatable(0f) }
         val animCache = remember { Animatable(0f) }
+        val animOther = remember { Animatable(0f) }
         val animFree = remember { Animatable(0f) }
 
-        LaunchedEffect(mangaRatio, cacheRatio, freeRatio) {
+        LaunchedEffect(mangaRatio, cacheRatio, otherRatio, freeRatio) {
             animManga.snapTo(0f)
             animCache.snapTo(0f)
+            animOther.snapTo(0f)
             animFree.snapTo(0f)
             if (!isCalculating) {
                 animManga.animateTo(mangaRatio * 360f, tween(1000, easing = FastOutSlowInEasing))
                 animCache.animateTo(cacheRatio * 360f, tween(1000, easing = FastOutSlowInEasing))
+                animOther.animateTo(otherRatio * 360f, tween(1000, easing = FastOutSlowInEasing))
                 animFree.animateTo(freeRatio * 360f, tween(1000, easing = FastOutSlowInEasing))
             }
         }
@@ -354,6 +486,7 @@ object SettingsDataScreen : SearchableSettings {
                 contentAlignment = Alignment.Center
             ) {
                 val surfaceVariantColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
+                val outlineVariantColor = MaterialTheme.colorScheme.outlineVariant
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val strokeWidth = 14.dp.toPx()
                     drawArc(
@@ -393,6 +526,18 @@ object SettingsDataScreen : SearchableSettings {
                         startAngle += cacheSweep
                     }
  
+                    val otherSweep = animOther.value
+                    if (otherSweep > 0f) {
+                        drawArc(
+                            color = outlineVariantColor,
+                            startAngle = startAngle,
+                            sweepAngle = otherSweep,
+                            useCenter = false,
+                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                        )
+                        startAngle += otherSweep
+                    }
+
                     val freeSweep = animFree.value
                     if (freeSweep > 0f) {
                         drawArc(
@@ -429,11 +574,12 @@ object SettingsDataScreen : SearchableSettings {
             Spacer(modifier = Modifier.height(32.dp))
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 StorageLegendItem(color = SoraBlue, label = "MANGA", value = if (isCalculating) "..." else Formatter.formatFileSize(context, mangaSpace))
                 StorageLegendItem(color = CacheBlue, label = "CACHE", value = if (isCalculating) "..." else Formatter.formatFileSize(context, cacheSpace))
+                StorageLegendItem(color = androidx.compose.material3.MaterialTheme.colorScheme.outlineVariant, label = "OTHER", value = if (isCalculating) "..." else Formatter.formatFileSize(context, usedSpace - mangaSpace - cacheSpace))
                 StorageLegendItem(color = FreeGrey, label = "FREE", value = if (isCalculating) "..." else Formatter.formatFileSize(context, freeSpace))
             }
         }

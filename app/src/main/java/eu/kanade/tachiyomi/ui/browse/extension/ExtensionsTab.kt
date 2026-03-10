@@ -86,6 +86,7 @@ fun extensionsTab(
                 onInstallExtension = extensionsScreenModel::installExtension,
                 onOpenExtension = { navigator.push(ExtensionDetailsScreen(it.pkgName)) },
                 onTrustExtension = { extensionsScreenModel.trustExtension(it) },
+                onRevokeTrust = { extensionsScreenModel.revokeTrust(it) },
                 onUninstallExtension = { extensionsScreenModel.uninstallExtension(it) },
                 onUpdateExtension = extensionsScreenModel::updateExtension,
                 onRefresh = extensionsScreenModel::findAvailableExtensions,

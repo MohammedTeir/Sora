@@ -6,7 +6,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
@@ -55,7 +55,7 @@ data class Download(
         emitAll(combine(progressFlows) { it.average().toInt() })
     }
         .distinctUntilChanged()
-        .debounce(50)
+        .sample(50)
 
     val progress: Int
         get() {

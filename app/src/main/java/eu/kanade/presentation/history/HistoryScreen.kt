@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -34,6 +36,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import eu.kanade.presentation.components.relativeDateText
+import eu.kanade.presentation.components.SearchToolbar
 import eu.kanade.presentation.history.components.HistoryItem
 import eu.kanade.presentation.theme.TachiyomiPreviewTheme
 import eu.kanade.presentation.util.animateItemFastScroll
@@ -60,58 +63,67 @@ fun HistoryScreen(
 ) {
     Scaffold(
         topBar = {
-            // ─── Header Section (Top Bar) ────────────────────────────────────
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(horizontal = 20.dp, vertical = 20.dp),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
+            if (state.searchQuery != null) {
+                SearchToolbar(
+                    searchQuery = state.searchQuery,
+                    onChangeSearchQuery = onSearchQueryChange,
+                    onClickCloseSearch = { onSearchQueryChange(null) },
+                )
+            } else {
+                // ─── Header Section (Top Bar) ────────────────────────────────────
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                        .statusBarsPadding()
+                        .padding(horizontal = 20.dp, vertical = 20.dp),
                 ) {
-                    Text(
-                        text = "History",
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        // Search Button
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                                .clickable { onSearchQueryChange("") },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Search,
-                                contentDescription = "Search",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
+                        Text(
+                            text = "History",
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
 
-                        // Delete Button
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                                .clickable { onDialogChange(HistoryScreenModel.Dialog.DeleteAll) },
-                            contentAlignment = Alignment.Center,
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Delete,
-                                contentDescription = "Clear History",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp),
-                            )
+                            // Search Button
+                            IconButton(
+                                onClick = { onSearchQueryChange("") },
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Search,
+                                    contentDescription = "Search",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+
+                            // Delete Button
+                            IconButton(
+                                onClick = { onDialogChange(HistoryScreenModel.Dialog.DeleteAll) },
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Delete,
+                                    contentDescription = "Clear History",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
                         }
                     }
                 }
