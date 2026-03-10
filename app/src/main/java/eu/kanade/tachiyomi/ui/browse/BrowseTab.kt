@@ -173,7 +173,7 @@ data object BrowseTab : Tab {
                     Text(
                         text = "Browse",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 32.sp,
+                        fontSize = 22.sp,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

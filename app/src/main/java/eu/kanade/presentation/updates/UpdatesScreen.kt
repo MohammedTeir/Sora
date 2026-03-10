@@ -239,7 +239,7 @@ private fun UpdatesAppBar(
         ) {
             Text(
                 text = stringResource(MR.strings.label_recent_updates),
-                fontSize = 32.sp,
+                fontSize = 22.sp,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
             )

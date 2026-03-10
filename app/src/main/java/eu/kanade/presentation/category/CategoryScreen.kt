@@ -105,7 +105,7 @@ fun CategoryScreen(
 
                 Text(
                     text = "Categories",
-                    fontSize = 28.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.weight(1f)

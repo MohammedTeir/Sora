@@ -106,7 +106,7 @@ fun StatsScreenContent(
 
                     Text(
                         text = "Reading Statistics",
-                        fontSize = 28.sp,
+                        fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.weight(1f)
@@ -164,7 +164,7 @@ private fun ReadingActivitySection(overview: StatsData.Overview) {
             Text(
                 text = "Reading Activity",
                 color = MaterialTheme.colorScheme.onBackground,
-                fontSize = 20.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
         }

@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -84,7 +85,7 @@ fun CategoryCreateBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
-        containerColor = Color(0xFF1E1E1E), // Dark Theme Surface
+        containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = {
             // Custom Drag Handle
             Box(
@@ -92,7 +93,7 @@ fun CategoryCreateBottomSheet(
                     .padding(vertical = 12.dp)
                     .size(width = 40.dp, height = 5.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Color.Gray)
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
             )
         }
     ) {
@@ -117,20 +118,20 @@ fun CategoryCreateBottomSheet(
                     modifier = Modifier
                         .align(Alignment.CenterStart)
                         .size(40.dp)
-                        .background(Color(0xFF2A2A2A), CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Close,
                         contentDescription = "Close",
-                        tint = Color.White
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
                 Text(
                     text = "New Category",
-                    fontSize = 24.sp,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -139,7 +140,7 @@ fun CategoryCreateBottomSheet(
                 text = "IDENTITY",
                 fontSize = 12.sp,
                 letterSpacing = 2.sp,
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 12.dp)
             )
@@ -150,7 +151,7 @@ fun CategoryCreateBottomSheet(
                     .fillMaxWidth()
                     .height(60.dp)
                     .clip(RoundedCornerShape(18.dp))
-                    .background(Color(0xFF2A2A2A))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .border(
                         width = 1.dp,
                         color = if (nameAlreadyExists) Color.Red else Color.Transparent,
@@ -162,7 +163,7 @@ fun CategoryCreateBottomSheet(
                 if (name.isEmpty()) {
                     Text(
                         text = "Category Name",
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 16.sp,
                     )
                 }
@@ -173,7 +174,7 @@ fun CategoryCreateBottomSheet(
                         .fillMaxWidth()
                         .focusRequester(focusRequester),
                     textStyle = TextStyle(
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 16.sp
                     ),
                     singleLine = true,
@@ -188,7 +189,7 @@ fun CategoryCreateBottomSheet(
                 text = "COLOR TAG",
                 fontSize = 12.sp,
                 letterSpacing = 2.sp,
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
@@ -209,7 +210,7 @@ fun CategoryCreateBottomSheet(
                             .background(color)
                             .border(
                                 width = if (isSelected) 3.dp else 0.dp,
-                                color = if (isSelected) Color.White.copy(alpha = 0.8f) else Color.Transparent,
+                                color = if (isSelected) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f) else Color.Transparent,
                                 shape = CircleShape
                             )
                             .clickable { selectedColor = colorHex }

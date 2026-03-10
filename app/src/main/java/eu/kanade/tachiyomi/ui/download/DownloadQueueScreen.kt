@@ -272,7 +272,7 @@ private fun DownloadQueueHeader(
             Spacer(modifier = Modifier.width(16.dp))
             Text(
                 text = "Download Queue",
-                fontSize = 32.sp,
+                fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )

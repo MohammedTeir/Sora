@@ -75,7 +75,7 @@ internal class WelcomeStep : OnboardingStep {
                         append("Sora")
                     }
                 },
-                fontSize = 32.sp,
+                fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 textAlign = TextAlign.Center,
