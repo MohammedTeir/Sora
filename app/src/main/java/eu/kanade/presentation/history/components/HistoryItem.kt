@@ -61,10 +61,10 @@ fun HistoryItem(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // ─── Manga Thumbnail ───────────────────────────────────────────────
-        MangaCover.Book(
+        MangaCover.Square(
             modifier = Modifier
                 .size(64.dp)
-                .clip(RoundedCornerShape(16.dp)),
+                .clip(RoundedCornerShape(12.dp)),
             data = history.coverData,
             onClick = onClickCover,
         )
@@ -75,6 +75,7 @@ fun HistoryItem(
         Column(
             modifier = Modifier.weight(1f),
             horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.Center,
         ) {
             // Manga Title
             Text(
@@ -85,6 +86,8 @@ fun HistoryItem(
                 overflow = TextOverflow.Ellipsis,
                 color = MaterialTheme.colorScheme.onSurface,
             )
+
+            Spacer(modifier = Modifier.size(2.dp))
 
             // Chapter
             Text(
@@ -99,6 +102,8 @@ fun HistoryItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+
+            Spacer(modifier = Modifier.size(2.dp))
 
             // Timestamp
             Text(

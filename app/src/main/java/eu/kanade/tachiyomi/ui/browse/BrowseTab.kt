@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,7 +35,9 @@ import androidx.compose.material.icons.outlined.Book
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.filled.AddBox
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -81,7 +84,9 @@ import eu.kanade.presentation.components.TabContent
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.ui.browse.extension.ExtensionsScreenModel
 import eu.kanade.tachiyomi.ui.browse.extension.extensionsTab
+import eu.kanade.tachiyomi.ui.browse.feed.FeedScreenModel
 import eu.kanade.tachiyomi.ui.browse.feed.feedTab
+import eu.kanade.tachiyomi.ui.browse.migration.sources.MigrateSourceScreenModel
 import eu.kanade.tachiyomi.ui.browse.migration.sources.migrateSourceTab
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreenModel.Listing
@@ -133,6 +138,8 @@ data object BrowseTab : Tab {
 
         val extensionsScreenModel = rememberScreenModel { ExtensionsScreenModel() }
         val sourcesScreenModel = rememberScreenModel { SourcesScreenModel() }
+        val feedScreenModel = rememberScreenModel { FeedScreenModel() }
+        val migrateScreenModel = rememberScreenModel { MigrateSourceScreenModel() }
         val feedTabContent = feedTab()
         val sourcesTabContent = sourcesTab()
         val extensionsTabContent = extensionsTab(extensionsScreenModel)
@@ -140,6 +147,7 @@ data object BrowseTab : Tab {
         val tabs = persistentListOf(feedTabContent, sourcesTabContent, extensionsTabContent, migrateTabContent)
         val pagerState = rememberPagerState { tabs.size }
         val snackbarHostState = remember { SnackbarHostState() }
+        var extensionsSearchQuery by remember { mutableStateOf("") }
 
         Scaffold(
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -169,12 +177,14 @@ data object BrowseTab : Tab {
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Action button — icon and behavior change per tab
                         IconButton(
                             onClick = {
                                 when (pagerState.currentPage) {
-                                    0 -> navigator.push(GlobalSearchScreen()) // Feed tab search
-                                    1 -> navigator.push(SourcesFilterScreen())
-                                    2 -> navigator.push(ExtensionReposScreen())
+                                    0 -> navigator.push(GlobalSearchScreen()) // Feed: global search
+                                    1 -> navigator.push(SourcesFilterScreen()) // Sources: manage sources
+                                    2 -> navigator.push(ExtensionReposScreen()) // Extensions: add repo
+                                    3 -> navigator.push(GlobalSearchScreen()) // Migrate: search to migrate
                                     else -> navigator.push(GlobalSearchScreen())
                                 }
                             },
@@ -183,20 +193,44 @@ data object BrowseTab : Tab {
                                 .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.FilterList,
-                                contentDescription = stringResource(MR.strings.action_filter),
+                                imageVector = when (pagerState.currentPage) {
+                                    1 -> Icons.Outlined.Tune       // Sources: Manage Sources
+                                    2 -> Icons.Filled.AddBox        // Extensions: Add Repository
+                                    else -> Icons.Outlined.FilterList
+                                },
+                                contentDescription = when (pagerState.currentPage) {
+                                    1 -> "Manage Sources"
+                                    2 -> "Add Repository"
+                                    3 -> "Filter manga for migration"
+                                    else -> stringResource(MR.strings.action_filter)
+                                },
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
+                        // Refresh button — replaces MoreVert, functional per tab
                         IconButton(
-                            onClick = { /* TODO: More Action */ },
+                            onClick = {
+                                scope.launch {
+                                    when (pagerState.currentPage) {
+                                        0 -> feedScreenModel.init()
+                                        1 -> sourcesScreenModel.refresh()
+                                        2 -> extensionsScreenModel.findAvailableExtensions()
+                                        3 -> migrateScreenModel.refresh()
+                                    }
+                                }
+                            },
                             modifier = Modifier
                                 .size(44.dp)
                                 .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "More",
+                                imageVector = Icons.Filled.Refresh,
+                                contentDescription = when (pagerState.currentPage) {
+                                    1 -> "Refresh sources"
+                                    2 -> "Refresh extensions"
+                                    3 -> "Refresh migration list"
+                                    else -> "Refresh"
+                                },
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
@@ -241,7 +275,19 @@ data object BrowseTab : Tab {
                             shape = RoundedCornerShape(24.dp),
                         )
                         .clip(RoundedCornerShape(24.dp))
-                        .clickable { navigator.push(GlobalSearchScreen()) }
+                        .then(
+                            if (pagerState.currentPage != 2) {
+                                Modifier.clickable {
+                                    when (pagerState.currentPage) {
+                                        1 -> navigator.push(GlobalSearchScreen())
+                                        3 -> navigator.push(GlobalSearchScreen())
+                                        else -> navigator.push(GlobalSearchScreen())
+                                    }
+                                }
+                            } else {
+                                Modifier
+                            }
+                        )
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -252,23 +298,48 @@ data object BrowseTab : Tab {
                         modifier = Modifier.size(20.dp),
                     )
                     Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = when (pagerState.currentPage) {
-                            1 -> "Search sources..."
-                            2 -> "Search extensions..."
-                            3 -> "Search library to migrate..."
-                            else -> "Search popular manga..."
-                        },
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 14.sp,
-                    )
+                    if (pagerState.currentPage == 2) {
+                        BasicTextField(
+                            value = extensionsSearchQuery,
+                            onValueChange = { query ->
+                                extensionsSearchQuery = query
+                                extensionsScreenModel.search(query.ifEmpty { null })
+                            },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            textStyle = androidx.compose.ui.text.TextStyle(
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 14.sp,
+                            ),
+                            decorationBox = { innerTextField ->
+                                if (extensionsSearchQuery.isEmpty()) {
+                                    Text(
+                                        text = "Search extensions...",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 14.sp,
+                                    )
+                                }
+                                innerTextField()
+                            },
+                        )
+                    } else {
+                        Text(
+                            text = when (pagerState.currentPage) {
+                                1 -> "Search sources..."
+                                3 -> "Search library to migrate..."
+                                else -> "Search popular manga..."
+                            },
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 14.sp,
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
                 // ─── Content Pager ─────────────────────────────────────────
                 HorizontalPager(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.weight(1f).fillMaxSize(),
                     state = pagerState,
                     verticalAlignment = Alignment.Top,
                 ) { page ->
@@ -277,6 +348,13 @@ data object BrowseTab : Tab {
                         snackbarHostState,
                     )
                 }
+            }
+        }
+
+        LaunchedEffect(pagerState.currentPage) {
+            if (pagerState.currentPage != 2 && extensionsSearchQuery.isNotEmpty()) {
+                extensionsSearchQuery = ""
+                extensionsScreenModel.search(null)
             }
         }
 

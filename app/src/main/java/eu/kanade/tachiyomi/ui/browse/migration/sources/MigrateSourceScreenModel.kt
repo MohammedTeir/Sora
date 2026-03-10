@@ -12,6 +12,7 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -56,6 +57,25 @@ class MigrateSourceScreenModel(
         preferences.migrationSortingMode().changes()
             .onEach { mutableState.update { state -> state.copy(sortingMode = it) } }
             .launchIn(screenModelScope)
+    }
+
+    fun refresh() {
+        screenModelScope.launchIO {
+            mutableState.update { it.copy(isLoading = true) }
+            try {
+                val sources = getSourcesWithFavoriteCount.subscribe().first()
+                mutableState.update {
+                    it.copy(
+                        isLoading = false,
+                        items = sources.toImmutableList(),
+                    )
+                }
+            } catch (e: Throwable) {
+                logcat(LogPriority.ERROR, e)
+                mutableState.update { it.copy(isLoading = false) }
+                _channel.send(Event.FailedFetchingSourcesWithCount)
+            }
+        }
     }
 
     fun toggleSortingMode() {

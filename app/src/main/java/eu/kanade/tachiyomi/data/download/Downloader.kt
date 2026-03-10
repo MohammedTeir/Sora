@@ -200,9 +200,11 @@ class Downloader(
                         // Ignore completed downloads, leave them in the queue
                         .filter { it.status.value <= Download.State.DOWNLOADING.value }
                         .groupBy { it.source }
-                        .toList()
+                        .flatMap { (_, downloads) ->
+                            // Allow up to parallelCount chapters per source for parallel chapter downloads
+                            downloads.take(parallelCount)
+                        }
                         .take(parallelCount)
-                        .map { (_, downloads) -> downloads.first() }
                     emit(activeDownloads)
 
                     if (activeDownloads.isEmpty()) break

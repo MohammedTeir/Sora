@@ -239,11 +239,9 @@ private fun UpdatesAppBar(
         ) {
             Text(
                 text = stringResource(MR.strings.label_recent_updates),
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                    fontSize = 32.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                fontSize = 32.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

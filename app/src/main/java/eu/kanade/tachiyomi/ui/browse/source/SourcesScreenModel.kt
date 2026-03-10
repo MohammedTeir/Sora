@@ -13,6 +13,7 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import logcat.LogPriority
@@ -79,6 +80,19 @@ class SourcesScreenModel(
                     }
                     .toImmutableList(),
             )
+        }
+    }
+
+    fun refresh() {
+        screenModelScope.launchIO {
+            mutableState.update { it.copy(isLoading = true) }
+            try {
+                val sources = getEnabledSources.subscribe().first()
+                collectLatestSources(sources)
+            } catch (e: Throwable) {
+                logcat(LogPriority.ERROR, e)
+                _events.send(Event.FailedFetchingSources)
+            }
         }
     }
 

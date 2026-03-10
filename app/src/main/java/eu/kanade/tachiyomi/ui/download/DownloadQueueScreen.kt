@@ -117,6 +117,7 @@ object DownloadQueueScreen : Screen() {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(contentPadding),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
                     start = 16.dp, 
@@ -157,6 +158,21 @@ object DownloadQueueScreen : Screen() {
 
                 // ─── Pending Section ───────────────────────────────────────────
                 if (pendingDownloads.isNotEmpty()) {
+                    item(key = "pending_header") {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "IN QUEUE (${pendingDownloads.size})",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                letterSpacing = 1.sp
+                            )
+                        }
+                    }
                     items(
                         items = pendingDownloads,
                         key = { it.chapter.id },
@@ -188,7 +204,7 @@ object DownloadQueueScreen : Screen() {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(Color(0xFF141A29))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .padding(vertical = 8.dp)
                         ) {
                             completedDownloads.forEach { download ->
@@ -458,14 +474,14 @@ private fun PendingDownloadItem(
 
         Box(
             modifier = Modifier
-                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(4.dp))
+                .background(SoraBlue.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
                 .padding(horizontal = 6.dp, vertical = 2.dp)
         ) {
             Text(
                 text = "IN QUEUE",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = SoraBlue
             )
         }
 

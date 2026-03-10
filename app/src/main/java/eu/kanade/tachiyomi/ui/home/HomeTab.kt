@@ -209,7 +209,7 @@ data object HomeTab : Tab {
                                 text = "View All",
                                 color = SoraBlue,
                                 style = MaterialTheme.typography.labelMedium,
-                                modifier = Modifier.clickable { navigator.push(GlobalSearchScreen()) },
+                                modifier = Modifier.clickable { navigator.push(eu.kanade.tachiyomi.ui.history.RecentlyReadScreen()) },
                             )
                         }
                         Spacer(modifier = Modifier.height(8.dp))

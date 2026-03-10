@@ -96,7 +96,7 @@ fun MigrateSourceScreen(
             ExtendedFloatingActionButton(
                 text = { Text(text = "Migrate All", fontWeight = FontWeight.Bold) },
                 icon = { Icon(imageVector = Icons.Outlined.SwapHoriz, contentDescription = null) },
-                onClick = { /* TODO implement bulk migrate if supported by core */ },
+                onClick = { if (state.items.isNotEmpty()) onClickItem(state.items.first().first) },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(16.dp)
@@ -225,7 +225,7 @@ private fun MigrateSourceItem(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .background(Color(0xFF202020), RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
             .clickable(onClick = onClickItem)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -252,7 +252,7 @@ private fun MigrateSourceItem(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f, fill = false)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -286,7 +286,7 @@ private fun MigrateSourceItem(
                         Text(
                             text = "Source: $sourceLang",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.LightGray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -297,8 +297,8 @@ private fun MigrateSourceItem(
         Button(
             onClick = onClickItem,
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color.White,
-                contentColor = Color.Black
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             ),
             shape = RoundedCornerShape(50),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),

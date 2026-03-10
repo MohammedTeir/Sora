@@ -33,7 +33,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -63,8 +62,7 @@ private fun getSurfaceLight() = MaterialTheme.colorScheme.surfaceVariant
 @ReadOnlyComposable
 private fun getTextGray() = MaterialTheme.colorScheme.onSurfaceVariant
 
-private val GrowthGreen = Color(0xFF4ADE80)
-private val FireOrange = Color(0xFFFFA000)
+// Colors replaced with theme-aware primary (SoraBlue)
 
 @Composable
 fun StatsScreenContent(
@@ -159,7 +157,7 @@ private fun ReadingActivitySection(overview: StatsData.Overview) {
             Icon(
                 imageVector = Icons.Filled.LocalFireDepartment,
                 contentDescription = null,
-                tint = FireOrange,
+                tint = getSoraBlue(),
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))

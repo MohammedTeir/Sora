@@ -104,7 +104,7 @@ internal fun LazyListScope.updatesUiItems(
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
                         letterSpacing = 1.5.sp
                     ),
-                    color = Color(0xFF9AA0A6),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .animateItemFastScroll()
                         .padding(horizontal = 24.dp, vertical = 12.dp)
@@ -167,7 +167,7 @@ private fun UpdatesUiItem(
             .padding(horizontal = 20.dp, vertical = 6.dp)
             .selectedBackground(selected)
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF121212))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = {
@@ -198,7 +198,7 @@ private fun UpdatesUiItem(
                     style = MaterialTheme.typography.bodyLarge.copy(
                         fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                     ),
-                    color = Color.White.copy(alpha = textAlpha),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = textAlpha),
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
                 )
@@ -243,7 +243,7 @@ private fun UpdatesUiItem(
                     style = MaterialTheme.typography.bodySmall.copy(
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
                     ),
-                    color = Color(0xFF9AA0A6).copy(alpha = textAlpha),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = textAlpha),
                     overflow = TextOverflow.Ellipsis,
                     onTextLayout = { textHeight = it.size.height },
                     modifier = Modifier.weight(1f, fill = false)
@@ -256,7 +256,7 @@ private fun UpdatesUiItem(
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
                         ),
-                        color = Color(0xFF9AA0A6).copy(alpha = DISABLED_ALPHA),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = DISABLED_ALPHA),
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
@@ -267,7 +267,7 @@ private fun UpdatesUiItem(
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                .background(Color(0xFF1E1E1E)),
+                .background(MaterialTheme.colorScheme.surface),
             contentAlignment = Alignment.Center
         ) {
             ChapterDownloadIndicator(
