@@ -62,6 +62,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -114,11 +116,16 @@ object SettingsDataScreen : SearchableSettings {
     const val HELP_URL = "https://mihon.app/docs/faq/storage"
 
     private val SoraBlue @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.primary
-    private val CacheBlue @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
     private val FreeGrey @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.outline
     private val CardBackground @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.surfaceVariant
     private val GrowthGreen = Color(0xFF4ADE80)
     private val FireOrange = Color(0xFFFFA000)
+
+    // Storage chart — high-contrast palette so every slice is distinguishable
+    private val MangaColor = Color(0xFF2977FF)  // Sora Blue
+    private val CacheColor  = Color(0xFFFFB300)  // Amber
+    private val OtherColor  = Color(0xFFEF5350)  // Coral Red
+    private val FreeColor   = Color(0xFF78909C)  // Blue-Grey
 
     @ReadOnlyComposable
     @Composable
@@ -446,34 +453,43 @@ object SettingsDataScreen : SearchableSettings {
         mangaSpace: Long,
         isCalculating: Boolean
     ) {
-        val soraBlue = SoraBlue
-        val cacheBlue = CacheBlue
-        val freeGrey = FreeGrey
         val context = LocalContext.current
         val safeTotal = totalSpace.coerceAtLeast(1L)
         val usedSpace = (safeTotal - freeSpace).coerceAtLeast(0L)
-        
-        val mangaRatio = (mangaSpace.toFloat() / safeTotal).coerceIn(0f, 1f)
-        val cacheRatio = (cacheSpace.toFloat() / safeTotal).coerceIn(0f, 1f)
-        val freeRatio = (freeSpace.toFloat() / safeTotal).coerceIn(0f, 1f)
-        
-        val otherRatio = ((usedSpace - mangaSpace - cacheSpace).toFloat() / safeTotal).coerceIn(0f, 1f)
-        
-        val animManga = remember { Animatable(0f) }
-        val animCache = remember { Animatable(0f) }
-        val animOther = remember { Animatable(0f) }
-        val animFree = remember { Animatable(0f) }
+        val otherSpace = (usedSpace - mangaSpace - cacheSpace).coerceAtLeast(0L)
 
-        LaunchedEffect(mangaRatio, cacheRatio, otherRatio, freeRatio) {
-            animManga.snapTo(0f)
-            animCache.snapTo(0f)
-            animOther.snapTo(0f)
-            animFree.snapTo(0f)
+        // ----- Minimum visible slice angle (degrees) --------------------------------
+        // Any non-zero category gets at least MIN_SWEEP degrees so it stays visible
+        // even when its real share of disk is < 1%.
+        val MIN_SWEEP = 10f
+        val GAP_SWEEP = 2f   // gap between slices for visual separation
+
+        data class SliceData(val bytes: Long, val color: Color, val label: String)
+        val rawSlices = listOf(
+            SliceData(mangaSpace, MangaColor, "MANGA"),
+            SliceData(cacheSpace, CacheColor,  "CACHE"),
+            SliceData(otherSpace, OtherColor,  "OTHER"),
+            SliceData(freeSpace,  FreeColor,   "FREE"),
+        )
+        val nonZeroCount = rawSlices.count { it.bytes > 0 }
+        val totalGap = GAP_SWEEP * nonZeroCount
+        val budgetAfterMinAndGap = (360f - totalGap - MIN_SWEEP * nonZeroCount).coerceAtLeast(0f)
+        val bytesTotal = rawSlices.sumOf { it.bytes }.coerceAtLeast(1L)
+
+        // Final sweep for each slice: minimum + proportional share of remaining budget
+        val finalSweeps = rawSlices.map { slice ->
+            if (slice.bytes == 0L) 0f
+            else MIN_SWEEP + (slice.bytes.toFloat() / bytesTotal) * budgetAfterMinAndGap
+        }
+
+        // Animated sweep values — one Animatable per slice
+        val animValues = remember { List(4) { Animatable(0f) } }
+        LaunchedEffect(finalSweeps, isCalculating) {
+            animValues.forEach { it.snapTo(0f) }
             if (!isCalculating) {
-                animManga.animateTo(mangaRatio * 360f, tween(1000, easing = FastOutSlowInEasing))
-                animCache.animateTo(cacheRatio * 360f, tween(1000, easing = FastOutSlowInEasing))
-                animOther.animateTo(otherRatio * 360f, tween(1000, easing = FastOutSlowInEasing))
-                animFree.animateTo(freeRatio * 360f, tween(1000, easing = FastOutSlowInEasing))
+                finalSweeps.forEachIndexed { i, target ->
+                    animValues[i].animateTo(target, tween(900, delayMillis = i * 120, easing = FastOutSlowInEasing))
+                }
             }
         }
 
@@ -481,122 +497,156 @@ object SettingsDataScreen : SearchableSettings {
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // ── Donut ring ───────────────────────────────────────────────────────────
             Box(
-                modifier = Modifier.size(260.dp),
+                modifier = Modifier.size(280.dp),
                 contentAlignment = Alignment.Center
             ) {
-                val surfaceVariantColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
-                val outlineVariantColor = MaterialTheme.colorScheme.outlineVariant
+                val trackColor = MaterialTheme.colorScheme.surfaceVariant
+
                 Canvas(modifier = Modifier.fillMaxSize()) {
-                    val strokeWidth = 14.dp.toPx()
+                    val strokeWidth = 28.dp.toPx()
+                    val inset = strokeWidth / 2f
+                    val arcSize = Size(size.width - strokeWidth, size.height - strokeWidth)
+                    val topLeft = Offset(inset, inset)
+
+                    // Background track
                     drawArc(
-                        color = surfaceVariantColor,
+                        color = trackColor,
                         startAngle = 0f,
                         sweepAngle = 360f,
                         useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
                         style = Stroke(width = strokeWidth)
                     )
-                }
 
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val strokeWidth = 14.dp.toPx()
+                    // Colored slices with gap between them
                     var startAngle = -90f
-                    
-                    val mangaSweep = animManga.value
-                    if (mangaSweep > 0f) {
-                        drawArc(
-                            color = soraBlue,
-                            startAngle = startAngle,
-                            sweepAngle = mangaSweep,
-                            useCenter = false,
-                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-                        )
-                        startAngle += mangaSweep
-                    }
- 
-                    val cacheSweep = animCache.value
-                    if (cacheSweep > 0f) {
-                        drawArc(
-                            color = cacheBlue,
-                            startAngle = startAngle,
-                            sweepAngle = cacheSweep,
-                            useCenter = false,
-                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-                        )
-                        startAngle += cacheSweep
-                    }
- 
-                    val otherSweep = animOther.value
-                    if (otherSweep > 0f) {
-                        drawArc(
-                            color = outlineVariantColor,
-                            startAngle = startAngle,
-                            sweepAngle = otherSweep,
-                            useCenter = false,
-                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-                        )
-                        startAngle += otherSweep
-                    }
-
-                    val freeSweep = animFree.value
-                    if (freeSweep > 0f) {
-                        drawArc(
-                            color = freeGrey,
-                            startAngle = startAngle,
-                            sweepAngle = freeSweep,
-                            useCenter = false,
-                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-                        )
+                    rawSlices.forEachIndexed { i, slice ->
+                        val sweep = animValues[i].value
+                        if (sweep > 0f) {
+                            drawArc(
+                                color = slice.color,
+                                startAngle = startAngle,
+                                sweepAngle = sweep,
+                                useCenter = false,
+                                topLeft = topLeft,
+                                size = arcSize,
+                                style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
+                            )
+                            startAngle += sweep + GAP_SWEEP
+                        }
                     }
                 }
 
+                // Centre label
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "TOTAL USED",
-                        fontSize = 12.sp,
-                        color = Color.Gray,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         letterSpacing = 1.sp
                     )
                     Text(
-                        text = if (isCalculating) "..." else Formatter.formatFileSize(context, usedSpace),
-                        fontSize = 32.sp,
+                        text = if (isCalculating) "…" else Formatter.formatFileSize(context, usedSpace),
+                        fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
-                        color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
-                        text = if (isCalculating) "OF ..." else "OF ${Formatter.formatFileSize(context, totalSpace).uppercase()}",
+                        text = if (isCalculating) "of …" else "of ${Formatter.formatFileSize(context, totalSpace)}",
                         fontSize = 12.sp,
-                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
+            // ── Legend — vertical cards in a 2×2 grid ───────────────────────────────
+            val legendItems = listOf(
+                Triple(MangaColor, "MANGA",  mangaSpace),
+                Triple(CacheColor,  "CACHE",  cacheSpace),
+                Triple(OtherColor,  "OTHER",  otherSpace),
+                Triple(FreeColor,   "FREE",   freeSpace),
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                StorageLegendItem(color = SoraBlue, label = "MANGA", value = if (isCalculating) "..." else Formatter.formatFileSize(context, mangaSpace))
-                StorageLegendItem(color = CacheBlue, label = "CACHE", value = if (isCalculating) "..." else Formatter.formatFileSize(context, cacheSpace))
-                StorageLegendItem(color = androidx.compose.material3.MaterialTheme.colorScheme.outlineVariant, label = "OTHER", value = if (isCalculating) "..." else Formatter.formatFileSize(context, usedSpace - mangaSpace - cacheSpace))
-                StorageLegendItem(color = FreeGrey, label = "FREE", value = if (isCalculating) "..." else Formatter.formatFileSize(context, freeSpace))
+                legendItems.chunked(2).forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        row.forEach { (color, label, bytes) ->
+                            val percent = if (safeTotal > 0) (bytes.toFloat() / safeTotal * 100f) else 0f
+                            val displayPct = if (percent < 0.1f && bytes > 0L) "<1" else "%.0f".format(percent)
+                            StorageLegendCard(
+                                color = color,
+                                label = label,
+                                value = if (isCalculating) "…" else Formatter.formatFileSize(context, bytes),
+                                percent = if (isCalculating) "…" else "$displayPct%",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 
     @Composable
-    private fun StorageLegendItem(color: Color, label: String, value: String) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+    private fun StorageLegendCard(
+        color: Color,
+        label: String,
+        value: String,
+        percent: String,
+        modifier: Modifier = Modifier,
+    ) {
+        Row(
+            modifier = modifier
+                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // Colored square indicator
             Box(
                 modifier = Modifier
-                    .size(8.dp)
-                    .background(color, CircleShape)
+                    .size(12.dp)
+                    .background(color, RoundedCornerShape(3.dp))
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Column {
-                Text(text = label, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, letterSpacing = 1.sp)
-                Text(text = value, color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 10.sp,
+                    letterSpacing = 1.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = value,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            // Percentage badge
+            Box(
+                modifier = Modifier
+                    .background(color.copy(alpha = 0.18f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 6.dp, vertical = 3.dp)
+            ) {
+                Text(
+                    text = percent,
+                    color = color,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }
