@@ -168,6 +168,16 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
         }
 
         initializeMigrator()
+        initializeCloudSync()
+    }
+
+    private fun initializeCloudSync() {
+        val authPrefs = Injekt.get<eu.kanade.domain.auth.AuthPreferences>()
+        val syncPrefs = Injekt.get<eu.kanade.domain.sync.SyncPreferences>()
+        if (authPrefs.isLoggedIn().get() && syncPrefs.syncOnStartup().get()) {
+            eu.kanade.tachiyomi.data.sync.SyncWorker.enqueueSingleSync(this)
+            eu.kanade.tachiyomi.data.sync.SyncWorker.enqueuePeriodicSync(this)
+        }
     }
 
     private fun initializeMigrator() {

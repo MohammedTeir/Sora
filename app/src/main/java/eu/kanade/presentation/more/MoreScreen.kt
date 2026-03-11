@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.outlined.AttachMoney
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.CloudQueue
 import androidx.compose.material.icons.outlined.GetApp
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Notifications
@@ -68,6 +69,15 @@ fun MoreScreen(
     onClickDataAndStorage: () -> Unit,
     onClickSettings: () -> Unit,
     onClickAbout: () -> Unit,
+    // Auth
+    isLoggedIn: Boolean = false,
+    userDisplayName: String = "",
+    userEmail: String = "",
+    lastSyncDisplay: String = "",
+    isSyncing: Boolean = false,
+    onClickProfile: () -> Unit = {},
+    onClickSignOut: () -> Unit = {},
+    onClickCloudSync: () -> Unit = {},
 ) {
     val uriHandler = LocalUriHandler.current
 
@@ -117,7 +127,7 @@ fun MoreScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(20.dp))
-                    .clickable { },
+                    .clickable { onClickProfile() },
             ) {
                 Row(
                     modifier = Modifier
@@ -149,26 +159,41 @@ fun MoreScreen(
                     Spacer(modifier = Modifier.width(14.dp))
 
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Sora User",
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 18.sp,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Outlined.Star,
-                                contentDescription = null,
-                                tint = AccentBlue,
-                                modifier = Modifier.size(14.dp),
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
+                        if (isLoggedIn) {
                             Text(
-                                text = "Premium Member",
-                                fontSize = 14.sp,
-                                color = AccentBlue,
+                                text = userDisplayName.ifBlank { userEmail },
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 18.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
                             )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = if (isSyncing) "Syncing…" else lastSyncDisplay.ifBlank { "Tap to sync" },
+                                fontSize = 13.sp,
+                                color = if (isSyncing) AccentBlue else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
+                            Text(
+                                text = "Guest Mode",
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 18.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Star,
+                                    contentDescription = null,
+                                    tint = AccentBlue,
+                                    modifier = Modifier.size(14.dp),
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Sign in to sync your library",
+                                    fontSize = 14.sp,
+                                    color = AccentBlue,
+                                )
+                            }
                         }
                     }
 
@@ -261,27 +286,63 @@ fun MoreScreen(
                 )
             }
 
+            // ─── CLOUD (shown only when logged in) ───────────────────────────
+            if (isLoggedIn) {
+                Spacer(modifier = Modifier.height(24.dp))
+                SectionHeader(title = "CLOUD")
+                SectionGroup {
+                    MenuItem(
+                        icon = Icons.Outlined.CloudQueue,
+                        title = "Cloud Sync",
+                        subtitle = if (isSyncing) "Syncing…" else lastSyncDisplay.ifBlank { null },
+                        onClick = onClickCloudSync,
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(28.dp))
 
-            // ─── Sign Out ─────────────────────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .height(56.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        shape = RoundedCornerShape(20.dp),
+            // ─── Sign Out (only when logged in) / Sign In (when guest) ────────
+            if (isLoggedIn) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .height(56.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            shape = RoundedCornerShape(20.dp),
+                        )
+                        .clickable { onClickSignOut() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "Sign Out",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
                     )
-                    .clickable { },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "Sign Out",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                )
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .height(56.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(20.dp),
+                        )
+                        .clickable { onClickProfile() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "Sign In / Create Account",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))

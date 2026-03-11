@@ -9,6 +9,8 @@ import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import eu.kanade.domain.track.store.DelayedTrackingStore
 import eu.kanade.tachiyomi.BuildConfig
+import eu.kanade.tachiyomi.data.auth.FirebaseAuthService
+import eu.kanade.tachiyomi.data.sync.SyncService
 import eu.kanade.tachiyomi.data.cache.ChapterCache
 import eu.kanade.tachiyomi.data.cache.CoverCache
 import eu.kanade.tachiyomi.data.download.DownloadCache
@@ -128,6 +130,9 @@ class AppModule(val app: Application) : InjektModule {
 
         addSingletonFactory { TrackerManager() }
         addSingletonFactory { DelayedTrackingStore(app) }
+
+        addSingletonFactory { FirebaseAuthService() }
+        addSingletonFactory { SyncService() }
 
         addSingletonFactory { ImageSaver(app) }
 
