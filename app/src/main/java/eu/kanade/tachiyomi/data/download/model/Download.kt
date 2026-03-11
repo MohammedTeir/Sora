@@ -69,6 +69,7 @@ data class Download(
         DOWNLOADING(2),
         DOWNLOADED(3),
         ERROR(4),
+        PAUSED(5),
     }
 
     companion object {

@@ -128,7 +128,9 @@ class Downloader(
             return false
         }
 
-        val pending = queueState.value.filter { it.status != Download.State.DOWNLOADED }
+        val pending = queueState.value.filter {
+            it.status != Download.State.DOWNLOADED && it.status != Download.State.PAUSED
+        }
         pending.forEach { if (it.status != Download.State.QUEUE) it.status = Download.State.QUEUE }
 
         isPaused = false

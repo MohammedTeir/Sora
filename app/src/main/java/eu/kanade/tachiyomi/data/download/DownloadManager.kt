@@ -87,6 +87,88 @@ class DownloadManager(
     }
 
     /**
+     * Pauses a single chapter download. The item stays in the queue with PAUSED state
+     * and is skipped by the downloader until resumed.
+     */
+    fun pauseDownload(chapter: tachiyomi.domain.chapter.model.Chapter) {
+        val download = getQueuedDownloadOrNull(chapter.id) ?: return
+        if (download.status == Download.State.DOWNLOADING) {
+            // Pause the whole downloader briefly to stop this item, then restart without it
+            downloader.pause()
+            download.status = Download.State.PAUSED
+            if (queueState.value.any {
+                    it.status == Download.State.QUEUE || it.status == Download.State.DOWNLOADING
+                }
+            ) {
+                startDownloads()
+            } else {
+                downloader.stop()
+            }
+        } else if (download.status == Download.State.QUEUE) {
+            download.status = Download.State.PAUSED
+        }
+    }
+
+    /**
+     * Resumes a previously paused chapter download.
+     */
+    fun resumeDownload(chapter: tachiyomi.domain.chapter.model.Chapter) {
+        val download = getQueuedDownloadOrNull(chapter.id) ?: return
+        if (download.status == Download.State.PAUSED) {
+            download.status = Download.State.QUEUE
+            startDownloads()
+        }
+    }
+
+    /**
+     * Cancels a single chapter download.
+     */
+    fun cancelDownload(chapter: tachiyomi.domain.chapter.model.Chapter) {
+        cancelQueuedDownloads(listOfNotNull(getQueuedDownloadOrNull(chapter.id)))
+    }
+
+    /**
+     * Cancels all queued downloads for the given manga.
+     */
+    fun cancelAllForManga(mangaId: Long) {
+        val downloads = queueState.value.filter { it.manga.id == mangaId }
+        cancelQueuedDownloads(downloads)
+    }
+
+    /**
+     * Moves a download to the bottom of the queue.
+     */
+    fun moveDownloadToBottom(download: Download) {
+        val current = queueState.value.toMutableList()
+        if (current.remove(download)) {
+            current.add(download)
+            reorderQueue(current)
+        }
+    }
+
+    /**
+     * Moves all downloads of a given manga to the top of the queue.
+     */
+    fun moveSeriesToTop(mangaId: Long) {
+        val current = queueState.value.toMutableList()
+        val series = current.filter { it.manga.id == mangaId }
+        current.removeAll(series)
+        current.addAll(0, series)
+        reorderQueue(current)
+    }
+
+    /**
+     * Moves all downloads of a given manga to the bottom of the queue.
+     */
+    fun moveSeriesToBottom(mangaId: Long) {
+        val current = queueState.value.toMutableList()
+        val series = current.filter { it.manga.id == mangaId }
+        current.removeAll(series)
+        current.addAll(series)
+        reorderQueue(current)
+    }
+
+    /**
      * Empties the download queue.
      */
     fun clearQueue() {
