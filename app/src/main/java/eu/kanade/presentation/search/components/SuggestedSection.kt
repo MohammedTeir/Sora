@@ -6,13 +6,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
@@ -68,7 +66,7 @@ fun SuggestedSection(
             )
         }
 
-        // Grid – non-scrollable inside LazyColumn parent
+        // Grid — manual Row/Column to avoid nested-scroll conflicts with LazyColumn parent
         val columns = 3
         val rows = (mangaList.size + columns - 1) / columns
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -104,19 +102,22 @@ fun MangaGridCard(
     Column(
         modifier = modifier.clickable(onClick = onClick),
     ) {
-        Box {
+        // Cover with enforced 2:3 aspect ratio (≈ 0.667, matching spec's ~0.65)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(2f / 3f)
+                .clip(RoundedCornerShape(16.dp)),
+        ) {
             MangaCover.Book(
                 data = manga.asMangaCover(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp)),
+                modifier = Modifier.fillMaxSize(),
                 contentDescription = manga.title,
             )
-            // Badge
-            val badgeText = if (!manga.favorite) "New" else null
-            if (badgeText != null) {
+            // "New" badge for unfavourited manga
+            if (!manga.favorite) {
                 Text(
-                    text = badgeText,
+                    text = "New",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextWhite,

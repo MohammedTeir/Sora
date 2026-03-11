@@ -43,7 +43,8 @@ fun RecentSearchSection(
     androidx.compose.foundation.layout.Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp)
+            .padding(top = 4.dp),
     ) {
         // Header row
         Row(
