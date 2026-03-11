@@ -1,40 +1,21 @@
 {
   "project_info": {
-    "project_number": "82031285239",
-    "project_id": "mihonapp",
-    "storage_bucket": "mihonapp.appspot.com"
+    "project_number": "759876400139",
+    "project_id": "sora1auth",
+    "storage_bucket": "sora1auth.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:82031285239:android:336ed6dceef55c357594f2",
+        "mobilesdk_app_id": "1:759876400139:android:75d4a76e307b24ee70830e",
         "android_client_info": {
-          "package_name": "app.mihon"
+          "package_name": "app.sora"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDTvOxBQnuXADx5isKxoynPG0nlAO8bQbk"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:82031285239:android:b7440cbdd0d33c9d7594f2",
-        "android_client_info": {
-          "package_name": "app.mihon.debug"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyDTvOxBQnuXADx5isKxoynPG0nlAO8bQbk"
+          "current_key": "AIzaSyCI3LJZtF9Yzpx-Aqoc-qS5jHfvaSwa25Q"
         }
       ],
       "services": {
