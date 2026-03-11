@@ -13,5 +13,9 @@ sealed interface StatsScreenState {
         val titles: StatsData.Titles,
         val chapters: StatsData.Chapters,
         val trackers: StatsData.Trackers,
+        val weeklyActivity: StatsData.WeeklyActivity,
+        val statusDistribution: StatsData.StatusDistribution,
+        val topManga: StatsData.TopManga,
+        val readingStreak: StatsData.ReadingStreak,
     ) : StatsScreenState
 }

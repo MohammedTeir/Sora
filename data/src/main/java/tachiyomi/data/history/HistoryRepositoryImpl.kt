@@ -8,6 +8,7 @@ import tachiyomi.domain.history.model.History
 import tachiyomi.domain.history.model.HistoryUpdate
 import tachiyomi.domain.history.model.HistoryWithRelations
 import tachiyomi.domain.history.repository.HistoryRepository
+import java.util.Date
 
 class HistoryRepositoryImpl(
     private val handler: DatabaseHandler,
@@ -31,6 +32,20 @@ class HistoryRepositoryImpl(
 
     override suspend fun getHistoryByMangaId(mangaId: Long): List<History> {
         return handler.awaitList { historyQueries.getHistoryByMangaId(mangaId, HistoryMapper::mapHistory) }
+    }
+
+    override suspend fun getReadingHistorySince(since: Long): List<Pair<Long, Long>> {
+        return handler.awaitList {
+            historyQueries.getReadingHistorySince(
+                since = Date(since),
+            ) { lastRead, timeRead -> Pair(lastRead?.time ?: 0L, timeRead) }
+        }
+    }
+
+    override suspend fun getAllReadingDates(): List<Long> {
+        return handler.awaitList {
+            historyQueries.getAllReadingDates { lastRead -> lastRead?.time ?: 0L }
+        }
     }
 
     override suspend fun resetHistory(historyId: Long) {

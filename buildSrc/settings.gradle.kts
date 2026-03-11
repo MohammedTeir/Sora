@@ -1,3 +1,11 @@
+pluginManagement {
+    repositories {
+        maven { url = uri("/tmp/local-maven-repo") }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
 dependencyResolutionManagement {
     versionCatalogs {
         create("libs") {

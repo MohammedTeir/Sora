@@ -72,3 +72,16 @@ WHERE chapter_id = :chapterId;
 getReadDuration:
 SELECT coalesce(sum(time_read), 0)
 FROM history;
+
+getReadingHistorySince:
+SELECT
+    last_read,
+    time_read
+FROM history
+WHERE last_read > :since AND last_read > 0;
+
+getAllReadingDates:
+SELECT DISTINCT last_read
+FROM history
+WHERE last_read > 0
+ORDER BY last_read ASC;
