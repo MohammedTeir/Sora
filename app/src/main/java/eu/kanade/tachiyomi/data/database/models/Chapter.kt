@@ -38,6 +38,7 @@ fun Chapter.toDomainChapter(): DomainChapter? {
         read = read,
         bookmark = bookmark,
         lastPageRead = last_page_read.toLong(),
+        pagesCount = 0L,
         dateFetch = date_fetch,
         sourceOrder = source_order.toLong(),
         url = url,

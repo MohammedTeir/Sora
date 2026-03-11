@@ -50,6 +50,7 @@ val backupChapterMapper = {
         read: Boolean,
         bookmark: Boolean,
         lastPageRead: Long,
+        _: Long,
         chapterNumber: Double,
         sourceOrder: Long,
         dateFetch: Long,

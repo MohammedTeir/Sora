@@ -614,6 +614,7 @@ class MangaScreenModel(
                 val downloadAction: ChapterDownloadAction = when (chapterItem.downloadState) {
                     Download.State.ERROR,
                     Download.State.NOT_DOWNLOADED,
+                    Download.State.PAUSED,
                     -> ChapterDownloadAction.START_NOW
                     Download.State.QUEUE,
                     Download.State.DOWNLOADING,
