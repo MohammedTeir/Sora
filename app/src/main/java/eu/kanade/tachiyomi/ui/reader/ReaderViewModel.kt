@@ -563,6 +563,7 @@ class ReaderViewModel @JvmOverloads constructor(
                     id = readerChapter.chapter.id!!,
                     read = readerChapter.chapter.read,
                     lastPageRead = readerChapter.chapter.last_page_read.toLong(),
+                    pagesCount = readerChapter.pages?.size?.toLong() ?: 0L,
                 ),
             )
         }

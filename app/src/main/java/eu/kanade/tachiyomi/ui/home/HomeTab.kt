@@ -333,24 +333,33 @@ private fun ContinueReadingCard(
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Fake Progress (since domain model lacks total pages left without fetching chapter)
+            // Real reading progress from persisted chapter data
+            val currentPage = manga.lastPageRead.toInt()
+            val totalPages = manga.pagesCount.toInt()
+            val progressFraction = when {
+                totalPages > 0 -> (currentPage.toFloat() / totalPages.toFloat()).coerceIn(0f, 1f)
+                else -> 0f
+            }
+            val progressPercent = (progressFraction * 100).toInt()
+            val pagesLeft = if (totalPages > 0) (totalPages - currentPage).coerceAtLeast(0) else 0
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Progress: 50%",
+                    text = if (totalPages > 0) "Progress: $progressPercent%" else "Page $currentPage",
                     style = MaterialTheme.typography.labelMedium.copy(color = Color.White)
                 )
                 Text(
-                    text = "10 Pages Left",
+                    text = if (totalPages > 0) "$pagesLeft Pages Left" else "Reading...",
                     style = MaterialTheme.typography.labelMedium.copy(color = Color.White.copy(alpha = 0.7f))
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
             LinearProgressIndicator(
-                progress = { 0.5f },
+                progress = { progressFraction },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(6.dp)
