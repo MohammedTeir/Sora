@@ -50,7 +50,7 @@ data object MoreTab : Tab {
         @Composable
         get() {
             return TabOptions(
-                index = 5u,
+                index = 7u,
                 title = stringResource(MR.strings.label_more),
                 icon = rememberVectorPainter(Icons.Outlined.MoreHoriz),
             )

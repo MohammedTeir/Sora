@@ -83,8 +83,8 @@ object HomeScreen : Screen() {
         BrowseTab,
         UpdatesTab,
         HistoryTab,
-        MoreTab,
         DiscoverTab,
+        MoreTab,
     )
 
     @Composable

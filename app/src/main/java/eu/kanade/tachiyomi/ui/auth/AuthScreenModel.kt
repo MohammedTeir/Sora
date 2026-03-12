@@ -111,8 +111,12 @@ class AuthScreenModel(
                     .setFilterByAuthorizedAccounts(false)
                     .setServerClientId(context.getString(eu.kanade.tachiyomi.R.string.default_web_client_id))
                     .build()
+                val signInWithGoogleOption = com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption.Builder(
+                    context.getString(eu.kanade.tachiyomi.R.string.default_web_client_id),
+                ).build()
                 val request = androidx.credentials.GetCredentialRequest.Builder()
                     .addCredentialOption(googleIdOption)
+                    .addCredentialOption(signInWithGoogleOption)
                     .build()
                 val result = credentialManager.getCredential(context, request)
                 val googleCredential = com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
