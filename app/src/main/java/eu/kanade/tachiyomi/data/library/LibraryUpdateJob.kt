@@ -170,7 +170,12 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
             }
         }
 
-        val restrictions = libraryPreferences.autoUpdateMangaRestrictions().get()
+        val hasManualTag = tags.contains(WORK_NAME_MANUAL)
+        val restrictions = if (hasManualTag) {
+            emptySet()
+        } else {
+            libraryPreferences.autoUpdateMangaRestrictions().get()
+        }
         val skippedUpdates = mutableListOf<Pair<Manga, String?>>()
         val (_, fetchWindowUpperBound) = fetchInterval.getWindow(ZonedDateTime.now())
 
