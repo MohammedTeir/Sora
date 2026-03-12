@@ -31,6 +31,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Book
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Person
@@ -181,7 +182,7 @@ data object BrowseTab : Tab {
                         IconButton(
                             onClick = {
                                 when (pagerState.currentPage) {
-                                    0 -> navigator.push(GlobalSearchScreen()) // Feed: global search
+                                    0 -> feedScreenModel.openAddDialog() // Feed: add feed source
                                     1 -> navigator.push(SourcesFilterScreen()) // Sources: manage sources
                                     2 -> navigator.push(ExtensionReposScreen()) // Extensions: add repo
                                     3 -> navigator.push(GlobalSearchScreen()) // Migrate: search to migrate
@@ -194,11 +195,13 @@ data object BrowseTab : Tab {
                         ) {
                             Icon(
                                 imageVector = when (pagerState.currentPage) {
+                                    0 -> Icons.Outlined.Add        // Feed: Add Feed
                                     1 -> Icons.Outlined.Tune       // Sources: Manage Sources
                                     2 -> Icons.Filled.AddBox        // Extensions: Add Repository
                                     else -> Icons.Outlined.FilterList
                                 },
                                 contentDescription = when (pagerState.currentPage) {
+                                    0 -> "Add Feed"
                                     1 -> "Manage Sources"
                                     2 -> "Add Repository"
                                     3 -> "Filter manga for migration"
@@ -360,7 +363,7 @@ data object BrowseTab : Tab {
 
         LaunchedEffect(Unit) {
             switchToExtensionTabChannel.receiveAsFlow().collectLatest {
-                pagerState.animateScrollToPage(1)
+                pagerState.animateScrollToPage(2)
             }
         }
     }
