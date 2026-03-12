@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.data.auth
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.tasks.await
 import logcat.LogPriority
 import logcat.logcat
@@ -40,6 +41,19 @@ class FirebaseAuthService {
             Result.success(uid)
         } catch (e: Exception) {
             logcat(LogPriority.ERROR) { "FirebaseAuthService: sign up failed: ${e.message}" }
+            Result.failure(e)
+        }
+    }
+
+    suspend fun signInWithGoogle(idToken: String): Result<String> {
+        return try {
+            val credential = GoogleAuthProvider.getCredential(idToken, null)
+            val result = auth.signInWithCredential(credential).await()
+            val uid = result.user?.uid ?: return Result.failure(Exception("Google sign-in succeeded but user is null"))
+            logcat(LogPriority.INFO) { "FirebaseAuthService: Google sign-in user $uid" }
+            Result.success(uid)
+        } catch (e: Exception) {
+            logcat(LogPriority.ERROR) { "FirebaseAuthService: Google sign-in failed: ${e.message}" }
             Result.failure(e)
         }
     }

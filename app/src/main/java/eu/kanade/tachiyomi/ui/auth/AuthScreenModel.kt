@@ -102,10 +102,44 @@ class AuthScreenModel(
         }
     }
 
+    fun signInWithGoogle(context: android.content.Context) {
+        screenModelScope.launch {
+            mutableState.update { it.copy(isLoading = true, errorMessage = null) }
+            try {
+                val credentialManager = androidx.credentials.CredentialManager.create(context)
+                val googleIdOption = com.google.android.libraries.identity.googleid.GetGoogleIdOption.Builder()
+                    .setFilterByAuthorizedAccounts(false)
+                    .setServerClientId(context.getString(eu.kanade.tachiyomi.R.string.default_web_client_id))
+                    .build()
+                val request = androidx.credentials.GetCredentialRequest.Builder()
+                    .addCredentialOption(googleIdOption)
+                    .build()
+                val result = credentialManager.getCredential(context, request)
+                val googleCredential = com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+                    .createFrom(result.credential.data)
+                authService.signInWithGoogle(googleCredential.idToken)
+                    .onSuccess { userId ->
+                        persistAuthState(userId, authService.getUserEmail() ?: "")
+                        triggerPostLoginSync(context)
+                        _events.send(Event.LoginSuccess)
+                    }
+                    .onFailure { e ->
+                        mutableState.update { it.copy(isLoading = false, errorMessage = friendlyAuthError(e)) }
+                    }
+            } catch (e: androidx.credentials.exceptions.NoCredentialException) {
+                mutableState.update { it.copy(isLoading = false, errorMessage = "No Google account found on this device.") }
+            } catch (e: Exception) {
+                logcat(LogPriority.WARN) { "AuthScreenModel: Google sign-in failed: ${e.message}" }
+                mutableState.update { it.copy(isLoading = false, errorMessage = friendlyAuthError(e)) }
+            }
+        }
+    }
+
     private fun friendlyAuthError(e: Throwable): String {
         val msg = e.message ?: return "Authentication failed"
         return when {
             "CONFIGURATION_NOT_FOUND" in msg -> "Sign-in is not configured on the server. Please contact support."
+            "SIGN_IN_CANCELLED" in msg || "GetCredentialCancellationException" in e.javaClass.name -> "Google sign-in was cancelled."
             "EMAIL_NOT_FOUND" in msg || "INVALID_EMAIL" in msg -> "Invalid email address."
             "WEAK_PASSWORD" in msg -> "Password is too weak. Use at least 6 characters."
             "EMAIL_EXISTS" in msg || "email address is already in use" in msg -> "An account with this email already exists."
