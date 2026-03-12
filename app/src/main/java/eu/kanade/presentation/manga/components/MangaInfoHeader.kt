@@ -346,7 +346,7 @@ private fun MangaAndSourceTitlesLarge(
     val sharedElementModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
         with(sharedTransitionScope) {
             Modifier.sharedElement(
-                state = rememberSharedContentState(key = "manga_cover_${manga.id}"),
+                sharedContentState = rememberSharedContentState(key = "manga_cover_${manga.id}"),
                 animatedVisibilityScope = animatedVisibilityScope,
             )
         }
@@ -406,7 +406,7 @@ private fun MangaAndSourceTitlesSmall(
     val sharedElementModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
         with(sharedTransitionScope) {
             Modifier.sharedElement(
-                state = rememberSharedContentState(key = "manga_cover_${manga.id}"),
+                sharedContentState = rememberSharedContentState(key = "manga_cover_${manga.id}"),
                 animatedVisibilityScope = animatedVisibilityScope,
             )
         }

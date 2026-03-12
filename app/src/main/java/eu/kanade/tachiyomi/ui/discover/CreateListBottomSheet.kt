@@ -54,16 +54,18 @@ import eu.kanade.tachiyomi.ui.library.LibraryScreenModel
 import kotlinx.coroutines.launch
 import tachiyomi.domain.library.model.LibraryManga
 
+import cafe.adriel.voyager.core.screen.Screen
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateListBottomSheet(
+fun Screen.CreateListBottomSheet(
     screenModel: DiscoverScreenModel,
     onDismiss: () -> Unit,
 ) {
     val libraryScreenModel = rememberScreenModel { LibraryScreenModel() }
     val libraryState by libraryScreenModel.state.collectAsState()
     val discoverState by screenModel.state.collectAsState()
-    val sheetState = rememberModalBottomSheetState(skipPartialExpansion = true)
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
 
     var listTitle by rememberSaveable { mutableStateOf("") }

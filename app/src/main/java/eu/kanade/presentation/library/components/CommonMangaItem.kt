@@ -120,7 +120,7 @@ fun MangaCompactGridItem(
         val sharedElementModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
             with(sharedTransitionScope) {
                 Modifier.sharedElement(
-                    state = rememberSharedContentState(key = "manga_cover_${coverData.mangaId}"),
+                    sharedContentState = rememberSharedContentState(key = "manga_cover_${coverData.mangaId}"),
                     animatedVisibilityScope = animatedVisibilityScope,
                 )
             }
@@ -253,7 +253,7 @@ fun MangaComfortableGridItem(
         val sharedElementModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
             with(sharedTransitionScope) {
                 Modifier.sharedElement(
-                    state = rememberSharedContentState(key = "manga_cover_${coverData.mangaId}"),
+                    sharedContentState = rememberSharedContentState(key = "manga_cover_${coverData.mangaId}"),
                     animatedVisibilityScope = animatedVisibilityScope,
                 )
             }

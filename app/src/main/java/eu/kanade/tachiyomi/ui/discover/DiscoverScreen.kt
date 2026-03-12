@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -63,9 +64,11 @@ import coil3.compose.AsyncImage
 import eu.kanade.presentation.theme.SoraBlue
 import eu.kanade.tachiyomi.data.discover.SharedList
 
+import cafe.adriel.voyager.core.screen.Screen
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DiscoverScreen() {
+fun Screen.DiscoverScreen() {
     val screenModel = rememberScreenModel { DiscoverScreenModel() }
     val state by screenModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
