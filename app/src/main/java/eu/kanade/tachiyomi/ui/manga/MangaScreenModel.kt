@@ -231,6 +231,7 @@ class MangaScreenModel(
                     isRefreshingData = needRefreshInfo || needRefreshChapter,
                     dialog = null,
                     hideMissingChapters = libraryPreferences.hideMissingChapters().get(),
+                    isPinned = mangaId.toString() in libraryPreferences.pinnedMangaIds().get(),
                 )
             }
 
@@ -283,6 +284,23 @@ class MangaScreenModel(
             screenModelScope.launch {
                 snackbarHostState.showSnackbar(message = with(context) { e.formattedMessage })
             }
+        }
+    }
+
+    fun togglePin() {
+        val successState = successState ?: return
+        val mangaId = successState.manga.id.toString()
+        val pinnedIds = libraryPreferences.pinnedMangaIds().get().toMutableSet()
+        val newIsPinned = if (mangaId in pinnedIds) {
+            pinnedIds.remove(mangaId)
+            false
+        } else {
+            pinnedIds.add(mangaId)
+            true
+        }
+        libraryPreferences.pinnedMangaIds().set(pinnedIds)
+        mutableState.update {
+            if (it is State.Success) it.copy(isPinned = newIsPinned) else it
         }
     }
 
@@ -1142,6 +1160,7 @@ class MangaScreenModel(
             val dialog: Dialog? = null,
             val hasPromptedToAddBefore: Boolean = false,
             val hideMissingChapters: Boolean = false,
+            val isPinned: Boolean = false,
         ) : State {
             val processedChapters by lazy {
                 chapters.applyFilters(manga).toList()

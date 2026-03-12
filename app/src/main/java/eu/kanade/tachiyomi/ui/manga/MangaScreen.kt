@@ -166,6 +166,7 @@ class MangaScreen(
                 navigator.push(RecommendsScreen(successState.manga.id))
             },
             onEditNotesClicked = { navigator.push(MangaNotesScreen(manga = successState.manga)) },
+            onPinToggled = { screenModel.togglePin() },
             onMultiBookmarkClicked = screenModel::bookmarkChapters,
             onMultiMarkAsReadClicked = screenModel::markChaptersRead,
             onMarkPreviousAsReadClicked = screenModel::markPreviousChapterRead,

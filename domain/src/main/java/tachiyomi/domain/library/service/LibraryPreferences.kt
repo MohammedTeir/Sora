@@ -198,6 +198,8 @@ class LibraryPreferences(
 
     fun disallowNonAsciiFilenames() = preferenceStore.getBoolean("disallow_non_ascii_filenames", false)
 
+    fun pinnedMangaIds() = preferenceStore.getStringSet("pref_pinned_manga_ids", emptySet())
+
     // endregion
 
     enum class ChapterSwipeAction {

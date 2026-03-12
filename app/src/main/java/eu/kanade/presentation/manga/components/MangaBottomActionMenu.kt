@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.RemoveDone
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.SwapCalls
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -237,6 +238,7 @@ fun LibraryBottomActionMenu(
     onDownloadClicked: ((DownloadAction) -> Unit)?,
     onDeleteClicked: () -> Unit,
     onMigrateClicked: () -> Unit,
+    onShareAsListClicked: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     AnimatedVisibility(
@@ -251,7 +253,7 @@ fun LibraryBottomActionMenu(
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) {
             val haptic = LocalHapticFeedback.current
-            val confirm = remember { mutableStateListOf(false, false, false, false, false, false) }
+            val confirm = remember { mutableStateListOf(false, false, false, false, false, false, false) }
             var resetJob by remember { mutableStateOf<Job?>(null) }
             val onLongClickItem: (Int) -> Unit = { toConfirmIndex ->
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -310,18 +312,27 @@ fun LibraryBottomActionMenu(
                     }
                 }
                 if (!itemOverflow) {
+                    if (onShareAsListClicked != null) {
+                        Button(
+                            title = "Share List",
+                            icon = Icons.Outlined.Share,
+                            toConfirm = confirm[4],
+                            onLongClick = { onLongClickItem(4) },
+                            onClick = onShareAsListClicked,
+                        )
+                    }
                     Button(
                         title = stringResource(MR.strings.migrate),
                         icon = Icons.Outlined.SwapCalls,
-                        toConfirm = confirm[4],
-                        onLongClick = { onLongClickItem(4) },
+                        toConfirm = confirm[if (onShareAsListClicked != null) 5 else 4],
+                        onLongClick = { onLongClickItem(if (onShareAsListClicked != null) 5 else 4) },
                         onClick = onMigrateClicked,
                     )
                     Button(
                         title = stringResource(MR.strings.action_delete),
                         icon = Icons.Outlined.Delete,
-                        toConfirm = confirm[5],
-                        onLongClick = { onLongClickItem(5) },
+                        toConfirm = confirm[if (onShareAsListClicked != null) 6 else 5],
+                        onLongClick = { onLongClickItem(if (onShareAsListClicked != null) 6 else 5) },
                         onClick = onDeleteClicked,
                     )
                 } else {
@@ -346,6 +357,16 @@ fun LibraryBottomActionMenu(
                                 text = { Text(stringResource(MR.strings.action_delete)) },
                                 onClick = onDeleteClicked,
                             )
+                            if (onShareAsListClicked != null) {
+                                DropdownMenuItem(
+                                    text = { Text("Share as List") },
+                                    leadingIcon = { Icon(Icons.Outlined.Share, contentDescription = null) },
+                                    onClick = {
+                                        overflowMenuOpen = false
+                                        onShareAsListClicked()
+                                    },
+                                )
+                            }
                         }
                     }
                 }

@@ -1,5 +1,6 @@
 package eu.kanade.presentation.manga.components
 
+import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -104,6 +105,8 @@ import tachiyomi.presentation.core.i18n.pluralStringResource
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.clickableNoIndication
 import tachiyomi.presentation.core.util.secondaryItemAlpha
+import eu.kanade.presentation.util.LocalAnimatedVisibilityScope
+import eu.kanade.presentation.util.LocalSharedTransitionScope
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.time.Instant
@@ -328,6 +331,7 @@ fun ExpandableMangaDescription(
         }
     }
 }
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun MangaAndSourceTitlesLarge(
     appBarPadding: Dp,
@@ -337,6 +341,19 @@ private fun MangaAndSourceTitlesLarge(
     onCoverClick: () -> Unit,
     doSearch: (query: String, global: Boolean) -> Unit,
 ) {
+    val sharedTransitionScope = LocalSharedTransitionScope.current
+    val animatedVisibilityScope = LocalAnimatedVisibilityScope.current
+    val sharedElementModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+        with(sharedTransitionScope) {
+            Modifier.sharedElement(
+                state = rememberSharedContentState(key = "manga_cover_${manga.id}"),
+                animatedVisibilityScope = animatedVisibilityScope,
+            )
+        }
+    } else {
+        Modifier
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -346,6 +363,7 @@ private fun MangaAndSourceTitlesLarge(
         MangaCover.Book(
             modifier = Modifier
                 .fillMaxWidth(0.5f)
+                .then(sharedElementModifier)
                 .clip(MaterialTheme.shapes.large),
             data = ImageRequest.Builder(LocalContext.current)
                 .data(manga)
@@ -373,6 +391,7 @@ private fun MangaAndSourceTitlesLarge(
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun MangaAndSourceTitlesSmall(
     appBarPadding: Dp,
@@ -382,6 +401,19 @@ private fun MangaAndSourceTitlesSmall(
     onCoverClick: () -> Unit,
     doSearch: (query: String, global: Boolean) -> Unit,
 ) {
+    val sharedTransitionScope = LocalSharedTransitionScope.current
+    val animatedVisibilityScope = LocalAnimatedVisibilityScope.current
+    val sharedElementModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+        with(sharedTransitionScope) {
+            Modifier.sharedElement(
+                state = rememberSharedContentState(key = "manga_cover_${manga.id}"),
+                animatedVisibilityScope = animatedVisibilityScope,
+            )
+        }
+    } else {
+        Modifier
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -391,6 +423,7 @@ private fun MangaAndSourceTitlesSmall(
         MangaCover.Book(
             modifier = Modifier
                 .fillMaxWidth(0.5f) // Matches the larger size in the Stitch design
+                .then(sharedElementModifier)
                 .clip(MaterialTheme.shapes.large), // rounded corners for cover
             data = ImageRequest.Builder(LocalContext.current)
                 .data(manga)

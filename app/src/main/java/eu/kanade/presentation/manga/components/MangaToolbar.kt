@@ -1,9 +1,11 @@
 package eu.kanade.presentation.manga.components
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.FlipToBack
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +41,8 @@ fun MangaToolbar(
     onClickMigrate: (() -> Unit)?,
     onClickRecommendations: (() -> Unit)?,
     onClickEditNotes: () -> Unit,
+    isPinned: Boolean = false,
+    onClickPin: (() -> Unit)? = null,
 
     // For action mode
     actionModeCounter: Int,
@@ -101,6 +105,16 @@ fun MangaToolbar(
                                 title = stringResource(MR.strings.manga_download),
                                 icon = Icons.Outlined.Download,
                                 onClick = { downloadExpanded = !downloadExpanded },
+                            ),
+                        )
+                    }
+                    if (onClickPin != null) {
+                        add(
+                            AppBar.Action(
+                                title = if (isPinned) "Unpin manga" else "Pin manga",
+                                icon = if (isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                                iconTint = if (isPinned) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+                                onClick = onClickPin,
                             ),
                         )
                     }

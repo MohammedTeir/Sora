@@ -47,6 +47,12 @@ object Notifications {
     const val ID_NEW_CHAPTERS = -301
     const val GROUP_NEW_CHAPTERS = "eu.kanade.tachiyomi.NEW_CHAPTERS"
 
+    const val CHANNEL_NEW_CHAPTERS_PRIORITY = "new_chapters_priority_channel"
+    const val ID_NEW_CHAPTERS_PRIORITY = -302
+
+    const val CHANNEL_WEEKLY_DIGEST = "weekly_digest_channel"
+    const val ID_WEEKLY_DIGEST = -303
+
     /**
      * Notification channel and ids used by the backup/restore system.
      */
@@ -134,6 +140,14 @@ object Notifications {
                 },
                 buildNotificationChannel(CHANNEL_NEW_CHAPTERS, IMPORTANCE_DEFAULT) {
                     setName(context.stringResource(MR.strings.channel_new_chapters))
+                },
+                buildNotificationChannel(CHANNEL_NEW_CHAPTERS_PRIORITY, IMPORTANCE_HIGH) {
+                    setName("Priority chapter updates")
+                    setDescription("High-priority notifications for pinned manga")
+                },
+                buildNotificationChannel(CHANNEL_WEEKLY_DIGEST, IMPORTANCE_DEFAULT) {
+                    setName("Weekly reading digest")
+                    setDescription("Weekly summary of unread chapters")
                 },
                 buildNotificationChannel(CHANNEL_DOWNLOADER_PROGRESS, IMPORTANCE_LOW) {
                     setName(context.stringResource(MR.strings.channel_progress))

@@ -46,6 +46,7 @@ import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
+import eu.kanade.tachiyomi.ui.discover.DiscoverTab
 import eu.kanade.presentation.category.components.ChangeCategoryDialog
 import eu.kanade.presentation.library.DeleteLibraryMangaDialog
 import eu.kanade.presentation.library.LibrarySettingsDialog
@@ -101,6 +102,7 @@ data object LibraryTab : Tab {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
         val haptic = LocalHapticFeedback.current
+        val tabNavigatorForDiscover = LocalTabNavigator.current
 
         val screenModel = rememberScreenModel { LibraryScreenModel() }
         val settingsScreenModel = rememberScreenModel { LibrarySettingsScreenModel() }
@@ -181,6 +183,10 @@ data object LibraryTab : Tab {
                         val selection = state.selection
                         screenModel.clearSelection()
                         navigator.push(MigrationConfigScreen(selection))
+                    },
+                    onShareAsListClicked = {
+                        screenModel.clearSelection()
+                        tabNavigatorForDiscover.current = DiscoverTab
                     },
                 )
             },
