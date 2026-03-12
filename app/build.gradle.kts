@@ -234,10 +234,10 @@ dependencies {
 
     // Job scheduling
     implementation(androidx.workmanager)
-    implementation(androidx.workmanagerKtx)
+    implementation(androidx.workmanager.ktx)
 
     // Security (encrypted storage)
-    implementation(androidx.securityCrypto)
+    implementation(androidx.security.crypto)
 
     // Firebase Auth + Firestore (Cloud Sync)
     implementation(platform(libs.firebase.bom))
