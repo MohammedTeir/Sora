@@ -12,7 +12,20 @@
           "package_name": "app.sora"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "759876400139-s81g710vrr15vc9a2vj5tsniuuq610ks.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.sora",
+            "certificate_hash": "3227c70906d449fb9a655ee4ebb018e1712f1b96"
+          }
+        },
+        {
+          "client_id": "759876400139-a5ceggh0jpp3jl9epv5kt4jsjgsfa0fk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCI3LJZtF9Yzpx-Aqoc-qS5jHfvaSwa25Q"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "759876400139-a5ceggh0jpp3jl9epv5kt4jsjgsfa0fk.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
