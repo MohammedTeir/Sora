@@ -64,6 +64,7 @@ import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import coil3.compose.AsyncImage
+import eu.kanade.domain.auth.AuthPreferences
 import eu.kanade.presentation.history.HistoryUiModel
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
 import eu.kanade.presentation.theme.LocalDarkTheme
@@ -71,17 +72,21 @@ import eu.kanade.presentation.theme.SoraBlue
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.download.model.Download
+import eu.kanade.tachiyomi.ui.auth.LoginScreen
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
 import eu.kanade.tachiyomi.ui.history.HistoryScreenModel
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
+import eu.kanade.tachiyomi.ui.settings.sync.SyncSettingsScreen
 import eu.kanade.tachiyomi.ui.updates.UpdatesItem
 import eu.kanade.tachiyomi.ui.updates.UpdatesScreenModel
 import kotlinx.coroutines.flow.collectLatest
 import tachiyomi.domain.history.model.HistoryWithRelations
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
 
 data object HomeTab : Tab {
@@ -160,7 +165,14 @@ data object HomeTab : Tab {
                             tint = MaterialTheme.colorScheme.onSurface,
                         )
                     }
-                    IconButton(onClick = {}) {
+                    IconButton(onClick = {
+                        val authPrefs = Injekt.get<AuthPreferences>()
+                        if (authPrefs.isLoggedIn().get()) {
+                            navigator.push(SyncSettingsScreen())
+                        } else {
+                            navigator.push(LoginScreen())
+                        }
+                    }) {
                         Icon(
                             imageVector = Icons.Outlined.Person,
                             contentDescription = "Profile",
