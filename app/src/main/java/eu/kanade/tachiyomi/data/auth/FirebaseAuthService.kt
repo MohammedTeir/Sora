@@ -27,7 +27,7 @@ class FirebaseAuthService {
             logcat(LogPriority.INFO) { "FirebaseAuthService: signed in user $uid" }
             Result.success(uid)
         } catch (e: Exception) {
-            logcat(LogPriority.ERROR, e) { "FirebaseAuthService: sign in failed" }
+            logcat(LogPriority.ERROR) { "FirebaseAuthService: sign in failed: ${e.message}" }
             Result.failure(e)
         }
     }
@@ -39,7 +39,7 @@ class FirebaseAuthService {
             logcat(LogPriority.INFO) { "FirebaseAuthService: created user $uid" }
             Result.success(uid)
         } catch (e: Exception) {
-            logcat(LogPriority.ERROR, e) { "FirebaseAuthService: sign up failed" }
+            logcat(LogPriority.ERROR) { "FirebaseAuthService: sign up failed: ${e.message}" }
             Result.failure(e)
         }
     }

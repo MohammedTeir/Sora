@@ -55,7 +55,7 @@ class AuthScreenModel(
                     _events.send(Event.LoginSuccess)
                 }
                 .onFailure { e ->
-                    logcat(LogPriority.WARN, e) { "AuthScreenModel: login failed" }
+                    logcat(LogPriority.WARN) { "AuthScreenModel: login failed: ${e.message}" }
                     mutableState.update {
                         it.copy(
                             isLoading = false,
@@ -91,7 +91,7 @@ class AuthScreenModel(
                     _events.send(Event.SignUpSuccess)
                 }
                 .onFailure { e ->
-                    logcat(LogPriority.WARN, e) { "AuthScreenModel: sign up failed" }
+                    logcat(LogPriority.WARN) { "AuthScreenModel: sign up failed: ${e.message}" }
                     mutableState.update {
                         it.copy(
                             isLoading = false,

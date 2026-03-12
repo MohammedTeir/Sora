@@ -102,8 +102,7 @@ object SyncDataSerializer {
                 artist = map["artist"] as? String,
                 author = map["author"] as? String,
                 description = map["description"] as? String,
-                @Suppress("UNCHECKED_CAST")
-                genre = map["genre"] as? List<String>,
+                genre = @Suppress("UNCHECKED_CAST") (map["genre"] as? List<String>),
                 status = (map["status"] as? Long) ?: (map["status"] as? Number)?.toLong() ?: 0L,
                 thumbnailUrl = map["thumbnailUrl"] as? String,
                 favorite = map["favorite"] as? Boolean ?: false,
@@ -124,7 +123,7 @@ object SyncDataSerializer {
                 notes = map["notes"] as? String ?: "",
             )
         } catch (e: Exception) {
-            logcat(LogPriority.WARN, e) { "SyncDataSerializer: failed to deserialize manga" }
+            logcat(LogPriority.WARN) { "SyncDataSerializer: failed to deserialize manga: ${e.message}" }
             null
         }
     }
@@ -166,7 +165,7 @@ object SyncDataSerializer {
                 version = 1L,
             )
         } catch (e: Exception) {
-            logcat(LogPriority.WARN, e) { "SyncDataSerializer: failed to deserialize chapter" }
+            logcat(LogPriority.WARN) { "SyncDataSerializer: failed to deserialize chapter: ${e.message}" }
             null
         }
     }
@@ -190,7 +189,7 @@ object SyncDataSerializer {
                 readDuration = (map["readDuration"] as? Long) ?: (map["readDuration"] as? Number)?.toLong() ?: -1L,
             )
         } catch (e: Exception) {
-            logcat(LogPriority.WARN, e) { "SyncDataSerializer: failed to deserialize history" }
+            logcat(LogPriority.WARN) { "SyncDataSerializer: failed to deserialize history: ${e.message}" }
             null
         }
     }
@@ -216,7 +215,7 @@ object SyncDataSerializer {
                 hidden = map["hidden"] as? Boolean ?: false,
             )
         } catch (e: Exception) {
-            logcat(LogPriority.WARN, e) { "SyncDataSerializer: failed to deserialize category" }
+            logcat(LogPriority.WARN) { "SyncDataSerializer: failed to deserialize category: ${e.message}" }
             null
         }
     }
@@ -259,7 +258,7 @@ object SyncDataSerializer {
                 private = map["private"] as? Boolean ?: false,
             )
         } catch (e: Exception) {
-            logcat(LogPriority.WARN, e) { "SyncDataSerializer: failed to deserialize track" }
+            logcat(LogPriority.WARN) { "SyncDataSerializer: failed to deserialize track: ${e.message}" }
             null
         }
     }

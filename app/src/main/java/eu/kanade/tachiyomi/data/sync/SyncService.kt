@@ -94,7 +94,7 @@ class SyncService(
             logcat(LogPriority.INFO) { "SyncService: sync completed successfully" }
             SyncResult.Success
         } catch (e: Exception) {
-            logcat(LogPriority.ERROR, e) { "SyncService: sync failed" }
+            logcat(LogPriority.ERROR) { "SyncService: sync failed: ${e.message}" }
             SyncResult.Error(e.message ?: "Unknown sync error", e)
         } finally {
             syncPrefs.isSyncing().set(false)
@@ -350,7 +350,7 @@ class SyncService(
                     .await()
             }
         } catch (e: Exception) {
-            logcat(LogPriority.WARN, e) { "SyncService: failed to upload sensitive settings" }
+            logcat(LogPriority.WARN) { "SyncService: failed to upload sensitive settings: ${e.message}" }
         }
     }
 
