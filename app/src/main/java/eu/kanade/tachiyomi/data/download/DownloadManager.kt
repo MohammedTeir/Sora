@@ -79,11 +79,29 @@ class DownloadManager(
     }
 
     /**
+     * Resumes all paused downloads (used by "Resume All" global action).
+     */
+    fun resumeAllDownloads() {
+        queueState.value.forEach { download ->
+            if (download.status == Download.State.PAUSED) {
+                download.status = Download.State.QUEUE
+            }
+        }
+        startDownloads()
+    }
+
+    /**
      * Tells the downloader to pause downloads.
      */
     fun pauseDownloads() {
         downloader.pause()
         downloader.stop()
+        // Mark all active/queued items as PAUSED so individual resume works correctly
+        queueState.value.forEach { download ->
+            if (download.status == Download.State.DOWNLOADING || download.status == Download.State.QUEUE) {
+                download.status = Download.State.PAUSED
+            }
+        }
     }
 
     /**
