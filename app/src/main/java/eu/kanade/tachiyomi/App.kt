@@ -100,6 +100,7 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
         Injekt.importModule(DomainModule())
 
         setupNotificationChannels()
+        eu.kanade.tachiyomi.data.library.WeeklySummaryJob.setup(this)
 
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
 

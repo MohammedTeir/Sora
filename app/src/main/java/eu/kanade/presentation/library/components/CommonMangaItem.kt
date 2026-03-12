@@ -24,8 +24,13 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
+import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -36,13 +41,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import eu.kanade.presentation.manga.components.MangaCover
+import eu.kanade.presentation.util.LocalAnimatedVisibilityScope
+import eu.kanade.presentation.util.LocalSharedTransitionScope
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.BadgeGroup
 import tachiyomi.presentation.core.i18n.stringResource
@@ -68,10 +80,13 @@ private val ContinueReadingButtonListSpacing = 8.dp
 
 private const val GRID_SELECTED_COVER_ALPHA = 0.76f
 
+private const val PARALLAX_FACTOR = 0.07f
+
 /**
  * Layout of grid list item with title overlaying the cover.
  * Accepts null [title] for a cover-only view.
  */
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun MangaCompactGridItem(
     coverData: MangaCoverModel,
@@ -84,17 +99,43 @@ fun MangaCompactGridItem(
     coverBadgeStart: @Composable (RowScope.() -> Unit)? = null,
     coverBadgeEnd: @Composable (RowScope.() -> Unit)? = null,
 ) {
+    val sharedTransitionScope = LocalSharedTransitionScope.current
+    val animatedVisibilityScope = LocalAnimatedVisibilityScope.current
+
+    val screenHeightPx = with(LocalDensity.current) {
+        LocalConfiguration.current.screenHeightDp.dp.toPx()
+    }
+    var itemCenterY by remember { mutableStateOf(0f) }
+
     GridItemSelectable(
         isSelected = isSelected,
         onClick = onClick,
         onLongClick = onLongClick,
+        modifier = Modifier.onGloballyPositioned { coords ->
+            itemCenterY = coords.positionInRoot().y + coords.size.height / 2f
+        },
     ) {
+        val parallaxOffset = (itemCenterY - screenHeightPx / 2f) * PARALLAX_FACTOR
+
+        val sharedElementModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+            with(sharedTransitionScope) {
+                Modifier.sharedElement(
+                    state = rememberSharedContentState(key = "manga_cover_${coverData.mangaId}"),
+                    animatedVisibilityScope = animatedVisibilityScope,
+                )
+            }
+        } else {
+            Modifier
+        }
+
         MangaGridCover(
             cover = {
                 MangaCover.Book(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .alpha(if (isSelected) GRID_SELECTED_COVER_ALPHA else coverAlpha),
+                        .alpha(if (isSelected) GRID_SELECTED_COVER_ALPHA else coverAlpha)
+                        .then(sharedElementModifier)
+                        .graphicsLayer { translationY = -parallaxOffset },
                     data = coverData,
                 )
             },
@@ -177,6 +218,7 @@ private fun BoxScope.CoverTextOverlay(
 /**
  * Layout of grid list item with title below the cover.
  */
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun MangaComfortableGridItem(
     coverData: MangaCoverModel,
@@ -190,18 +232,44 @@ fun MangaComfortableGridItem(
     coverBadgeEnd: (@Composable RowScope.() -> Unit)? = null,
     onClickContinueReading: (() -> Unit)? = null,
 ) {
+    val sharedTransitionScope = LocalSharedTransitionScope.current
+    val animatedVisibilityScope = LocalAnimatedVisibilityScope.current
+
+    val screenHeightPx = with(LocalDensity.current) {
+        LocalConfiguration.current.screenHeightDp.dp.toPx()
+    }
+    var itemCenterY by remember { mutableStateOf(0f) }
+
     GridItemSelectable(
         isSelected = isSelected,
         onClick = onClick,
         onLongClick = onLongClick,
+        modifier = Modifier.onGloballyPositioned { coords ->
+            itemCenterY = coords.positionInRoot().y + coords.size.height / 2f
+        },
     ) {
+        val parallaxOffset = (itemCenterY - screenHeightPx / 2f) * PARALLAX_FACTOR
+
+        val sharedElementModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+            with(sharedTransitionScope) {
+                Modifier.sharedElement(
+                    state = rememberSharedContentState(key = "manga_cover_${coverData.mangaId}"),
+                    animatedVisibilityScope = animatedVisibilityScope,
+                )
+            }
+        } else {
+            Modifier
+        }
+
         Column {
             MangaGridCover(
                 cover = {
                     MangaCover.Book(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .alpha(if (isSelected) GRID_SELECTED_COVER_ALPHA else coverAlpha),
+                            .alpha(if (isSelected) GRID_SELECTED_COVER_ALPHA else coverAlpha)
+                            .then(sharedElementModifier)
+                            .graphicsLayer { translationY = -parallaxOffset },
                         data = coverData,
                     )
                 },

@@ -290,6 +290,40 @@ class LibraryUpdateNotifier(
         context.cancelNotification(Notifications.ID_LIBRARY_PROGRESS)
     }
 
+    /**
+     * Shows a high-priority BigPicture notification for a pinned manga that has new chapters.
+     */
+    suspend fun showPriorityChapterNotification(manga: Manga, chapters: Array<Chapter>) {
+        val icon = getMangaIcon(manga)
+        val notificationId = Notifications.ID_NEW_CHAPTERS_PRIORITY + manga.id.toInt()
+        val notification = context.notificationBuilder(Notifications.CHANNEL_NEW_CHAPTERS_PRIORITY) {
+            setContentTitle("${manga.title} updated!")
+            val description = getNewChaptersDescription(chapters)
+            setContentText(description)
+            if (icon != null) {
+                setLargeIcon(icon)
+                setStyle(NotificationCompat.BigPictureStyle().bigLargeIcon(null as Bitmap?))
+            } else {
+                setStyle(NotificationCompat.BigTextStyle().bigText(description))
+            }
+            setSmallIcon(R.drawable.ic_mihon)
+            priority = NotificationCompat.PRIORITY_HIGH
+            setContentIntent(NotificationReceiver.openChapterPendingActivity(context, manga, chapters.first()))
+            setAutoCancel(true)
+            addAction(
+                R.drawable.ic_done_24dp,
+                context.stringResource(MR.strings.action_mark_as_read),
+                NotificationReceiver.markAsReadPendingBroadcast(
+                    context,
+                    manga,
+                    chapters,
+                    notificationId,
+                ),
+            )
+        }.build()
+        context.notify(notificationId, notification)
+    }
+
     private suspend fun getMangaIcon(manga: Manga): Bitmap? {
         val request = ImageRequest.Builder(context)
             .data(manga)

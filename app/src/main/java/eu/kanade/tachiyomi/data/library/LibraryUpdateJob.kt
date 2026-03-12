@@ -306,7 +306,16 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
         notifier.cancelProgressNotification()
 
         if (newUpdates.isNotEmpty()) {
-            notifier.showUpdateNotifications(newUpdates)
+            val pinnedIds = libraryPreferences.pinnedMangaIds().get()
+            val (pinnedUpdates, regularUpdates) = newUpdates.partition { (manga, _) ->
+                manga.id.toString() in pinnedIds
+            }
+            pinnedUpdates.forEach { (manga, chapters) ->
+                notifier.showPriorityChapterNotification(manga, chapters)
+            }
+            if (regularUpdates.isNotEmpty()) {
+                notifier.showUpdateNotifications(regularUpdates)
+            }
             if (hasDownloads.load()) {
                 downloadManager.startDownloads()
             }

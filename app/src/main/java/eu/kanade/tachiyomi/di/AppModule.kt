@@ -10,6 +10,7 @@ import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import eu.kanade.domain.track.store.DelayedTrackingStore
 import eu.kanade.tachiyomi.BuildConfig
 import eu.kanade.tachiyomi.data.auth.FirebaseAuthService
+import eu.kanade.tachiyomi.data.discover.SharedListService
 import eu.kanade.tachiyomi.data.sync.SyncService
 import eu.kanade.tachiyomi.data.cache.ChapterCache
 import eu.kanade.tachiyomi.data.cache.CoverCache
@@ -133,6 +134,7 @@ class AppModule(val app: Application) : InjektModule {
 
         addSingletonFactory { FirebaseAuthService() }
         addSingletonFactory { SyncService() }
+        addSingletonFactory { SharedListService() }
 
         addSingletonFactory { ImageSaver(app) }
 

@@ -3,8 +3,13 @@ package eu.kanade.presentation.util
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
@@ -29,6 +34,10 @@ import soup.compose.material.motion.animation.rememberSlideDistance
  * For invoking back press to the parent activity
  */
 val LocalBackPress: ProvidableCompositionLocal<(() -> Unit)?> = staticCompositionLocalOf { null }
+
+@OptIn(ExperimentalSharedTransitionApi::class)
+val LocalSharedTransitionScope: ProvidableCompositionLocal<SharedTransitionScope?> = staticCompositionLocalOf { null }
+val LocalAnimatedVisibilityScope: ProvidableCompositionLocal<AnimatedVisibilityScope?> = staticCompositionLocalOf { null }
 
 interface Tab : cafe.adriel.voyager.navigator.tab.Tab {
     suspend fun onReselect(navigator: Navigator) {}
@@ -73,6 +82,7 @@ fun DefaultNavigatorScreenTransition(
     )
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun ScreenTransition(
     navigator: Navigator,
@@ -80,14 +90,20 @@ fun ScreenTransition(
     modifier: Modifier = Modifier,
     content: ScreenTransitionContent = { it.Content() },
 ) {
-    AnimatedContent(
-        targetState = navigator.lastItem,
-        transitionSpec = transition,
-        modifier = modifier,
-        label = "transition",
-    ) { screen ->
-        navigator.saveableState("transition", screen) {
-            content(screen)
+    SharedTransitionLayout {
+        CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+            AnimatedContent(
+                targetState = navigator.lastItem,
+                transitionSpec = transition,
+                modifier = modifier,
+                label = "transition",
+            ) { screen ->
+                CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
+                    navigator.saveableState("transition", screen) {
+                        content(screen)
+                    }
+                }
+            }
         }
     }
 
