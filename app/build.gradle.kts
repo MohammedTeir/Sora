@@ -11,11 +11,11 @@ plugins {
     alias(libs.plugins.aboutLibraries)
 }
 
+// google-services is always required to process google-services.json for Firebase Auth
+pluginManager.apply(libs.plugins.google.services.get().pluginId)
+
 if (Config.includeTelemetry) {
-    pluginManager.apply {
-        apply(libs.plugins.google.services.get().pluginId)
-        apply(libs.plugins.firebase.crashlytics.get().pluginId)
-    }
+    pluginManager.apply(libs.plugins.firebase.crashlytics.get().pluginId)
 }
 
 shortcutHelper.setFilePath("./shortcuts.xml")
