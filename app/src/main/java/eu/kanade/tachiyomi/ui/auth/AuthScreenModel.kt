@@ -59,7 +59,7 @@ class AuthScreenModel(
                     mutableState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = e.localizedMessage ?: "Login failed",
+                            errorMessage = friendlyAuthError(e),
                         )
                     }
                 }
@@ -95,10 +95,25 @@ class AuthScreenModel(
                     mutableState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = e.localizedMessage ?: "Sign up failed",
+                            errorMessage = friendlyAuthError(e),
                         )
                     }
                 }
+        }
+    }
+
+    private fun friendlyAuthError(e: Throwable): String {
+        val msg = e.message ?: return "Authentication failed"
+        return when {
+            "CONFIGURATION_NOT_FOUND" in msg -> "Sign-in is not configured on the server. Please contact support."
+            "EMAIL_NOT_FOUND" in msg || "INVALID_EMAIL" in msg -> "Invalid email address."
+            "WEAK_PASSWORD" in msg -> "Password is too weak. Use at least 6 characters."
+            "EMAIL_EXISTS" in msg || "email address is already in use" in msg -> "An account with this email already exists."
+            "INVALID_PASSWORD" in msg || "wrong-password" in msg -> "Incorrect password."
+            "USER_NOT_FOUND" in msg || "no user record" in msg -> "No account found with this email."
+            "NETWORK_ERROR" in msg || "Unable to resolve host" in msg -> "Network error. Check your internet connection."
+            "TOO_MANY_REQUESTS" in msg -> "Too many attempts. Please try again later."
+            else -> e.localizedMessage ?: "Authentication failed"
         }
     }
 
