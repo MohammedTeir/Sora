@@ -73,7 +73,7 @@ fun ReorderableCollectionItemScope.CategoryListItem(
             .fillMaxWidth()
             .height(70.dp)
             .clip(RoundedCornerShape(30.dp))
-            .background(Color(0xFF1E1E1E)) // Dark Grey Container
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onRename)
             .padding(horizontal = 18.dp),
         contentAlignment = Alignment.CenterStart
@@ -85,7 +85,7 @@ fun ReorderableCollectionItemScope.CategoryListItem(
             Icon(
                 imageVector = Icons.Outlined.DragHandle,
                 contentDescription = null,
-                tint = Color.Gray,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .draggableHandle()
                     .padding(end = 12.dp),
@@ -103,12 +103,12 @@ fun ReorderableCollectionItemScope.CategoryListItem(
             Text(
                 text = category.name,
                 modifier = Modifier.weight(1f),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Medium
             )
 
-            CompositionLocalProvider(LocalContentColor provides Color.Gray) {
+            CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant) {
                 IconButton(onClick = onHide) {
                     Icon(
                         imageVector = if (category.hidden) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,

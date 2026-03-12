@@ -1,6 +1,10 @@
 package eu.kanade.presentation.search.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,9 +19,11 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,16 +48,24 @@ private val PrimaryBlue = Color(0xFF2F80ED)
 @Composable
 fun SearchInputBar(
     onSearch: (String) -> Unit,
+    onVoiceSearch: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var query by remember { mutableStateOf("") }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    val borderColor by animateColorAsState(
+        targetValue = if (isFocused) PrimaryBlue else Color.Transparent,
+        label = "searchBorderColor",
+    )
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(50.dp)
             .clip(RoundedCornerShape(25.dp))
-            .background(SearchBarBg),
+            .background(SearchBarBg)
+            .border(width = 1.dp, color = borderColor, shape = RoundedCornerShape(25.dp)),
         contentAlignment = Alignment.CenterStart,
     ) {
         Row(
@@ -63,7 +77,7 @@ fun SearchInputBar(
             Icon(
                 imageVector = Icons.Outlined.Search,
                 contentDescription = null,
-                tint = TextGrey,
+                tint = if (isFocused) PrimaryBlue else TextGrey,
                 modifier = Modifier.size(20.dp),
             )
             Spacer(modifier = Modifier.width(10.dp))
@@ -87,16 +101,36 @@ fun SearchInputBar(
                             if (query.isNotBlank()) onSearch(query.trim())
                         },
                     ),
+                    interactionSource = interactionSource,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Icon(
-                imageVector = Icons.Outlined.Mic,
-                contentDescription = "Voice search",
-                tint = TextGrey,
-                modifier = Modifier.size(20.dp),
-            )
+            if (query.isNotEmpty()) {
+                IconButton(
+                    onClick = { query = "" },
+                    modifier = Modifier.size(20.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Cancel,
+                        contentDescription = "Clear search",
+                        tint = TextGrey,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            } else {
+                IconButton(
+                    onClick = onVoiceSearch,
+                    modifier = Modifier.size(20.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Mic,
+                        contentDescription = "Voice search",
+                        tint = TextGrey,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
         }
     }
 }

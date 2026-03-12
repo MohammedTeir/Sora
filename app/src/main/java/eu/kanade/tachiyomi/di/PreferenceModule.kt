@@ -1,8 +1,10 @@
 package eu.kanade.tachiyomi.di
 
 import android.app.Application
+import eu.kanade.domain.auth.AuthPreferences
 import eu.kanade.domain.base.BasePreferences
 import eu.kanade.domain.source.service.SourcePreferences
+import eu.kanade.domain.sync.SyncPreferences
 import eu.kanade.domain.track.service.TrackPreferences
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.tachiyomi.core.security.PrivacyPreferences
@@ -77,6 +79,12 @@ class PreferenceModule(val app: Application) : InjektModule {
         }
         addSingletonFactory {
             TranslationPreferences(get())
+        }
+        addSingletonFactory {
+            AuthPreferences(get())
+        }
+        addSingletonFactory {
+            SyncPreferences(get())
         }
     }
 }

@@ -70,7 +70,7 @@ internal class StorageStep : OnboardingStep {
                 modifier = Modifier
                     .size(120.dp)
                     .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xFF1E293B)), // Dark slate
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -88,7 +88,7 @@ internal class StorageStep : OnboardingStep {
                 text = "Select Storage Folder",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
             )
 
@@ -97,7 +97,7 @@ internal class StorageStep : OnboardingStep {
             Text(
                 text = "Choose a location to store your downloaded manga chapters and data.",
                 fontSize = 15.sp,
-                color = Color(0xFFA0AEC0),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 lineHeight = 22.sp,
             )
@@ -109,7 +109,7 @@ internal class StorageStep : OnboardingStep {
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF121212))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable {
                         try {
                             pickStorageLocation.launch(null)
@@ -125,7 +125,7 @@ internal class StorageStep : OnboardingStep {
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFF1E293B)),
+                        .background(MaterialTheme.colorScheme.surface),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -143,13 +143,13 @@ internal class StorageStep : OnboardingStep {
                         text = if (_isComplete) SettingsDataScreen.storageLocationText(storagePref) else "Select Folder",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onBackground,
                         maxLines = 1,
                     )
                     Text(
                         text = "RECOMMENDED",
                         fontSize = 11.sp,
-                        color = Color(0xFFA0AEC0),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         letterSpacing = 1.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -159,7 +159,7 @@ internal class StorageStep : OnboardingStep {
                 Icon(
                     imageVector = Icons.Outlined.ChevronRight,
                     contentDescription = null,
-                    tint = Color(0xFFA0AEC0)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 

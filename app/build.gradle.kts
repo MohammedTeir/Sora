@@ -11,11 +11,11 @@ plugins {
     alias(libs.plugins.aboutLibraries)
 }
 
+// google-services is always required to process google-services.json for Firebase Auth
+pluginManager.apply(libs.plugins.google.services.get().pluginId)
+
 if (Config.includeTelemetry) {
-    pluginManager.apply {
-        apply(libs.plugins.google.services.get().pluginId)
-        apply(libs.plugins.firebase.crashlytics.get().pluginId)
-    }
+    pluginManager.apply(libs.plugins.firebase.crashlytics.get().pluginId)
 }
 
 shortcutHelper.setFilePath("./shortcuts.xml")
@@ -234,6 +234,20 @@ dependencies {
 
     // Job scheduling
     implementation(androidx.workmanager)
+    implementation(androidx.workmanager.ktx)
+
+    // Security (encrypted storage)
+    implementation(androidx.security.crypto)
+
+    // Firebase Auth + Firestore (Cloud Sync)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+
+    // Google Sign-In via Credential Manager
+    implementation(libs.credentials)
+    implementation(libs.credentials.play.services)
+    implementation(libs.googleid)
 
     // RxJava
     implementation(libs.rxjava)

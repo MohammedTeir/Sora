@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -106,7 +107,7 @@ internal class PermissionStep : OnboardingStep {
                 text = "Grant Permissions",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
             )
 
@@ -115,7 +116,7 @@ internal class PermissionStep : OnboardingStep {
             Text(
                 text = "To provide the best reading experience, Sora needs access to the following system features.",
                 fontSize = 15.sp,
-                color = Color(0xFFA0AEC0),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 lineHeight = 22.sp,
                 modifier = Modifier.padding(horizontal = 8.dp)
@@ -183,7 +184,7 @@ internal class PermissionStep : OnboardingStep {
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFF121212))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -192,7 +193,7 @@ internal class PermissionStep : OnboardingStep {
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF1E293B)),
+                    .background(MaterialTheme.colorScheme.surface),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -210,12 +211,12 @@ internal class PermissionStep : OnboardingStep {
                     text = title,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onBackground,
                 )
                 Text(
                     text = subtitle,
                     fontSize = 12.sp,
-                    color = Color(0xFFA0AEC0),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 16.sp,
                 )
             }

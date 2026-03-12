@@ -19,7 +19,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -52,7 +51,7 @@ internal class WelcomeStep : OnboardingStep {
                     .fillMaxWidth()
                     .aspectRatio(1f)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF1E293B)), // Dark slate fallback
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center,
             ) {
                 // Currently returning an empty box or fallback to app icon since no specific illustration asset was provided
@@ -77,7 +76,7 @@ internal class WelcomeStep : OnboardingStep {
                 },
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
             )
 
@@ -86,7 +85,7 @@ internal class WelcomeStep : OnboardingStep {
             Text(
                 text = "Your ultimate manga universe",
                 fontSize = 16.sp,
-                color = Color(0xFFA0AEC0), // Light Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
 

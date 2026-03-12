@@ -35,8 +35,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -65,18 +65,10 @@ fun OnboardingScreen(
         currentStep--
     }
 
-    // AMOLED Background
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF000000), // Pure Black top
-                        Color(0xFF0F172A)  // Very Dark Blue Slate bottom
-                    )
-                )
-            )
+            .background(MaterialTheme.colorScheme.background)
             .systemBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -95,7 +87,7 @@ fun OnboardingScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 } else {
@@ -114,7 +106,7 @@ fun OnboardingScreen(
                                     .width(if (index == currentStep - 1) 24.dp else 12.dp)
                                     .clip(CircleShape)
                                     .background(
-                                        if (index <= currentStep - 1) Color(0xFF2D7CFF) else Color(0xFF333333)
+                                        if (index <= currentStep - 1) Color(0xFF2D7CFF) else MaterialTheme.colorScheme.surfaceVariant
                                     )
                             )
                         }
@@ -173,7 +165,7 @@ fun OnboardingScreen(
                                     modifier = Modifier
                                         .size(8.dp)
                                         .clip(CircleShape)
-                                        .background(if (index == 0) Color.White else Color(0xFF333333))
+                                        .background(if (index == 0) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.surfaceVariant)
                                 )
                             }
                         }

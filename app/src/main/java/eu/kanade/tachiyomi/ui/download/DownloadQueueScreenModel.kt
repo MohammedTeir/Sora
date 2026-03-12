@@ -61,7 +61,7 @@ class DownloadQueueScreenModel(
 
     // ── Global queue actions ───────────────────────────────────────────────
 
-    fun resumeAll() = downloadManager.startDownloads()
+    fun resumeAll() = downloadManager.resumeAllDownloads()
 
     fun pauseAll() = downloadManager.pauseDownloads()
 

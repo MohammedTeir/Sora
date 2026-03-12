@@ -1,7 +1,6 @@
 package eu.kanade.presentation.search.components
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,6 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.TrendingUp
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,6 +26,7 @@ import eu.kanade.tachiyomi.ui.search.SearchLandingScreenModel
 private val TextWhite = Color(0xFFFFFFFF)
 private val TextGrey = Color(0xFF9E9E9E)
 private val PrimaryBlue = Color(0xFF2F80ED)
+private val DividerColor = Color(0xFF2C2C2E)
 
 @Composable
 fun TrendingSection(
@@ -58,13 +59,20 @@ fun TrendingSection(
             )
         }
 
-        // Items
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            items.forEach { item ->
+        // Items with dividers between them
+        Column {
+            items.forEachIndexed { index, item ->
                 TrendingItem(
                     item = item,
                     onClick = { onClickItem(item) },
                 )
+                if (index < items.lastIndex) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 7.dp),
+                        color = DividerColor,
+                        thickness = 0.5.dp,
+                    )
+                }
             }
         }
     }
@@ -82,13 +90,13 @@ fun TrendingItem(
             .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Rank number
+        // Rank number — wider column to avoid clipping on two-digit values
         Text(
             text = item.rank.toString(),
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
             color = PrimaryBlue,
-            modifier = Modifier.width(28.dp),
+            modifier = Modifier.width(32.dp),
         )
         // Title + subtitle
         Column(modifier = Modifier.weight(1f)) {

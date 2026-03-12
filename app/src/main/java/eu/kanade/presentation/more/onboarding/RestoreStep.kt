@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.RocketLaunch
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -72,7 +73,7 @@ internal class RestoreStep(
                 text = "All Set!",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
             )
 
@@ -81,7 +82,7 @@ internal class RestoreStep(
             Text(
                 text = "Sora is ready to use. Start fresh or restore your library from a previous backup.",
                 fontSize = 15.sp,
-                color = Color(0xFFA0AEC0),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 lineHeight = 22.sp,
                 modifier = Modifier.padding(horizontal = 16.dp)
@@ -95,7 +96,7 @@ internal class RestoreStep(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .border(1.dp, Color(0xFF2D7CFF), RoundedCornerShape(16.dp)) // Highlight this option
-                    .background(Color(0xFF1E293B))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -119,12 +120,12 @@ internal class RestoreStep(
                         text = "Start Fresh",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
                         text = "Begin with an empty library",
                         fontSize = 13.sp,
-                        color = Color(0xFFA0AEC0)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -136,7 +137,7 @@ internal class RestoreStep(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF121212))
+                    .background(MaterialTheme.colorScheme.surface)
                     .clickable { onRestoreBackup() }
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -145,7 +146,7 @@ internal class RestoreStep(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF333333)),
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -161,12 +162,12 @@ internal class RestoreStep(
                         text = "Restore Backup",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
                         text = "Load an existing .tachibk",
                         fontSize = 13.sp,
-                        color = Color(0xFFA0AEC0)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -176,7 +177,7 @@ internal class RestoreStep(
             Text(
                 text = "By continuing, you agree to our Terms of Service.",
                 fontSize = 12.sp,
-                color = Color(0xFF6B7280),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(bottom = 88.dp) // Leave space for bottom button from parent
             )
