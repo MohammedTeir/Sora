@@ -19,7 +19,7 @@ class FirebaseAuthService {
 
     fun getUserEmail(): String? = auth.currentUser?.email
 
-    fun getUserDisplayName(): String? = auth.currentUser?.displayName ?: auth.currentUser?.email
+    fun getUserDisplayName(): String? = auth.currentUser?.displayName
 
     suspend fun signIn(email: String, password: String): Result<String> {
         return try {

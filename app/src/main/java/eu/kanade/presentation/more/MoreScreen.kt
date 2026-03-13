@@ -166,6 +166,14 @@ fun MoreScreen(
                                 fontSize = 18.sp,
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
+                            if (userDisplayName.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = userEmail,
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = if (isSyncing) "Syncing…" else lastSyncDisplay.ifBlank { "Tap to sync" },
