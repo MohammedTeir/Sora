@@ -24,7 +24,9 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.Login
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -34,12 +36,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -60,9 +64,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.model.rememberScreenModel
+import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.currentOrThrow
 import coil3.compose.AsyncImage
 import eu.kanade.presentation.theme.SoraBlue
 import eu.kanade.tachiyomi.data.discover.SharedList
+import eu.kanade.tachiyomi.ui.auth.LoginScreen
 
 import cafe.adriel.voyager.core.screen.Screen
 
@@ -73,6 +80,7 @@ fun Screen.DiscoverScreen() {
     val state by screenModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showCreateSheet by rememberSaveable { mutableStateOf(false) }
+    val navigator = LocalNavigator.currentOrThrow
 
     // Show snackbar messages
     LaunchedEffect(state.importMessage) {
@@ -86,6 +94,43 @@ fun Screen.DiscoverScreen() {
             snackbarHostState.showSnackbar(msg)
             screenModel.clearMessages()
         }
+    }
+
+    // Missing manga dialog
+    if (state.missingMangaTitles.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = { screenModel.clearMissingManga() },
+            title = { Text("Not in your library") },
+            text = {
+                Column {
+                    Text(
+                        "${state.missingMangaTitles.size} manga from this list are not in your library yet. " +
+                            "Search for them in Browse to add them.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    state.missingMangaTitles.take(10).forEach { title ->
+                        Text(
+                            "• $title",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (state.missingMangaTitles.size > 10) {
+                        Text(
+                            "… and ${state.missingMangaTitles.size - 10} more",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { screenModel.clearMissingManga() }) {
+                    Text("Got it")
+                }
+            },
+        )
     }
 
     Scaffold(
@@ -115,105 +160,158 @@ fun Screen.DiscoverScreen() {
             }
         },
     ) { padding ->
-        if (state.isLoading) {
+        // Full-screen spinner only on the very first load (no content yet)
+        if (state.isInitialLoad && state.isLoading) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = SoraBlue)
             }
             return@Scaffold
         }
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = 100.dp),
-        ) {
-            // My Lists section (only when logged in and has lists)
-            if (state.isLoggedIn && state.myLists.isNotEmpty()) {
-                item {
-                    SectionHeader(title = "My Lists")
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        items(state.myLists) { list ->
-                            SharedListCard(
-                                list = list,
-                                onImport = { screenModel.importList(list) },
-                                onDelete = { screenModel.deleteMyList(list.id) },
-                                showDelete = true,
-                            )
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 100.dp),
+            ) {
+                // Login banner for unauthenticated users
+                if (!state.isLoggedIn) {
+                    item {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = SoraBlue.copy(alpha = 0.12f),
+                            ),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Login,
+                                    contentDescription = null,
+                                    tint = SoraBlue,
+                                    modifier = Modifier.size(24.dp),
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        "Sign in to share lists",
+                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                    )
+                                    Text(
+                                        "Share your reading lists with the community.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                    )
+                                }
+                                OutlinedButton(onClick = { navigator.push(LoginScreen()) }) {
+                                    Text("Sign In", fontSize = 12.sp)
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+
+                // My Lists section (only when logged in and has lists)
+                if (state.isLoggedIn && state.myLists.isNotEmpty()) {
+                    item {
+                        SectionHeader(title = "My Lists")
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            items(state.myLists) { list ->
+                                SharedListCard(
+                                    list = list,
+                                    onImport = { screenModel.importList(list) },
+                                    onDelete = { screenModel.deleteMyList(list.id) },
+                                    showDelete = true,
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
+                }
+
+                // Trending section
+                if (state.trendingLists.isNotEmpty()) {
+                    item {
+                        SectionHeader(title = "Trending")
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            items(state.trendingLists) { list ->
+                                SharedListCard(
+                                    list = list,
+                                    onImport = { screenModel.importList(list) },
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
+                }
+
+                // Recently Added section
+                if (state.recentLists.isNotEmpty()) {
+                    item {
+                        SectionHeader(title = "Recently Added")
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            items(state.recentLists) { list ->
+                                SharedListCard(
+                                    list = list,
+                                    onImport = { screenModel.importList(list) },
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
+                }
+
+                // Empty state (not loading, no lists)
+                if (!state.isLoading && state.trendingLists.isEmpty() && state.recentLists.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(top = 80.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    Icons.Outlined.Explore,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(72.dp),
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    "No lists yet",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Be the first to share your reading list!",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                )
+                            }
                         }
                     }
-                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
 
-            // Trending section
-            if (state.trendingLists.isNotEmpty()) {
-                item {
-                    SectionHeader(title = "Trending")
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        items(state.trendingLists) { list ->
-                            SharedListCard(
-                                list = list,
-                                onImport = { screenModel.importList(list) },
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
-            }
-
-            // Recently Added section
-            if (state.recentLists.isNotEmpty()) {
-                item {
-                    SectionHeader(title = "Recently Added")
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        items(state.recentLists) { list ->
-                            SharedListCard(
-                                list = list,
-                                onImport = { screenModel.importList(list) },
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
-            }
-
-            // Empty state
-            if (state.trendingLists.isEmpty() && state.recentLists.isEmpty()) {
-                item {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(top = 80.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                Icons.Outlined.Explore,
-                                contentDescription = null,
-                                modifier = Modifier.size(72.dp),
-                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                "No lists yet",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                "Be the first to share your reading list!",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                            )
-                        }
-                    }
-                }
+            // Non-blocking refresh indicator at the top of content
+            if (state.isLoading && !state.isInitialLoad) {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter),
+                    color = SoraBlue,
+                )
             }
         }
     }
