@@ -15,11 +15,13 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import tachiyomi.domain.chapter.model.Chapter
+import tachiyomi.domain.download.service.DownloadPreferences
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
 class DownloadQueueScreenModel(
     private val downloadManager: DownloadManager = Injekt.get(),
+    private val downloadPreferences: DownloadPreferences = Injekt.get(),
 ) : StateScreenModel<DownloadQueueScreenModel.State>(State()) {
 
     // ── Derived queue flows ────────────────────────────────────────────────
@@ -41,6 +43,9 @@ class DownloadQueueScreenModel(
 
     val isDownloaderRunning = downloadManager.isDownloaderRunning
         .stateIn(screenModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val parallelLimit = downloadPreferences.parallelSourceLimit().changes()
+        .stateIn(screenModelScope, SharingStarted.WhileSubscribed(5_000), downloadPreferences.parallelSourceLimit().get())
 
     init {
         // Collect completed items for the "Recently Completed" section
@@ -103,6 +108,12 @@ class DownloadQueueScreenModel(
     // ── Series-level cancel ────────────────────────────────────────────────
 
     fun cancelSeries(mangaId: Long) = downloadManager.cancelAllForManga(mangaId)
+
+    // ── Parallel limit ─────────────────────────────────────────────────────
+
+    fun setParallelLimit(value: Int) {
+        downloadPreferences.parallelSourceLimit().set(value)
+    }
 
     // ── State ──────────────────────────────────────────────────────────────
 

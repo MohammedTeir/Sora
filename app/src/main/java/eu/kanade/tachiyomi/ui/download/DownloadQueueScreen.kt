@@ -89,6 +89,7 @@ object DownloadQueueScreen : Screen() {
         val queuedDownloads by screenModel.queuedDownloads.collectAsState()
         val screenState by screenModel.state.collectAsState()
         val isRunning by screenModel.isDownloaderRunning.collectAsState()
+        val parallelLimit by screenModel.parallelLimit.collectAsState()
 
         val hasContent = queuedDownloads.isNotEmpty() ||
             screenState.completedDownloads.isNotEmpty()
@@ -99,11 +100,13 @@ object DownloadQueueScreen : Screen() {
                     isRunning = isRunning,
                     hasQueue = queuedDownloads.isNotEmpty(),
                     hasCompleted = screenState.completedDownloads.isNotEmpty(),
+                    parallelLimit = parallelLimit,
                     onBack = navigator::pop,
                     onResumeAll = screenModel::resumeAll,
                     onPauseAll = screenModel::pauseAll,
                     onCancelAll = screenModel::cancelAll,
                     onClearCompleted = screenModel::clearCompleted,
+                    onSetParallelLimit = screenModel::setParallelLimit,
                 )
             },
             containerColor = MaterialTheme.colorScheme.background,
@@ -219,16 +222,20 @@ object DownloadQueueScreen : Screen() {
 
 // ── Top header with global controls ────────────────────────────────────────
 
+private val LimitOptions = listOf(1, 2, 3, 5, 10)
+
 @Composable
 private fun DownloadQueueHeader(
     isRunning: Boolean,
     hasQueue: Boolean,
     hasCompleted: Boolean,
+    parallelLimit: Int,
     onBack: () -> Unit,
     onResumeAll: () -> Unit,
     onPauseAll: () -> Unit,
     onCancelAll: () -> Unit,
     onClearCompleted: () -> Unit,
+    onSetParallelLimit: (Int) -> Unit,
 ) {
     var showOverflow by remember { mutableStateOf(false) }
 
@@ -361,6 +368,39 @@ private fun DownloadQueueHeader(
                     },
                     onClick = onCancelAll,
                 )
+            }
+
+            // Download-limit chips
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = "At a time:",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                LimitOptions.forEach { value ->
+                    val selected = value == parallelLimit
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(
+                                if (selected) SoraBlue else MaterialTheme.colorScheme.surfaceVariant,
+                            )
+                            .clickable { onSetParallelLimit(value) }
+                            .padding(horizontal = 12.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = value.toString(),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         }
     }
