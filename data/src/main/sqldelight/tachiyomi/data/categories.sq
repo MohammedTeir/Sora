@@ -67,5 +67,9 @@ updateAllFlags:
 UPDATE categories SET
 flags = coalesce(?, flags);
 
+upsertById:
+INSERT OR REPLACE INTO categories(_id, name, sort, flags, hidden)
+VALUES (:id, :name, :order, :flags, :hidden);
+
 selectLastInsertedRowId:
 SELECT last_insert_rowid();
