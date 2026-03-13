@@ -233,7 +233,7 @@ class ChapterTranslator(
                     streamFn().use { tmpFile.openOutputStream().use { out -> it.copyTo(out) } }
                     val image = InputImage.fromFilePath(context, tmpFile.uri)
                     val result = textRecognizer.recognize(image)
-                    val blocks = result.textBlocks.filter { it.boundingBox != null && it.text.length > 1 }
+                    val blocks = result.textBlocks.filter { it.boundingBox != null && it.text.isNotBlank() }
                     val pageTranslation = convertToPageTranslation(blocks, image.width, image.height)
                     if (pageTranslation.blocks.isNotEmpty()) pages[fileName] = pageTranslation
                 }
