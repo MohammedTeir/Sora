@@ -284,7 +284,99 @@ class SyncService(
 
     private suspend fun writeLocalData(data: SyncData) {
         handler.await(inTransaction = true) {
-            // Update manga fields (read status, flags, notes)
+            // Upsert manga library entries (must be done before chapters/tracks due to FK constraints)
+            data.manga.forEach { manga ->
+                runCatching {
+                    val existing = mangasQueries.getMangaById(manga.id).executeAsOneOrNull()
+                    if (existing != null) {
+                        mangasQueries.update(
+                            source = manga.source,
+                            url = manga.url,
+                            artist = manga.artist,
+                            author = manga.author,
+                            description = manga.description,
+                            genre = manga.genre,
+                            title = manga.title,
+                            status = manga.status,
+                            thumbnailUrl = manga.thumbnailUrl,
+                            favorite = manga.favorite,
+                            lastUpdate = manga.lastUpdate,
+                            nextUpdate = null,
+                            initialized = null,
+                            viewer = manga.viewerFlags,
+                            chapterFlags = manga.chapterFlags,
+                            coverLastModified = null,
+                            dateAdded = manga.dateAdded,
+                            updateStrategy = manga.updateStrategy,
+                            calculateInterval = null,
+                            version = manga.version,
+                            isSyncing = 1L,
+                            notes = manga.notes,
+                            mangaId = manga.id,
+                        )
+                    } else {
+                        mangasQueries.insert(
+                            source = manga.source,
+                            url = manga.url,
+                            artist = manga.artist,
+                            author = manga.author,
+                            description = manga.description,
+                            genre = manga.genre,
+                            title = manga.title,
+                            status = manga.status,
+                            thumbnailUrl = manga.thumbnailUrl,
+                            favorite = manga.favorite,
+                            lastUpdate = manga.lastUpdate,
+                            nextUpdate = 0L,
+                            initialized = false,
+                            viewerFlags = manga.viewerFlags,
+                            chapterFlags = manga.chapterFlags,
+                            coverLastModified = 0L,
+                            dateAdded = manga.dateAdded,
+                            updateStrategy = manga.updateStrategy,
+                            calculateInterval = 0,
+                            version = manga.version,
+                            notes = manga.notes,
+                        )
+                    }
+                }
+            }
+
+            // Upsert categories (preserves remote ID so category-manga associations stay valid)
+            data.categories.forEach { category ->
+                runCatching {
+                    categoriesQueries.upsertById(
+                        id = category.id,
+                        name = category.name,
+                        order = category.order,
+                        flags = category.flags,
+                        hidden = category.hidden,
+                    )
+                }
+            }
+
+            // Upsert tracks — manga_sync has UNIQUE (manga_id, sync_id) ON CONFLICT REPLACE
+            data.tracks.forEach { track ->
+                runCatching {
+                    manga_syncQueries.insert(
+                        mangaId = track.mangaId,
+                        syncId = track.trackerId,
+                        remoteId = track.remoteId,
+                        libraryId = null,
+                        title = track.title,
+                        lastChapterRead = track.lastChapterRead,
+                        totalChapters = track.totalChapters,
+                        status = track.status,
+                        score = track.score,
+                        remoteUrl = track.remoteUrl,
+                        startDate = track.startDate,
+                        finishDate = track.finishDate,
+                        private = track.private,
+                    )
+                }
+            }
+
+            // Update chapter read progress synced from cloud
             data.chapters.forEach { chapter ->
                 runCatching {
                     chaptersQueries.update(
