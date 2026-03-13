@@ -11,6 +11,8 @@ import kotlinx.coroutines.tasks.await
 import logcat.LogPriority
 import logcat.logcat
 import tachiyomi.data.DatabaseHandler
+import tachiyomi.data.StringListColumnAdapter
+import tachiyomi.data.UpdateStrategyColumnAdapter
 import tachiyomi.data.history.HistoryMapper
 import tachiyomi.data.manga.MangaMapper
 import tachiyomi.data.track.TrackMapper
@@ -295,7 +297,7 @@ class SyncService(
                             artist = manga.artist,
                             author = manga.author,
                             description = manga.description,
-                            genre = manga.genre,
+                            genre = manga.genre?.let(StringListColumnAdapter::encode),
                             title = manga.title,
                             status = manga.status,
                             thumbnailUrl = manga.thumbnailUrl,
@@ -307,7 +309,7 @@ class SyncService(
                             chapterFlags = manga.chapterFlags,
                             coverLastModified = null,
                             dateAdded = manga.dateAdded,
-                            updateStrategy = manga.updateStrategy,
+                            updateStrategy = manga.updateStrategy.let(UpdateStrategyColumnAdapter::encode),
                             calculateInterval = null,
                             version = manga.version,
                             isSyncing = 1L,
@@ -321,7 +323,7 @@ class SyncService(
                             artist = manga.artist,
                             author = manga.author,
                             description = manga.description,
-                            genre = manga.genre,
+                            genre = manga.genre?.let(StringListColumnAdapter::encode),
                             title = manga.title,
                             status = manga.status,
                             thumbnailUrl = manga.thumbnailUrl,
@@ -333,7 +335,7 @@ class SyncService(
                             chapterFlags = manga.chapterFlags,
                             coverLastModified = 0L,
                             dateAdded = manga.dateAdded,
-                            updateStrategy = manga.updateStrategy,
+                            updateStrategy = manga.updateStrategy.let(UpdateStrategyColumnAdapter::encode),
                             calculateInterval = 0,
                             version = manga.version,
                             notes = manga.notes,
