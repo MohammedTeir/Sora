@@ -70,8 +70,13 @@ class SourcePreferences(
     fun migrationDeepSearchMode() = preferenceStore.getBoolean("migration_deep_search", false)
 
     fun migrationPrioritizeByChapters() = preferenceStore.getBoolean("migration_prioritize_by_chapters", false)
-
+    
     fun migrationHideUnmatched() = preferenceStore.getBoolean("migration_hide_unmatched", false)
 
     fun migrationHideWithoutUpdates() = preferenceStore.getBoolean("migration_hide_without_updates", false)
+
+    fun recentSearches() = preferenceStore.getStringSet(
+        Preference.appStateKey("recent_searches"),
+        emptySet(),
+    )
 }

@@ -18,7 +18,9 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -26,10 +28,17 @@ import kotlinx.coroutines.withContext
 import mihon.domain.manga.model.toDomainManga
 import tachiyomi.core.common.preference.toggle
 import tachiyomi.core.common.util.lang.launchIO
+import tachiyomi.domain.manga.interactor.GetLibraryManga
 import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.manga.interactor.NetworkToLocalManga
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.source.service.SourceManager
+import eu.kanade.tachiyomi.data.discover.SharedListService
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.PersistentList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toPersistentList
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.util.concurrent.Executors
@@ -42,6 +51,8 @@ abstract class SearchScreenModel(
     private val networkToLocalManga: NetworkToLocalManga = Injekt.get(),
     private val getManga: GetManga = Injekt.get(),
     private val preferences: SourcePreferences = Injekt.get(),
+    private val getLibraryManga: GetLibraryManga = Injekt.get(),
+    private val sharedListService: SharedListService = Injekt.get(),
 ) : StateScreenModel<SearchScreenModel.State>(initialState) {
 
     private val coroutineDispatcher = Executors.newFixedThreadPool(5).asCoroutineDispatcher()
@@ -69,6 +80,39 @@ abstract class SearchScreenModel(
             preferences.globalSearchFilterState().changes().collectLatest { state ->
                 mutableState.update { it.copy(onlyShowHasResults = state) }
             }
+        }
+
+        screenModelScope.launch {
+            preferences.recentSearches().changes()
+                .distinctUntilChanged()
+                .collectLatest { searches ->
+                    mutableState.update { it.copy(recentSearches = searches.toPersistentList()) }
+                }
+        }
+
+        screenModelScope.launch {
+            getLibraryManga.subscribe().collectLatest { libraryManga ->
+                mutableState.update { state ->
+                    state.copy(
+                        suggestedManga = libraryManga
+                            .sortedByDescending { it.lastRead }
+                            .take(10)
+                            .map { it.manga }
+                            .toImmutableList(),
+                    )
+                }
+            }
+        }
+
+        screenModelScope.launch {
+            val trending = sharedListService.getTrendingLists().take(10).mapIndexed { index, sharedList ->
+                TrendingItem(
+                    rank = index + 1,
+                    title = sharedList.title,
+                    subtitle = "${sharedList.getMangaItems().size} manga · ${sharedList.importCount} imports",
+                )
+            }
+            mutableState.update { it.copy(trendingSearches = trending.toImmutableList()) }
         }
     }
 
@@ -120,6 +164,22 @@ abstract class SearchScreenModel(
 
     fun toggleFilterResults() {
         preferences.globalSearchFilterState().toggle()
+    }
+
+    fun addRecentSearch(query: String) {
+        if (query.isBlank()) return
+        val current = preferences.recentSearches().get()
+        val updated = (setOf(query) + current).take(10).toSet()
+        preferences.recentSearches().set(updated)
+    }
+
+    fun removeRecentSearch(query: String) {
+        val current = preferences.recentSearches().get()
+        preferences.recentSearches().set(current - query)
+    }
+
+    fun clearRecentSearches() {
+        preferences.recentSearches().delete()
     }
 
     fun search() {
@@ -221,11 +281,16 @@ abstract class SearchScreenModel(
         val onlyShowHasResults: Boolean = false,
         val items: PersistentMap<CatalogueSource, SearchItemResult> = persistentMapOf(),
         val dialog: Dialog? = null,
+        val recentSearches: PersistentList<String> = persistentListOf(),
+        val suggestedManga: ImmutableList<Manga> = persistentListOf(),
+        val trendingSearches: ImmutableList<TrendingItem> = persistentListOf(),
     ) {
         val progress: Int = items.count { it.value !is SearchItemResult.Loading }
         val total: Int = items.size
         val filteredItems = items.filter { (_, result) -> result.isVisible(onlyShowHasResults) }
     }
+
+    data class TrendingItem(val rank: Int, val title: String, val subtitle: String)
 
     sealed interface Dialog {
         data class Migrate(val target: Manga, val current: Manga) : Dialog

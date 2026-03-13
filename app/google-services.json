@@ -9,6 +9,43 @@
       "client_info": {
         "mobilesdk_app_id": "1:759876400139:android:75d4a76e307b24ee70830e",
         "android_client_info": {
+          "package_name": "app.sora.dev"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "759876400139-s81g710vrr15vc9a2vj5tsniuuq610ks.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.sora.dev",
+            "certificate_hash": "3227c70906d449fb9a655ee4ebb018e1712f1b96"
+          }
+        },
+        {
+          "client_id": "759876400139-a5ceggh0jpp3jl9epv5kt4jsjgsfa0fk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCI3LJZtF9Yzpx-Aqoc-qS5jHfvaSwa25Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "759876400139-a5ceggh0jpp3jl9epv5kt4jsjgsfa0fk.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:759876400139:android:75d4a76e307b24ee70830e",
+        "android_client_info": {
           "package_name": "app.sora"
         }
       },

@@ -65,7 +65,11 @@ class GlobalSearchScreen(
                 state = state,
                 navigateUp = navigator::pop,
                 onChangeSearchQuery = screenModel::updateSearchQuery,
-                onSearch = { screenModel.search() },
+                onSearch = { query ->
+                    screenModel.updateSearchQuery(query)
+                    screenModel.addRecentSearch(query)
+                    screenModel.search()
+                },
                 getManga = { screenModel.getManga(it) },
                 onChangeSearchFilter = screenModel::setSourceFilter,
                 onToggleResults = screenModel::toggleFilterResults,
@@ -74,6 +78,16 @@ class GlobalSearchScreen(
                 },
                 onClickItem = { navigator.push(MangaScreen(it.id, true)) },
                 onLongClickItem = { navigator.push(MangaScreen(it.id, true)) },
+                onClickRecent = { query ->
+                    screenModel.updateSearchQuery(query)
+                    screenModel.search()
+                },
+                onRemoveRecent = screenModel::removeRecentSearch,
+                onClearRecent = screenModel::clearRecentSearches,
+                onClickTrending = { item ->
+                    screenModel.updateSearchQuery(item.title)
+                    screenModel.search()
+                },
             )
         }
     }
