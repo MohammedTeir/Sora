@@ -37,7 +37,7 @@ data object UpdatesTab : Tab {
         @Composable
         get() {
             return TabOptions(
-                index = 4u,
+                index = 3u,
                 title = stringResource(MR.strings.label_recent_updates),
                 icon = rememberVectorPainter(Icons.Outlined.Refresh),
             )
