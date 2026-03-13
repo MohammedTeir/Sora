@@ -67,6 +67,13 @@ class SyncService(
             return SyncResult.Success
         }
 
+        // Refresh the Firebase Auth token before touching Firestore.
+        // Without this, a stale token causes PERMISSION_DENIED even when the user is logged in.
+        val tokenRefreshed = authService.refreshToken()
+        if (!tokenRefreshed) {
+            logcat(LogPriority.WARN) { "SyncService: token refresh failed, proceeding with existing token" }
+        }
+
         return try {
             syncPrefs.isSyncing().set(true)
             logcat(LogPriority.INFO) { "SyncService: starting sync for user $userId" }
@@ -97,7 +104,7 @@ class SyncService(
             logcat(LogPriority.ERROR) { "SyncService: sync failed: ${e.message}" }
             val friendlyMessage = when {
                 e.message?.contains("PERMISSION_DENIED") == true ->
-                    "Sync failed: Firestore permissions not configured. Please contact support or check your Firebase Security Rules."
+                    "Sync failed: Access denied. Please sign out and sign back in, then try again."
                 else -> e.message ?: "Unknown sync error"
             }
             SyncResult.Error(friendlyMessage, e)

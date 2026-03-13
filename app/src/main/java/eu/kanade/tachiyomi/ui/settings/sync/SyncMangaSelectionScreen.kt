@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -69,6 +70,10 @@ class SyncMangaSelectionScreen : Screen() {
                         screenModel.saveSelection()
                         navigator.pop()
                     },
+                    onSave = {
+                        screenModel.saveSelection()
+                        navigator.pop()
+                    },
                     onSelectAll = screenModel::selectAll,
                     onClearAll = screenModel::clearAll,
                 )
@@ -115,6 +120,7 @@ private fun SelectionHeader(
     selectedCount: Int,
     totalCount: Int,
     onBack: () -> Unit,
+    onSave: () -> Unit,
     onSelectAll: () -> Unit,
     onClearAll: () -> Unit,
 ) {
@@ -165,12 +171,16 @@ private fun SelectionHeader(
                 }
             }
 
-            Row {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = onSelectAll) {
                     Text("All", fontSize = 13.sp)
                 }
                 TextButton(onClick = onClearAll) {
                     Text("Clear", fontSize = 13.sp)
+                }
+                Spacer(modifier = Modifier.width(4.dp))
+                Button(onClick = onSave) {
+                    Text("Save", fontSize = 13.sp)
                 }
             }
         }
