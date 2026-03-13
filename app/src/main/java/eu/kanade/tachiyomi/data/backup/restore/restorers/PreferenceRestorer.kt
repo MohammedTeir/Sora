@@ -32,9 +32,12 @@ class PreferenceRestorer(
     suspend fun restoreApp(
         preferences: List<BackupPreference>,
         backupCategories: List<BackupCategory>?,
+        includePrivatePreferences: Boolean = false,
     ) {
+        val filtered = if (includePrivatePreferences) preferences
+        else preferences.filter { !it.key.startsWith("__PRIVATE_") }
         restorePreferences(
-            preferences,
+            filtered,
             preferenceStore,
             backupCategories,
         )
@@ -43,10 +46,15 @@ class PreferenceRestorer(
         BackupCreateJob.setupTask(context)
     }
 
-    suspend fun restoreSource(preferences: List<BackupSourcePreferences>) {
+    suspend fun restoreSource(
+        preferences: List<BackupSourcePreferences>,
+        includePrivatePreferences: Boolean = false,
+    ) {
         preferences.forEach {
             val sourcePrefs = AndroidPreferenceStore(context, sourcePreferences(it.sourceKey))
-            restorePreferences(it.prefs, sourcePrefs)
+            val filtered = if (includePrivatePreferences) it.prefs
+            else it.prefs.filter { pref -> !pref.key.startsWith("__PRIVATE_") }
+            restorePreferences(filtered, sourcePrefs)
         }
     }
 

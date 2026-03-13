@@ -91,10 +91,10 @@ class BackupRestorer(
                 restoreCategories(backup.backupCategories)
             }
             if (options.appSettings) {
-                restoreAppPreferences(backup.backupPreferences, backup.backupCategories.takeIf { options.categories })
+                restoreAppPreferences(backup.backupPreferences, backup.backupCategories.takeIf { options.categories }, options.privateSettings)
             }
             if (options.sourceSettings) {
-                restoreSourcePreferences(backup.backupSourcePreferences)
+                restoreSourcePreferences(backup.backupSourcePreferences, options.privateSettings)
             }
             if (options.libraryEntries) {
                 restoreManga(backup.backupManga, if (options.categories) backup.backupCategories else emptyList())
@@ -143,11 +143,13 @@ class BackupRestorer(
     private fun CoroutineScope.restoreAppPreferences(
         preferences: List<BackupPreference>,
         categories: List<BackupCategory>?,
+        includePrivate: Boolean = false,
     ) = launch {
         ensureActive()
         preferenceRestorer.restoreApp(
             preferences,
             categories,
+            includePrivate,
         )
 
         restoreProgress += 1
@@ -159,9 +161,12 @@ class BackupRestorer(
         )
     }
 
-    private fun CoroutineScope.restoreSourcePreferences(preferences: List<BackupSourcePreferences>) = launch {
+    private fun CoroutineScope.restoreSourcePreferences(
+        preferences: List<BackupSourcePreferences>,
+        includePrivate: Boolean = false,
+    ) = launch {
         ensureActive()
-        preferenceRestorer.restoreSource(preferences)
+        preferenceRestorer.restoreSource(preferences, includePrivate)
 
         restoreProgress += 1
         notifier.showRestoreProgress(

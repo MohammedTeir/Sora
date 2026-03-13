@@ -10,6 +10,7 @@ data class RestoreOptions(
     val appSettings: Boolean = true,
     val extensionRepoSettings: Boolean = true,
     val sourceSettings: Boolean = true,
+    val privateSettings: Boolean = false,
 ) {
 
     fun asBooleanArray() = booleanArrayOf(
@@ -18,6 +19,7 @@ data class RestoreOptions(
         appSettings,
         extensionRepoSettings,
         sourceSettings,
+        privateSettings,
     )
 
     fun canRestore() = libraryEntries || categories || appSettings || extensionRepoSettings || sourceSettings
@@ -49,6 +51,12 @@ data class RestoreOptions(
                 getter = RestoreOptions::sourceSettings,
                 setter = { options, enabled -> options.copy(sourceSettings = enabled) },
             ),
+            Entry(
+                label = MR.strings.private_settings,
+                getter = RestoreOptions::privateSettings,
+                setter = { options, enabled -> options.copy(privateSettings = enabled) },
+                enabled = { it.appSettings || it.sourceSettings },
+            ),
         )
 
         fun fromBooleanArray(array: BooleanArray) = RestoreOptions(
@@ -57,6 +65,7 @@ data class RestoreOptions(
             appSettings = array[2],
             extensionRepoSettings = array[3],
             sourceSettings = array[4],
+            privateSettings = if (array.size > 5) array[5] else false,
         )
     }
 
@@ -64,5 +73,6 @@ data class RestoreOptions(
         val label: StringResource,
         val getter: (RestoreOptions) -> Boolean,
         val setter: (RestoreOptions, Boolean) -> RestoreOptions,
+        val enabled: (RestoreOptions) -> Boolean = { true },
     )
 }

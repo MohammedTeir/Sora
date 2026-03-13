@@ -32,9 +32,11 @@ class DiscoverScreenModel(
         val recentLists: List<SharedList> = emptyList(),
         val myLists: List<SharedList> = emptyList(),
         val isLoading: Boolean = false,
+        val isInitialLoad: Boolean = true,
         val importMessage: String? = null,
         val errorMessage: String? = null,
         val isLoggedIn: Boolean = false,
+        val missingMangaTitles: List<String> = emptyList(),
     )
 
     init {
@@ -54,6 +56,7 @@ class DiscoverScreenModel(
                     recentLists = recentDeferred.await(),
                     myLists = myListsDeferred.await(),
                     isLoading = false,
+                    isInitialLoad = false,
                     isLoggedIn = loggedIn,
                 )
             }
@@ -78,6 +81,7 @@ class DiscoverScreenModel(
                 // 3. Match manga in shared list against the user's library by title
                 val libraryManga = getLibraryManga.await()
                 val mangaItems = sharedList.getMangaItems()
+                val missingTitles = mutableListOf<String>()
                 var importedCount = 0
                 for (item in mangaItems) {
                     val match = libraryManga.find { it.manga.title.equals(item.title, ignoreCase = true) }
@@ -87,6 +91,8 @@ class DiscoverScreenModel(
                         val updatedCategories = (existingCategories + newCategory.id).distinct()
                         setMangaCategories.await(match.manga.id, updatedCategories)
                         importedCount++
+                    } else {
+                        missingTitles.add(item.title)
                     }
                 }
 
@@ -98,9 +104,15 @@ class DiscoverScreenModel(
                 val message = if (importedCount > 0) {
                     "Imported $importedCount of ${mangaItems.size} manga to '${sharedList.title}'"
                 } else {
-                    "None of the ${mangaItems.size} manga were found in your library. Add them first via Browse."
+                    "No manga from this list were found in your library."
                 }
-                mutableState.update { it.copy(isLoading = false, importMessage = message) }
+                mutableState.update {
+                    it.copy(
+                        isLoading = false,
+                        importMessage = message,
+                        missingMangaTitles = missingTitles,
+                    )
+                }
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR) { "DiscoverScreenModel: importList failed: ${e.message}" }
                 mutableState.update { it.copy(isLoading = false, errorMessage = "Import failed: ${e.localizedMessage}") }
@@ -139,5 +151,9 @@ class DiscoverScreenModel(
 
     fun clearMessages() {
         mutableState.update { it.copy(importMessage = null, errorMessage = null) }
+    }
+
+    fun clearMissingManga() {
+        mutableState.update { it.copy(missingMangaTitles = emptyList()) }
     }
 }
