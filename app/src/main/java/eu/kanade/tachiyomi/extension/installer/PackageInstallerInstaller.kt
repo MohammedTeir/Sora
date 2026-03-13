@@ -71,9 +71,11 @@ class PackageInstallerInstaller(private val service: Service) : Installer(servic
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 installParams.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
             }
+            val fileSize = service.getUriSize(entry.uri) ?: -1L
+            if (fileSize >= 0) {
+                installParams.setSize(fileSize)
+            }
             activeSession = entry to packageInstaller.createSession(installParams)
-            val fileSize = service.getUriSize(entry.uri) ?: throw IllegalStateException()
-            installParams.setSize(fileSize)
 
             val inputStream = service.contentResolver.openInputStream(entry.uri) ?: throw IllegalStateException()
             val session = packageInstaller.openSession(activeSession!!.second)
