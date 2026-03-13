@@ -126,8 +126,8 @@ class AuthScreenModel(
                         mutableState.update { it.copy(isLoading = false, errorMessage = friendlyAuthError(e)) }
                     }
             } catch (e: androidx.credentials.exceptions.GetCredentialCancellationException) {
-                // User dismissed the Google account picker — not an error, just reset loading state.
-                mutableState.update { it.copy(isLoading = false) }
+                logcat(LogPriority.WARN) { "AuthScreenModel: Google sign-in cancelled: ${e.message}" }
+                mutableState.update { it.copy(isLoading = false, errorMessage = "Google sign-in was cancelled. Please try again.") }
             } catch (e: androidx.credentials.exceptions.NoCredentialException) {
                 mutableState.update { it.copy(isLoading = false, errorMessage = "No Google account found on this device.") }
             } catch (e: Exception) {
@@ -163,7 +163,7 @@ class AuthScreenModel(
         authPrefs.isLoggedIn().set(true)
         authPrefs.userId().set(userId)
         authPrefs.userEmail().set(email)
-        authPrefs.userDisplayName().set(authService.getUserDisplayName() ?: email)
+        authPrefs.userDisplayName().set(authService.getUserDisplayName() ?: "")
     }
 
     private fun triggerPostLoginSync(context: android.content.Context) {
