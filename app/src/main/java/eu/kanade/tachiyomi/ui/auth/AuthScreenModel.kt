@@ -107,15 +107,10 @@ class AuthScreenModel(
             mutableState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
                 val credentialManager = androidx.credentials.CredentialManager.create(context)
-                val googleIdOption = com.google.android.libraries.identity.googleid.GetGoogleIdOption.Builder()
-                    .setFilterByAuthorizedAccounts(false)
-                    .setServerClientId(context.getString(eu.kanade.tachiyomi.R.string.default_web_client_id))
-                    .build()
                 val signInWithGoogleOption = com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption.Builder(
                     context.getString(eu.kanade.tachiyomi.R.string.default_web_client_id),
                 ).build()
                 val request = androidx.credentials.GetCredentialRequest.Builder()
-                    .addCredentialOption(googleIdOption)
                     .addCredentialOption(signInWithGoogleOption)
                     .build()
                 val result = credentialManager.getCredential(context, request)

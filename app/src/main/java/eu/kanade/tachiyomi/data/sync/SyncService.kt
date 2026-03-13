@@ -95,7 +95,12 @@ class SyncService(
             SyncResult.Success
         } catch (e: Exception) {
             logcat(LogPriority.ERROR) { "SyncService: sync failed: ${e.message}" }
-            SyncResult.Error(e.message ?: "Unknown sync error", e)
+            val friendlyMessage = when {
+                e.message?.contains("PERMISSION_DENIED") == true ->
+                    "Sync failed: Firestore permissions not configured. Please contact support or check your Firebase Security Rules."
+                else -> e.message ?: "Unknown sync error"
+            }
+            SyncResult.Error(friendlyMessage, e)
         } finally {
             syncPrefs.isSyncing().set(false)
         }
@@ -104,15 +109,51 @@ class SyncService(
     // ─── Read Local Data ────────────────────────────────────────────────────────
 
     private suspend fun readLocalData(): SyncData {
+        val selectedIds = syncPrefs.syncSelectedMangaIds().get()
+            .mapNotNull { it.toLongOrNull() }
+            .toSet()
+
         return handler.await {
-            val manga = mangasQueries.getFavorites(MangaMapper::mapManga).executeAsList()
-            val chapters = chaptersQueries.getAllChapters(::mapChapter).executeAsList()
-            val categories = categoriesQueries.getCategories(::mapCategory).executeAsList()
-                .filter { !it.isSystemCategory }
-            val tracks = manga_syncQueries.getTracks(TrackMapper::mapTrack).executeAsList()
-            val history = historyQueries.getAllHistory(HistoryMapper::mapHistory).executeAsList()
+            val allManga = if (syncPrefs.syncLibrary().get()) {
+                mangasQueries.getFavorites(MangaMapper::mapManga).executeAsList()
+                    .let { list ->
+                        if (selectedIds.isEmpty()) list else list.filter { it.id in selectedIds }
+                    }
+            } else {
+                emptyList()
+            }
+
+            val syncedMangaIds = allManga.map { it.id }.toSet()
+
+            val chapters = if (syncPrefs.syncChapters().get()) {
+                chaptersQueries.getAllChapters(::mapChapter).executeAsList()
+                    .filter { syncedMangaIds.isEmpty() || it.mangaId in syncedMangaIds }
+            } else {
+                emptyList()
+            }
+
+            val categories = if (syncPrefs.syncCategories().get()) {
+                categoriesQueries.getCategories(::mapCategory).executeAsList()
+                    .filter { !it.isSystemCategory }
+            } else {
+                emptyList()
+            }
+
+            val tracks = if (syncPrefs.syncTracking().get()) {
+                manga_syncQueries.getTracks(TrackMapper::mapTrack).executeAsList()
+                    .filter { syncedMangaIds.isEmpty() || it.mangaId in syncedMangaIds }
+            } else {
+                emptyList()
+            }
+
+            val history = if (syncPrefs.syncHistory().get()) {
+                historyQueries.getAllHistory(HistoryMapper::mapHistory).executeAsList()
+            } else {
+                emptyList()
+            }
+
             SyncData(
-                manga = manga,
+                manga = allManga,
                 chapters = chapters,
                 categories = categories,
                 tracks = tracks,
@@ -278,39 +319,49 @@ class SyncService(
         val userRef = firestore.collection("users").document(userId)
         val batch = firestore.batch()
 
-        // Library (only favorites)
-        data.manga.forEach { manga ->
-            val docRef = userRef.collection("library").document(manga.id.toString())
-            batch.set(docRef, SyncDataSerializer.mangaToMap(manga).filterValues { it != null }, SetOptions.merge())
-        }
-
-        // Chapters (only read/bookmarked or with progress)
-        data.chapters
-            .filter { it.read || it.bookmark || it.lastPageRead > 0 }
-            .forEach { chapter ->
-                val docRef = userRef.collection("chapters").document(chapter.id.toString())
-                batch.set(docRef, SyncDataSerializer.chapterToMap(chapter).filterValues { it != null }, SetOptions.merge())
+        // Library (only favorites, respects syncLibrary toggle and manga selection)
+        if (syncPrefs.syncLibrary().get()) {
+            data.manga.forEach { manga ->
+                val docRef = userRef.collection("library").document(manga.id.toString())
+                batch.set(docRef, SyncDataSerializer.mangaToMap(manga).filterValues { it != null }, SetOptions.merge())
             }
-
-        // Categories
-        data.categories.forEach { category ->
-            val docRef = userRef.collection("categories").document(category.id.toString())
-            batch.set(docRef, SyncDataSerializer.categoryToMap(category).filterValues { it != null }, SetOptions.merge())
         }
 
-        // Tracking
-        data.tracks.forEach { track ->
-            val docRef = userRef.collection("tracking").document(track.id.toString())
-            batch.set(docRef, SyncDataSerializer.trackToMap(track).filterValues { it != null }, SetOptions.merge())
+        // Chapters (only read/bookmarked or with progress, respects syncChapters toggle)
+        if (syncPrefs.syncChapters().get()) {
+            data.chapters
+                .filter { it.read || it.bookmark || it.lastPageRead > 0 }
+                .forEach { chapter ->
+                    val docRef = userRef.collection("chapters").document(chapter.id.toString())
+                    batch.set(docRef, SyncDataSerializer.chapterToMap(chapter).filterValues { it != null }, SetOptions.merge())
+                }
         }
 
-        // History (entries with actual read dates)
-        data.history
-            .filter { it.readAt != null }
-            .forEach { history ->
-                val docRef = userRef.collection("history").document(history.chapterId.toString())
-                batch.set(docRef, SyncDataSerializer.historyToMap(history).filterValues { it != null }, SetOptions.merge())
+        // Categories (respects syncCategories toggle)
+        if (syncPrefs.syncCategories().get()) {
+            data.categories.forEach { category ->
+                val docRef = userRef.collection("categories").document(category.id.toString())
+                batch.set(docRef, SyncDataSerializer.categoryToMap(category).filterValues { it != null }, SetOptions.merge())
             }
+        }
+
+        // Tracking (respects syncTracking toggle)
+        if (syncPrefs.syncTracking().get()) {
+            data.tracks.forEach { track ->
+                val docRef = userRef.collection("tracking").document(track.id.toString())
+                batch.set(docRef, SyncDataSerializer.trackToMap(track).filterValues { it != null }, SetOptions.merge())
+            }
+        }
+
+        // History (entries with actual read dates, respects syncHistory toggle)
+        if (syncPrefs.syncHistory().get()) {
+            data.history
+                .filter { it.readAt != null }
+                .forEach { history ->
+                    val docRef = userRef.collection("history").document(history.chapterId.toString())
+                    batch.set(docRef, SyncDataSerializer.historyToMap(history).filterValues { it != null }, SetOptions.merge())
+                }
+        }
 
         batch.commit().await()
 

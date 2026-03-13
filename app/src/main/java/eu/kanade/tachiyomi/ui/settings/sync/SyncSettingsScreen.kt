@@ -44,6 +44,8 @@ import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.outlined.ChevronRight
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.domain.auth.AuthPreferences
@@ -196,6 +198,94 @@ class SyncSettingsScreen : Screen() {
                 HorizontalDivider()
                 Spacer(modifier = Modifier.height(24.dp))
 
+                // ─── What to Sync ──────────────────────────────────────────────
+                Text(
+                    text = "What to sync",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                SyncCategoryToggle(
+                    label = "Library",
+                    description = "Favourite manga and their metadata",
+                    checked = state.syncLibrary,
+                    onCheckedChange = { screenModel.toggleSyncLibrary(it) },
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                SyncCategoryToggle(
+                    label = "Chapters",
+                    description = "Read progress and bookmarks",
+                    checked = state.syncChapters,
+                    onCheckedChange = { screenModel.toggleSyncChapters(it) },
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                SyncCategoryToggle(
+                    label = "History",
+                    description = "Reading history and timestamps",
+                    checked = state.syncHistory,
+                    onCheckedChange = { screenModel.toggleSyncHistory(it) },
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                SyncCategoryToggle(
+                    label = "Tracking",
+                    description = "External tracker entries (MAL, AniList…)",
+                    checked = state.syncTracking,
+                    onCheckedChange = { screenModel.toggleSyncTracking(it) },
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                SyncCategoryToggle(
+                    label = "Categories",
+                    description = "User-defined library categories",
+                    checked = state.syncCategories,
+                    onCheckedChange = { screenModel.toggleSyncCategories(it) },
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // ─── Select Manga to Sync ──────────────────────────────────────
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = state.syncLibrary) { navigator.push(SyncMangaSelectionScreen()) }
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Select manga to sync",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = if (state.syncLibrary) {
+                                MaterialTheme.colorScheme.onSurface
+                            } else {
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            },
+                        )
+                        Text(
+                            text = if (state.selectedMangaCount == 0) {
+                                "All manga"
+                            } else {
+                                "${state.selectedMangaCount} manga selected"
+                            },
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Outlined.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(24.dp))
+
                 // ─── Sync Now Button ───────────────────────────────────────────
                 Button(
                     onClick = { screenModel.syncNow() },
@@ -240,6 +330,37 @@ class SyncSettingsScreen : Screen() {
     }
 }
 
+// ─── SyncCategoryToggle ────────────────────────────────────────────────────────
+
+@Composable
+private fun SyncCategoryToggle(
+    label: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = description,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
 // ─── ScreenModel ───────────────────────────────────────────────────────────────
 
 private class SyncSettingsScreenModel(
@@ -254,6 +375,12 @@ private class SyncSettingsScreenModel(
         isSyncing = false,
         syncOnStartup = true,
         autoSync = true,
+        syncLibrary = true,
+        syncChapters = true,
+        syncHistory = true,
+        syncTracking = true,
+        syncCategories = true,
+        selectedMangaCount = 0,
     ),
 ) {
 
@@ -267,6 +394,12 @@ private class SyncSettingsScreenModel(
                 lastSyncDisplay = formatLastSync(authPrefs.lastSyncTime().get()),
                 syncOnStartup = syncPrefs.syncOnStartup().get(),
                 autoSync = authPrefs.autoSync().get(),
+                syncLibrary = syncPrefs.syncLibrary().get(),
+                syncChapters = syncPrefs.syncChapters().get(),
+                syncHistory = syncPrefs.syncHistory().get(),
+                syncTracking = syncPrefs.syncTracking().get(),
+                syncCategories = syncPrefs.syncCategories().get(),
+                selectedMangaCount = syncPrefs.syncSelectedMangaIds().get().size,
             )
         }
     }
@@ -277,6 +410,12 @@ private class SyncSettingsScreenModel(
         val isSyncing: Boolean,
         val syncOnStartup: Boolean,
         val autoSync: Boolean,
+        val syncLibrary: Boolean,
+        val syncChapters: Boolean,
+        val syncHistory: Boolean,
+        val syncTracking: Boolean,
+        val syncCategories: Boolean,
+        val selectedMangaCount: Int,
     )
 
     sealed interface Event {
@@ -314,6 +453,31 @@ private class SyncSettingsScreenModel(
     fun toggleAutoSync(enabled: Boolean) {
         authPrefs.autoSync().set(enabled)
         mutableState.update { it.copy(autoSync = enabled) }
+    }
+
+    fun toggleSyncLibrary(enabled: Boolean) {
+        syncPrefs.syncLibrary().set(enabled)
+        mutableState.update { it.copy(syncLibrary = enabled) }
+    }
+
+    fun toggleSyncChapters(enabled: Boolean) {
+        syncPrefs.syncChapters().set(enabled)
+        mutableState.update { it.copy(syncChapters = enabled) }
+    }
+
+    fun toggleSyncHistory(enabled: Boolean) {
+        syncPrefs.syncHistory().set(enabled)
+        mutableState.update { it.copy(syncHistory = enabled) }
+    }
+
+    fun toggleSyncTracking(enabled: Boolean) {
+        syncPrefs.syncTracking().set(enabled)
+        mutableState.update { it.copy(syncTracking = enabled) }
+    }
+
+    fun toggleSyncCategories(enabled: Boolean) {
+        syncPrefs.syncCategories().set(enabled)
+        mutableState.update { it.copy(syncCategories = enabled) }
     }
 
     fun signOut() {
