@@ -22,7 +22,7 @@ enum class TextTranslators(val label: String) {
 
     fun build(pref : TranslationPreferences= Injekt.get(), fromLang: TextRecognizerLanguage = TextRecognizerLanguage.fromPref(pref.translateFromLanguage()), toLang: TextTranslatorLanguage = TextTranslatorLanguage.fromPref(pref.translateToLanguage())): TextTranslator{
         val maxOutputTokens=pref.translationEngineMaxOutputTokens().get().toIntOrNull()?:8914
-        val temperature=pref.translationEngineTemperature().get().toFloatOrNull()?:1.0f
+        val temperature=pref.translationEngineTemperature().get().toFloatOrNull()?:0.3f
         val modelName=pref.translationEngineModel().get()
         val apiKey=pref.translationEngineApiKey().get()
         return when(this){
