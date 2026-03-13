@@ -1,5 +1,5 @@
 package eu.kanade.translation.presentation
-
+ 
 import android.content.Context
 import android.util.AttributeSet
 import androidx.compose.foundation.background
@@ -27,14 +27,15 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.isVisible
 import eu.kanade.translation.data.TranslationFont
 import eu.kanade.translation.model.PageTranslation
-
+ 
 class WebtoonTranslationsView :
     AbstractComposeView {
-
+ 
     private val translation: PageTranslation
     private val font: TranslationFont
     private val fontFamily: FontFamily
-
+    var isRtl: Boolean = false
+ 
     constructor(
         context: Context,
         attrs: AttributeSet? = null,
@@ -47,22 +48,28 @@ class WebtoonTranslationsView :
             weight = FontWeight.Bold,
         ).toFontFamily()
     }
-
+ 
     constructor(
         context: Context,
         attrs: AttributeSet? = null,
         defStyleAttr: Int = 0,
         translation: PageTranslation,
         font: TranslationFont? = null,
+        isRtl: Boolean = false,
     ) : super(context, attrs, defStyleAttr) {
         this.translation = translation
         this.font = font ?: TranslationFont.ANIME_ACE
-        this.fontFamily = Font(
-            resId = this.font.res,
-            weight = FontWeight.Bold,
-        ).toFontFamily()
+        this.isRtl = isRtl
+        this.fontFamily = if (this.font.res == 0) {
+            FontFamily.Default
+        } else {
+            Font(
+                resId = this.font.res,
+                weight = FontWeight.Bold,
+            ).toFontFamily()
+        }
     }
-
+ 
     @Composable
     override fun Content() {
         var size by remember { mutableStateOf(IntSize.Zero) }
@@ -84,27 +91,27 @@ class WebtoonTranslationsView :
             TextBlockContent(scaleFactor)
         }
     }
-
+ 
     @Composable
     fun TextBlockBackground(scaleFactor: Float) {
         translation.blocks.forEach { block ->
-            val padX = block.symWidth / 2
-            val padY = block.symHeight / 2
+            val (padX, padY) = block.backgroundPadding()
             val bgX = (block.x - padX / 2) * scaleFactor
             val bgY = (block.y - padY / 2) * scaleFactor
-            val bgWidth = (block.width + padX) * scaleFactor
-            val bgHeight = (block.height + padY) * scaleFactor
+            val bgWidth = maxOf((block.width + padX) * scaleFactor, block.width * scaleFactor * 1.1f)
+            val bgHeight = maxOf((block.height + padY) * scaleFactor, block.height * scaleFactor * 1.1f)
             val isVertical = block.angle > 85
+            val cornerRadius = (minOf(bgWidth, bgHeight) * 0.08f).pxToDp().coerceIn(4.dp, 16.dp)
             Box(
                 modifier = Modifier
                     .offset(bgX.pxToDp(), bgY.pxToDp())
                     .size(bgWidth.pxToDp(), bgHeight.pxToDp())
                     .rotate(if (isVertical) 0f else block.angle)
-                    .background(Color.White, shape = RoundedCornerShape(4.dp)),
+                    .background(Color.White, shape = RoundedCornerShape(cornerRadius)),
             )
         }
     }
-
+ 
     @Composable
     fun TextBlockContent(scaleFactor: Float) {
         translation.blocks.forEach { block ->
@@ -112,14 +119,15 @@ class WebtoonTranslationsView :
                 block = block,
                 scaleFactor = scaleFactor,
                 fontFamily = fontFamily,
+                isRtl = isRtl,
             )
         }
     }
-
+ 
     fun show() {
         isVisible = true
     }
-
+ 
     fun hide() {
         isVisible = false
     }
