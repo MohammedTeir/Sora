@@ -125,6 +125,9 @@ class AuthScreenModel(
                     .onFailure { e ->
                         mutableState.update { it.copy(isLoading = false, errorMessage = friendlyAuthError(e)) }
                     }
+            } catch (e: androidx.credentials.exceptions.GetCredentialCancellationException) {
+                // User dismissed the Google account picker — not an error, just reset loading state.
+                mutableState.update { it.copy(isLoading = false) }
             } catch (e: androidx.credentials.exceptions.NoCredentialException) {
                 mutableState.update { it.copy(isLoading = false, errorMessage = "No Google account found on this device.") }
             } catch (e: Exception) {
@@ -138,7 +141,7 @@ class AuthScreenModel(
         val msg = e.message ?: return "Authentication failed"
         return when {
             "CONFIGURATION_NOT_FOUND" in msg -> "Sign-in is not configured on the server. Please contact support."
-            "SIGN_IN_CANCELLED" in msg || "GetCredentialCancellationException" in e.javaClass.name -> "Google sign-in was cancelled."
+            "SIGN_IN_CANCELLED" in msg || "activity is cancelled" in msg.lowercase() || "GetCredentialCancellationException" in e.javaClass.name -> "Google sign-in was cancelled."
             "EMAIL_NOT_FOUND" in msg || "INVALID_EMAIL" in msg -> "Invalid email address."
             "WEAK_PASSWORD" in msg -> "Password is too weak. Use at least 6 characters."
             "EMAIL_EXISTS" in msg || "email address is already in use" in msg -> "An account with this email already exists."

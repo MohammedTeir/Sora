@@ -58,6 +58,20 @@ class FirebaseAuthService {
         }
     }
 
+    /**
+     * Force-refreshes the Firebase ID token so Firestore calls use a valid credential.
+     * Returns true if the token was refreshed successfully, false otherwise.
+     */
+    suspend fun refreshToken(): Boolean {
+        return try {
+            auth.currentUser?.getIdToken(true)?.await()
+            true
+        } catch (e: Exception) {
+            logcat(LogPriority.WARN) { "FirebaseAuthService: token refresh failed: ${e.message}" }
+            false
+        }
+    }
+
     fun signOut() {
         logcat(LogPriority.INFO) { "FirebaseAuthService: signing out" }
         auth.signOut()
