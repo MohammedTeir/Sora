@@ -40,7 +40,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -77,6 +76,7 @@ fun GlobalSearchScreen(
     onClearRecent: () -> Unit,
     onClickTrending: (SearchScreenModel.TrendingItem) -> Unit,
 ) {
+    val backgroundColor = androidx.compose.material3.MaterialTheme.colorScheme.background
     Scaffold(
         topBar = { scrollBehavior ->
             CustomSearchHeader(
@@ -88,7 +88,7 @@ fun GlobalSearchScreen(
                 navigateUp = navigateUp
             )
         },
-        containerColor = Color.Black
+        containerColor = backgroundColor,
     ) { paddingValues ->
         if (state.searchQuery.isNullOrBlank()) {
             CustomSearchIdleContent(
@@ -102,7 +102,7 @@ fun GlobalSearchScreen(
                 onClickSuggested = onClickItem,
             )
         } else {
-            Box(modifier = Modifier.background(Color.Black).fillMaxSize()) {
+            Box(modifier = Modifier.background(backgroundColor).fillMaxSize()) {
                 GlobalSearchContent(
                     items = state.filteredItems,
                     contentPadding = paddingValues,
@@ -127,53 +127,51 @@ fun CustomSearchHeader(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
+    val bgColor = androidx.compose.material3.MaterialTheme.colorScheme.background
+    val onBgColor = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
+    val surfaceColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainerHigh
+    val onSurfaceVariantColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.Black)
+            .background(bgColor)
             .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
     ) {
-        // Title and Profile icon
+        // Title row (no profile icon)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "Search",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-            Icon(
-                imageVector = Icons.Outlined.Person,
-                contentDescription = "Profile",
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
+                color = onBgColor,
             )
         }
 
-Row(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
-                .background(Color(0xFF1E1E1E), RoundedCornerShape(12.dp))
+                .background(surfaceColor, RoundedCornerShape(12.dp))
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = Icons.Outlined.Search,
                 contentDescription = null,
-                tint = Color.Gray,
+                tint = onSurfaceVariantColor,
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(10.dp))
             BasicTextField(
                 value = searchQuery ?: "",
                 onValueChange = onChangeSearchQuery,
-                textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp),
+                textStyle = androidx.compose.ui.text.TextStyle(color = onBgColor, fontSize = 16.sp),
                 modifier = Modifier
                     .weight(1f)
                     .focusRequester(focusRequester)
@@ -197,10 +195,10 @@ Row(
                     }
                 ),
                 singleLine = true,
-                cursorBrush = SolidColor(Color.White),
+                cursorBrush = SolidColor(onBgColor),
                 decorationBox = { innerTextField ->
                     if (searchQuery.isNullOrBlank()) {
-                        Text("Search for manga, authors...", color = Color.Gray, fontSize = 16.sp)
+                        Text("Search for manga, authors...", color = onSurfaceVariantColor, fontSize = 16.sp)
                     }
                     innerTextField()
                 }
@@ -213,7 +211,7 @@ Row(
                     Icon(
                         imageVector = Icons.Outlined.Close,
                         contentDescription = "Clear",
-                        tint = Color.Gray
+                        tint = onSurfaceVariantColor,
                     )
                 }
             }
@@ -232,9 +230,14 @@ fun CustomSearchIdleContent(
     onClickTrending: (SearchScreenModel.TrendingItem) -> Unit,
     onClickSuggested: (Manga) -> Unit,
 ) {
+    val bgColor = androidx.compose.material3.MaterialTheme.colorScheme.background
+    val onBgColor = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
+    val surfaceColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainerHigh
+    val subtleColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+
     LazyColumn(
         contentPadding = contentPadding,
-        modifier = Modifier.fillMaxSize().background(Color.Black)
+        modifier = Modifier.fillMaxSize().background(bgColor),
     ) {
         // Recent Searches
         if (recentSearches.isNotEmpty()) {
@@ -246,8 +249,8 @@ fun CustomSearchIdleContent(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Recent Searches", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Text("Clear All", color = Color.Gray, fontSize = 14.sp, modifier = Modifier.clickable { onClearRecent() })
+                    Text("Recent Searches", color = onBgColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("Clear All", color = subtleColor, fontSize = 14.sp, modifier = Modifier.clickable { onClearRecent() })
                 }
 
                 LazyRow(
@@ -257,11 +260,11 @@ fun CustomSearchIdleContent(
                     items(recentSearches) { query ->
                         Box(
                             modifier = Modifier
-                                .background(Color(0xFF1E1E1E), RoundedCornerShape(20.dp))
+                                .background(surfaceColor, RoundedCornerShape(20.dp))
                                 .clickable { onClickRecent(query) }
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                         ) {
-                            Text(query, color = Color.White, fontSize = 14.sp)
+                            Text(query, color = onBgColor, fontSize = 14.sp)
                         }
                     }
                 }
@@ -274,7 +277,7 @@ fun CustomSearchIdleContent(
             item {
                 Text(
                     text = "Trending Searches",
-                    color = Color.White,
+                    color = onBgColor,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
@@ -290,14 +293,14 @@ fun CustomSearchIdleContent(
                         ) {
                             Text(
                                 text = item.rank.toString(),
-                                color = Color.Gray,
+                                color = subtleColor,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.width(32.dp)
                             )
                             Column {
-                                Text(item.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-                                Text(item.subtitle, color = Color.Gray, fontSize = 12.sp)
+                                Text(item.title, color = onBgColor, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                                Text(item.subtitle, color = subtleColor, fontSize = 12.sp)
                             }
                         }
                     }
@@ -311,7 +314,7 @@ fun CustomSearchIdleContent(
             item {
                 Text(
                     text = "Suggested For You",
-                    color = Color.White,
+                    color = onBgColor,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
@@ -331,7 +334,7 @@ fun CustomSearchIdleContent(
                                             .fillMaxWidth()
                                             .aspectRatio(0.7f)
                                             .clip(RoundedCornerShape(8.dp))
-                                            .background(Color(0xFF2B2B2B))
+                                            .background(surfaceColor)
                                     ) {
                                         eu.kanade.presentation.manga.components.MangaCover.Book(
                                             data = manga,
@@ -341,17 +344,15 @@ fun CustomSearchIdleContent(
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
                                         text = manga.title,
-                                        color = Color.White,
+                                        color = onBgColor,
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Medium,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
-                                    // Genre is not directly available in Manga domain class in some versions, 
-                                    // but we can show artist or source name as secondary info
                                     Text(
                                         text = manga.artist ?: manga.author ?: "",
-                                        color = Color.Gray,
+                                        color = subtleColor,
                                         fontSize = 12.sp,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
@@ -379,9 +380,10 @@ internal fun GlobalSearchContent(
     onLongClickItem: (Manga) -> Unit,
     fromSourceId: Long? = null,
 ) {
+    val bgColor = androidx.compose.material3.MaterialTheme.colorScheme.background
     LazyColumn(
         contentPadding = contentPadding,
-        modifier = Modifier.background(Color.Black).fillMaxSize()
+        modifier = Modifier.background(bgColor).fillMaxSize()
     ) {
         items.forEach { (source, result) ->
             item(key = source.id) {

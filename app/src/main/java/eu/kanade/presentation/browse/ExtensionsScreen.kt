@@ -98,6 +98,7 @@ fun ExtensionScreen(
     onUninstallExtension: (Extension) -> Unit,
     onUpdateExtension: (Extension.Installed) -> Unit,
     onTrustExtension: (Extension.Untrusted) -> Unit,
+    onTrustAll: () -> Unit,
     onRevokeTrust: (Extension.Installed) -> Unit,
     onOpenExtension: (Extension.Installed) -> Unit,
     onClickUpdateAll: () -> Unit,
@@ -142,6 +143,7 @@ fun ExtensionScreen(
                     onUninstallExtension = onUninstallExtension,
                     onUpdateExtension = onUpdateExtension,
                     onTrustExtension = onTrustExtension,
+                    onTrustAll = onTrustAll,
                     onRevokeTrust = onRevokeTrust,
                     onOpenExtension = onOpenExtension,
                     onClickUpdateAll = onClickUpdateAll,
@@ -162,6 +164,7 @@ private fun ExtensionContent(
     onUninstallExtension: (Extension) -> Unit,
     onUpdateExtension: (Extension.Installed) -> Unit,
     onTrustExtension: (Extension.Untrusted) -> Unit,
+    onTrustAll: () -> Unit,
     onRevokeTrust: (Extension.Installed) -> Unit,
     onOpenExtension: (Extension.Installed) -> Unit,
     onClickUpdateAll: () -> Unit,
@@ -169,14 +172,31 @@ private fun ExtensionContent(
     val context = LocalContext.current
     var trustState by remember { mutableStateOf<Extension.Untrusted?>(null) }
     var selectedFilter by remember { mutableStateOf<String>("All") }
+    var selectedLanguage by remember { mutableStateOf<String?>(null) }
     val installGranted = rememberRequestPackageInstallsPermissionState(initialValue = true)
 
-    val currentItems = remember(state.items, selectedFilter) {
-        when (selectedFilter) {
+    val availableLanguages = remember(state.items) {
+        state.items.keys
+            .filterIsInstance<ExtensionUiModel.Header.Text>()
+            .map { it.text }
+            .sorted()
+    }
+
+    val hasUntrusted = remember(state.items) {
+        state.items.values.flatten().any { it.extension is Extension.Untrusted }
+    }
+
+    val currentItems = remember(state.items, selectedFilter, selectedLanguage) {
+        val typeFiltered = when (selectedFilter) {
             "Installed" -> state.items.filterKeys { it is ExtensionUiModel.Header.Resource && it.textRes == MR.strings.ext_installed }
             "Available" -> state.items.filterKeys { it is ExtensionUiModel.Header.Text }
             "Updates" -> state.items.filterKeys { it is ExtensionUiModel.Header.Resource && it.textRes == MR.strings.ext_updates_pending }
             else -> state.items
+        }
+        if (selectedLanguage != null) {
+            typeFiltered.filterKeys { it is ExtensionUiModel.Header.Text && it.text == selectedLanguage }
+        } else {
+            typeFiltered
         }
     }
 
@@ -195,68 +215,148 @@ private fun ExtensionContent(
         }
 
         item(key = "extension-filters") {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                val hasUpdates = state.updates > 0
-                val installedCount = state.items.values.flatten().count { it.extension is Extension.Installed }
-                val availableCount = state.items.values.flatten().count { it.extension is Extension.Available }
-
-                // Installed Chip
-                Box(
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // Type filter row
+                Row(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(if (selectedFilter == "Installed") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable { selectedFilter = if (selectedFilter == "Installed") "All" else "Installed" }
-                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        "Installed ($installedCount)", 
-                        color = if (selectedFilter == "Installed") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, 
-                        fontSize = 14.sp, 
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                    val hasUpdates = state.updates > 0
+                    val installedCount = state.items.values.flatten().count { it.extension is Extension.Installed }
+                    val availableCount = state.items.values.flatten().count { it.extension is Extension.Available }
 
-                // Available Chip
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(if (selectedFilter == "Available") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable { selectedFilter = if (selectedFilter == "Available") "All" else "Available" }
-                        .padding(horizontal = 16.dp, vertical = 10.dp)
-                ) {
-                    Text(
-                        "Available ($availableCount)", 
-                        color = if (selectedFilter == "Available") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, 
-                        fontSize = 14.sp, 
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                // Updates Chip
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(if (selectedFilter == "Updates") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable { selectedFilter = if (selectedFilter == "Updates") "All" else "Updates" }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // Installed Chip
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(if (selectedFilter == "Installed") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { selectedFilter = if (selectedFilter == "Installed") "All" else "Installed"; selectedLanguage = null }
+                            .padding(horizontal = 16.dp, vertical = 10.dp)
+                    ) {
                         Text(
-                            "Updates", 
-                            color = if (selectedFilter == "Updates") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, 
-                            fontSize = 14.sp, 
+                            "Installed ($installedCount)",
+                            color = if (selectedFilter == "Installed") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Medium
                         )
-                        if (hasUpdates) {
-                            Box(modifier = Modifier.background(if (selectedFilter == "Updates") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary, CircleShape).padding(horizontal = 6.dp, vertical = 2.dp), contentAlignment = Alignment.Center) {
-                                Text(state.updates.toString(), color = if (selectedFilter == "Updates") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    // Available Chip
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(if (selectedFilter == "Available") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { selectedFilter = if (selectedFilter == "Available") "All" else "Available" }
+                            .padding(horizontal = 16.dp, vertical = 10.dp)
+                    ) {
+                        Text(
+                            "Available ($availableCount)",
+                            color = if (selectedFilter == "Available") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    // Updates Chip
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(if (selectedFilter == "Updates") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { selectedFilter = if (selectedFilter == "Updates") "All" else "Updates"; selectedLanguage = null }
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                "Updates",
+                                color = if (selectedFilter == "Updates") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            if (hasUpdates) {
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            if (selectedFilter == "Updates") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+                                            CircleShape
+                                        )
+                                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        state.updates.toString(),
+                                        color = if (selectedFilter == "Updates") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Trust All button — only when there are untrusted extensions
+                    if (hasUntrusted) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(22.dp))
+                                .background(MaterialTheme.colorScheme.error)
+                                .clickable { onTrustAll() }
+                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                "Trust All",
+                                color = MaterialTheme.colorScheme.onError,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
+                // Language filter row — only when Available filter is active or All
+                if (availableLanguages.isNotEmpty() && selectedFilter != "Installed" && selectedFilter != "Updates") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 20.dp)
+                            .padding(bottom = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        // "All Languages" chip
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(22.dp))
+                                .background(if (selectedLanguage == null) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant)
+                                .clickable { selectedLanguage = null }
+                                .padding(horizontal = 14.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                "All",
+                                color = if (selectedLanguage == null) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        availableLanguages.forEach { lang ->
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(22.dp))
+                                    .background(if (selectedLanguage == lang) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant)
+                                    .clickable { selectedLanguage = if (selectedLanguage == lang) null else lang }
+                                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                            ) {
+                                Text(
+                                    lang,
+                                    color = if (selectedLanguage == lang) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
                             }
                         }
                     }
