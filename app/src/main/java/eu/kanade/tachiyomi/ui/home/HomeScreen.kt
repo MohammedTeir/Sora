@@ -79,11 +79,11 @@ object HomeScreen : Screen() {
     private val TABS = listOf(
         HomeTab,
         LibraryTab,
-        DownloadTab,
         BrowseTab,
         UpdatesTab,
         HistoryTab,
         DiscoverTab,
+        DownloadTab,
         MoreTab,
     )
 

@@ -15,7 +15,7 @@ data object DiscoverTab : Tab {
     override val options: TabOptions
         @Composable
         get() = TabOptions(
-            index = 7u,
+            index = 5u,
             title = "Discover",
             icon = rememberVectorPainter(Icons.Outlined.Explore),
         )

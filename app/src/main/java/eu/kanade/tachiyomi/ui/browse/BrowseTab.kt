@@ -114,7 +114,7 @@ data object BrowseTab : Tab {
         @Composable
         get() {
             return TabOptions(
-                index = 3u,
+                index = 2u,
                 title = stringResource(MR.strings.browse),
                 icon = rememberVectorPainter(Icons.Outlined.Book),
             )

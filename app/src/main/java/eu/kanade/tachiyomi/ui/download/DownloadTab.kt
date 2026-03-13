@@ -18,7 +18,7 @@ data object DownloadTab : Tab {
         get() {
             val isSelected = LocalTabNavigator.current.current.key == key
             return TabOptions(
-                index = 2u,
+                index = 6u,
                 title = stringResource(MR.strings.label_downloads),
                 icon = rememberVectorPainter(Icons.Outlined.Download),
             )
