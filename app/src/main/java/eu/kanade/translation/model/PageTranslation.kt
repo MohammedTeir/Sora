@@ -25,4 +25,18 @@ data class TranslationBlock(
     var symWidth: Float,
     val angle: Float,
 
-)
+) {
+    /** Padding for the white background rectangle — slightly larger than text to ensure full coverage. */
+    fun backgroundPadding(): Pair<Float, Float> {
+        val padX = symWidth * 2.5f
+        val padY = symHeight * 1.5f
+        return Pair(padX, padY)
+    }
+ 
+    /** Padding for the text content area. */
+    fun textPadding(): Pair<Float, Float> {
+        val padX = symWidth * 2f
+        val padY = symHeight
+        return Pair(padX, padY)
+    }
+}
