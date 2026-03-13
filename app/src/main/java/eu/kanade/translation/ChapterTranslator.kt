@@ -270,9 +270,14 @@ class ChapterTranslator(
                 ),
             )
         }
-        // Smart merge overlapping text blocks
-        translation.blocks = smartMergeBlocks(translation.blocks, 50, 30, 30)
-
+        // Smart merge overlapping text blocks with resolution-scaled thresholds
+        val scale = width.toFloat() / 720f
+        translation.blocks = smartMergeBlocks(
+            translation.blocks,
+            (50 * scale).toInt(),
+            (30 * scale).toInt(),
+            (30 * scale).toInt(),
+        )
         return translation
     }
 
