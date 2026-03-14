@@ -81,7 +81,6 @@ import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
 import eu.kanade.tachiyomi.ui.settings.sync.SyncSettingsScreen
 import eu.kanade.tachiyomi.ui.updates.UpdatesItem
 import eu.kanade.tachiyomi.ui.updates.UpdatesScreenModel
-import kotlinx.coroutines.flow.collectLatest
 import tachiyomi.domain.history.model.HistoryWithRelations
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
@@ -195,10 +194,12 @@ data object HomeTab : Tab {
                         ContinueReadingCard(
                             manga = continueItem,
                             onContinue = {
-                                historyModel.getNextChapterForManga(
+                                val intent = ReaderActivity.newIntent(
+                                    context,
                                     continueItem.mangaId,
                                     continueItem.chapterId,
                                 )
+                                context.startActivity(intent)
                             },
                             onCardClick = { navigator.push(MangaScreen(continueItem.mangaId)) },
                         )
@@ -259,21 +260,6 @@ data object HomeTab : Tab {
             }
         }
 
-        // ─── Collect Continue Reading events ────────────────────────────
-        LaunchedEffect(Unit) {
-            historyModel.events.collectLatest { event ->
-                when (event) {
-                    is HistoryScreenModel.Event.OpenChapter -> {
-                        val chapter = event.chapter
-                        if (chapter != null) {
-                            val intent = ReaderActivity.newIntent(context, chapter.mangaId, chapter.id)
-                            context.startActivity(intent)
-                        }
-                    }
-                    else -> {}
-                }
-            }
-        }
     }
 }
 
