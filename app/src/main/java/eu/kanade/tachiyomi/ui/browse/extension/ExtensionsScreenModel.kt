@@ -208,10 +208,7 @@ class ExtensionsScreenModel(
 
     fun trustAllExtensions() {
         screenModelScope.launch {
-            state.value.items.values.flatten()
-                .map { it.extension }
-                .filterIsInstance<Extension.Untrusted>()
-                .forEach { extensionManager.trust(it) }
+            extensionManager.trustAll()
         }
     }
 
