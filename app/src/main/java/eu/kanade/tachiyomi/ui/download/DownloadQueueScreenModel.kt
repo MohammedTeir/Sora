@@ -8,8 +8,9 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -26,18 +27,35 @@ class DownloadQueueScreenModel(
 
     // ── Derived queue flows ────────────────────────────────────────────────
 
-    /** Trigger that fires whenever any download's status changes. */
-    private val statusTrigger = combine(
-        downloadManager.queueState,
-        downloadManager.statusFlow().map {}.onStart { emit(Unit) },
-    ) { _, _ -> Unit }
+    /**
+     * Trigger that fires whenever:
+     *  - The queue list itself changes (items added/removed/reordered)
+     *  - ANY item's status changes (QUEUE → DOWNLOADING → PAUSED → ERROR …)
+     *
+     * We flatMap over EVERY item's statusFlow so ALL state transitions are
+     * captured, not just DOWNLOADING ones.
+     */
+    private val statusTrigger = downloadManager.queueState
+        .flatMapLatest { downloads ->
+            val statusStreams = downloads.map { dl -> dl.statusFlow.map { dl } }
+            merge(*statusStreams.toTypedArray())
+                .onStart { emit(downloads.firstOrNull() ?: return@onStart) }
+        }
+        .map { } // only need the trigger signal
 
-    /** All non-completed downloads (active + paused + queued). */
+    /** All non-completed downloads (active + paused + queued + error). */
     val queuedDownloads = statusTrigger
         .map {
             downloadManager.queueState.value
                 .filter { it.status != Download.State.DOWNLOADED }
                 .toImmutableList()
+        }
+        .onStart {
+            emit(
+                downloadManager.queueState.value
+                    .filter { it.status != Download.State.DOWNLOADED }
+                    .toImmutableList(),
+            )
         }
         .stateIn(screenModelScope, SharingStarted.WhileSubscribed(5_000), persistentListOf())
 
@@ -45,7 +63,11 @@ class DownloadQueueScreenModel(
         .stateIn(screenModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     val parallelLimit = downloadPreferences.parallelSourceLimit().changes()
-        .stateIn(screenModelScope, SharingStarted.WhileSubscribed(5_000), downloadPreferences.parallelSourceLimit().get())
+        .stateIn(
+            screenModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            downloadPreferences.parallelSourceLimit().get(),
+        )
 
     init {
         // Collect completed items for the "Recently Completed" section
@@ -70,9 +92,13 @@ class DownloadQueueScreenModel(
 
     fun pauseAll() = downloadManager.pauseDownloads()
 
+    /**
+     * Cancels all queued downloads WITHOUT touching the "Recently Completed"
+     * section — those are already done and should remain visible.
+     */
     fun cancelAll() {
         downloadManager.clearQueue()
-        mutableState.update { it.copy(completedDownloads = persistentListOf()) }
+        // intentionally NOT clearing completedDownloads
     }
 
     fun clearCompleted() {
