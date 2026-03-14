@@ -290,6 +290,11 @@ class ExtensionManager(
             ?.let { registerNewExtension(it.extension) }
     }
 
+    suspend fun trustAll() {
+        val untrusted = untrustedExtensionMapFlow.value.values.toList()
+        untrusted.forEach { trust(it) }
+    }
+
     /**
      * Revokes trust from the given extension. It will be moved to the untrusted list.
      *
@@ -300,13 +305,17 @@ class ExtensionManager(
 
         trustExtension.revoke(extension.pkgName)
 
-        installedExtensionMapFlow.value -= extension.pkgName
+        val loadResult = ExtensionLoader.loadExtensionFromPkgName(context, extension.pkgName)
+        val untrustedExtension = (loadResult as? LoadResult.Untrusted)?.extension
 
-        ExtensionLoader.loadExtensionFromPkgName(context, extension.pkgName)
-            .let { it as? LoadResult.Untrusted }
-            ?.let {
-                untrustedExtensionMapFlow.value += it.extension
-            }
+        if (untrustedExtension != null) {
+            // Successfully moved to untrusted — remove from installed
+            installedExtensionMapFlow.value -= extension.pkgName
+            untrustedExtensionMapFlow.value += untrustedExtension
+        } else {
+            // Could not load as untrusted — restore trust so extension stays visible
+            trustExtension.trust(extension.pkgName, extension.versionCode, extension.signatureHash)
+        }
     }
 
     /**
