@@ -82,18 +82,17 @@ fun Screen.DiscoverScreen() {
     var showCreateSheet by rememberSaveable { mutableStateOf(false) }
     val navigator = LocalNavigator.currentOrThrow
 
-    // Show snackbar messages
+    // Show snackbar for import message — key on the message value so it only
+    // fires when a NEW non-null message arrives, never on null.
     LaunchedEffect(state.importMessage) {
-        state.importMessage?.let { msg ->
-            snackbarHostState.showSnackbar(msg)
-            screenModel.clearMessages()
-        }
+        val msg = state.importMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(msg)
+        screenModel.clearImportMessage()
     }
     LaunchedEffect(state.errorMessage) {
-        state.errorMessage?.let { msg ->
-            snackbarHostState.showSnackbar(msg)
-            screenModel.clearMessages()
-        }
+        val msg = state.errorMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(msg)
+        screenModel.clearErrorMessage()
     }
 
     // Missing manga dialog
