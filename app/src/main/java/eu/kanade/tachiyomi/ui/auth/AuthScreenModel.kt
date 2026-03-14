@@ -106,14 +106,18 @@ class AuthScreenModel(
         screenModelScope.launch {
             mutableState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                val credentialManager = androidx.credentials.CredentialManager.create(context)
+                // CredentialManager MUST receive an Activity context — a plain
+                // application or Composable context will silently cancel the flow.
+                val activityContext = context as? android.app.Activity ?: context
+
+                val credentialManager = androidx.credentials.CredentialManager.create(activityContext)
                 val signInWithGoogleOption = com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption.Builder(
                     context.getString(eu.kanade.tachiyomi.R.string.default_web_client_id),
                 ).build()
                 val request = androidx.credentials.GetCredentialRequest.Builder()
                     .addCredentialOption(signInWithGoogleOption)
                     .build()
-                val result = credentialManager.getCredential(context, request)
+                val result = credentialManager.getCredential(activityContext, request)
                 val googleCredential = com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
                     .createFrom(result.credential.data)
                 authService.signInWithGoogle(googleCredential.idToken)
