@@ -33,10 +33,11 @@ class DiscoverScreenModel(
         val myLists: List<SharedList> = emptyList(),
         val isLoading: Boolean = false,
         val isInitialLoad: Boolean = true,
-        val importMessage: String? = null,
-        val errorMessage: String? = null,
         val isLoggedIn: Boolean = false,
         val missingMangaTitles: List<String> = emptyList(),
+        // Separate fields for snackbar so clearing one doesn't trigger the other
+        val importMessage: String? = null,
+        val errorMessage: String? = null,
     )
 
     init {
@@ -44,20 +45,31 @@ class DiscoverScreenModel(
     }
 
     fun loadLists() {
+        // Guard: don't start a second load if one is already running
+        if (state.value.isLoading) return
+
         screenModelScope.launch {
-            mutableState.update { it.copy(isLoading = true, errorMessage = null) }
+            mutableState.update { it.copy(isLoading = true) }
+
             val loggedIn = authService.isLoggedIn()
+
+            // All three fetches run in parallel.
+            // Trending & Recent are public (no auth required by Firestore rules).
+            // My Lists requires login.
             val trendingDeferred = async { sharedListService.getTrendingLists() }
-            val recentDeferred = async { sharedListService.getRecentLists() }
-            val myListsDeferred = async { if (loggedIn) sharedListService.getMyLists() else emptyList() }
+            val recentDeferred   = async { sharedListService.getRecentLists() }
+            val myListsDeferred  = async {
+                if (loggedIn) sharedListService.getMyLists() else emptyList()
+            }
+
             mutableState.update {
                 it.copy(
                     trendingLists = trendingDeferred.await(),
-                    recentLists = recentDeferred.await(),
-                    myLists = myListsDeferred.await(),
-                    isLoading = false,
+                    recentLists   = recentDeferred.await(),
+                    myLists       = myListsDeferred.await(),
+                    isLoading     = false,
                     isInitialLoad = false,
-                    isLoggedIn = loggedIn,
+                    isLoggedIn    = loggedIn,
                 )
             }
         }
@@ -65,7 +77,7 @@ class DiscoverScreenModel(
 
     fun importList(sharedList: SharedList) {
         screenModelScope.launch {
-            mutableState.update { it.copy(isLoading = true, importMessage = null) }
+            mutableState.update { it.copy(isLoading = true) }
             try {
                 // 1. Create a new category named after the list
                 createCategoryWithName.await(sharedList.title)
@@ -74,22 +86,31 @@ class DiscoverScreenModel(
                 val allCategories = getCategories.await()
                 val newCategory = allCategories.find { it.name == sharedList.title }
                 if (newCategory == null) {
-                    mutableState.update { it.copy(isLoading = false, errorMessage = "Could not create category '${sharedList.title}'.") }
+                    mutableState.update {
+                        it.copy(
+                            isLoading    = false,
+                            errorMessage = "Could not create category '${sharedList.title}'.",
+                        )
+                    }
                     return@launch
                 }
 
                 // 3. Match manga in shared list against the user's library by title
                 val libraryManga = getLibraryManga.await()
-                val mangaItems = sharedList.getMangaItems()
+                val mangaItems   = sharedList.getMangaItems()
                 val missingTitles = mutableListOf<String>()
                 var importedCount = 0
+
                 for (item in mangaItems) {
-                    val match = libraryManga.find { it.manga.title.equals(item.title, ignoreCase = true) }
+                    val match = libraryManga.find {
+                        it.manga.title.equals(item.title, ignoreCase = true)
+                    }
                     if (match != null) {
-                        // Get existing categories for this manga and add the new one
-                        val existingCategories = match.categories
-                        val updatedCategories = (existingCategories + newCategory.id).distinct()
-                        setMangaCategories.await(match.manga.id, updatedCategories)
+                        val existing = match.categories
+                        setMangaCategories.await(
+                            match.manga.id,
+                            (existing + newCategory.id).distinct(),
+                        )
                         importedCount++
                     } else {
                         missingTitles.add(item.title)
@@ -106,16 +127,22 @@ class DiscoverScreenModel(
                 } else {
                     "No manga from this list were found in your library."
                 }
+
                 mutableState.update {
                     it.copy(
-                        isLoading = false,
-                        importMessage = message,
-                        missingMangaTitles = missingTitles,
+                        isLoading            = false,
+                        importMessage        = message,
+                        missingMangaTitles   = missingTitles,
                     )
                 }
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR) { "DiscoverScreenModel: importList failed: ${e.message}" }
-                mutableState.update { it.copy(isLoading = false, errorMessage = "Import failed: ${e.localizedMessage}") }
+                mutableState.update {
+                    it.copy(
+                        isLoading    = false,
+                        errorMessage = "Import failed: ${e.localizedMessage}",
+                    )
+                }
             }
         }
     }
@@ -133,11 +160,21 @@ class DiscoverScreenModel(
             mutableState.update { it.copy(isLoading = true) }
             sharedListService.uploadList(title, selectedManga)
                 .onSuccess {
-                    mutableState.update { it.copy(isLoading = false, importMessage = "List '$title' shared successfully!") }
+                    mutableState.update {
+                        it.copy(
+                            isLoading     = false,
+                            importMessage = "List '$title' shared successfully!",
+                        )
+                    }
                     loadLists()
                 }
                 .onFailure { e ->
-                    mutableState.update { it.copy(isLoading = false, errorMessage = e.localizedMessage ?: "Upload failed") }
+                    mutableState.update {
+                        it.copy(
+                            isLoading    = false,
+                            errorMessage = e.localizedMessage ?: "Upload failed",
+                        )
+                    }
                 }
         }
     }
@@ -149,6 +186,17 @@ class DiscoverScreenModel(
         }
     }
 
+    /** Call after the snackbar for importMessage has been shown. */
+    fun clearImportMessage() {
+        mutableState.update { it.copy(importMessage = null) }
+    }
+
+    /** Call after the snackbar for errorMessage has been shown. */
+    fun clearErrorMessage() {
+        mutableState.update { it.copy(errorMessage = null) }
+    }
+
+    /** Legacy helper kept for compatibility. */
     fun clearMessages() {
         mutableState.update { it.copy(importMessage = null, errorMessage = null) }
     }
