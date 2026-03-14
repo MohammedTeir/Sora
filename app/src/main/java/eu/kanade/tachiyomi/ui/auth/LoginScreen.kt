@@ -68,6 +68,7 @@ class LoginScreen : Screen() {
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         val context = LocalContext.current
+        val activity = context as? android.app.Activity ?: context
         val screenModel = rememberScreenModel { AuthScreenModel() }
         val state by screenModel.state.collectAsState()
 
@@ -222,7 +223,7 @@ class LoginScreen : Screen() {
                 OutlinedButton(
                     onClick = {
                         keyboardController?.hide()
-                        screenModel.signInWithGoogle(context)
+                        screenModel.signInWithGoogle(activity)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
