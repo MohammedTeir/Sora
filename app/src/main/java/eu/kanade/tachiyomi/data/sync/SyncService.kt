@@ -1,7 +1,9 @@
+
 package eu.kanade.tachiyomi.data.sync
 
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import com.google.firebase.firestore.WriteBatch
 import eu.kanade.domain.auth.AuthPreferences
 import eu.kanade.domain.sync.SyncPreferences
 import eu.kanade.tachiyomi.data.auth.FirebaseAuthService
@@ -40,22 +42,16 @@ class SyncService(
 
     private val firestore = FirebaseFirestore.getInstance()
 
-    /**
-     * Called after login: downloads cloud data, merges with local, then uploads merged result.
-     */
+    // Firestore hard limit per batch
+    private val BATCH_SIZE = 400
+
     suspend fun syncOnLogin(): SyncResult = runSync()
 
-    /**
-     * Called on app start if the user is logged in.
-     */
     suspend fun syncOnStartup(): SyncResult {
         if (!syncPrefs.syncOnStartup().get()) return SyncResult.Success
         return runSync()
     }
 
-    /**
-     * Manual sync trigger from the Sync Settings screen.
-     */
     suspend fun syncNow(): SyncResult = runSync()
 
     // ─── Core Sync Logic ───────────────────────────────────────────────────────
@@ -64,13 +60,20 @@ class SyncService(
         val userId = authService.getUserId()
             ?: return SyncResult.Error("Not logged in")
 
+        // Guard: if isSyncing is stuck true for > 10 minutes, reset it
         if (syncPrefs.isSyncing().get()) {
-            logcat(LogPriority.INFO) { "SyncService: sync already in progress, skipping" }
-            return SyncResult.Success
+            val lastSync = authPrefs.lastSyncTime().get()
+            val elapsed = System.currentTimeMillis() - lastSync
+            if (elapsed < 10 * 60 * 1000) {
+                logcat(LogPriority.INFO) { "SyncService: sync already in progress, skipping" }
+                return SyncResult.Success
+            } else {
+                // Stale lock — reset it
+                logcat(LogPriority.WARN) { "SyncService: stale isSyncing flag detected, resetting" }
+                syncPrefs.isSyncing().set(false)
+            }
         }
 
-        // Refresh the Firebase Auth token before touching Firestore.
-        // Without this, a stale token causes PERMISSION_DENIED even when the user is logged in.
         val tokenRefreshed = authService.refreshToken()
         if (!tokenRefreshed) {
             logcat(LogPriority.WARN) { "SyncService: token refresh failed, proceeding with existing token" }
@@ -92,7 +95,7 @@ class SyncService(
             // 4. Write merged data back to local DB
             writeLocalData(merged)
 
-            // 5. Upload merged data to cloud
+            // 5. Upload merged data to cloud (in safe batches of BATCH_SIZE)
             uploadToCloud(userId, merged)
 
             // 6. Update last sync timestamp
@@ -107,10 +110,14 @@ class SyncService(
             val friendlyMessage = when {
                 e.message?.contains("PERMISSION_DENIED") == true ->
                     "Sync failed: Access denied. Please sign out and sign back in, then try again."
+                e.message?.contains("UNAVAILABLE") == true ||
+                e.message?.contains("Unable to resolve host") == true ->
+                    "Sync failed: No internet connection."
                 else -> e.message ?: "Unknown sync error"
             }
             SyncResult.Error(friendlyMessage, e)
         } finally {
+            // Always release the lock — even on crash
             syncPrefs.isSyncing().set(false)
         }
     }
@@ -177,11 +184,11 @@ class SyncService(
     private suspend fun readCloudData(userId: String): SyncData {
         val userRef = firestore.collection("users").document(userId)
 
-        val mangaDocs = userRef.collection("library").get().await()
-        val chapterDocs = userRef.collection("chapters").get().await()
+        val mangaDocs    = userRef.collection("library").get().await()
+        val chapterDocs  = userRef.collection("chapters").get().await()
         val categoryDocs = userRef.collection("categories").get().await()
-        val trackDocs = userRef.collection("tracking").get().await()
-        val historyDocs = userRef.collection("history").get().await()
+        val trackDocs    = userRef.collection("tracking").get().await()
+        val historyDocs  = userRef.collection("history").get().await()
 
         val manga = mangaDocs.documents.mapNotNull {
             SyncDataSerializer.mapToManga(it.data as? Map<String, Any?> ?: return@mapNotNull null)
@@ -210,40 +217,29 @@ class SyncService(
 
     // ─── Merge Logic ────────────────────────────────────────────────────────────
 
-    /**
-     * Merges local and cloud data. For each entity:
-     * - If only in local → keep local
-     * - If only in cloud → keep cloud
-     * - If in both → keep the one with the newer `lastModifiedAt` / `updatedAt`
-     */
     private fun mergeData(local: SyncData, cloud: SyncData): SyncData {
         val mergedManga = mergeLists(
-            local.manga,
-            cloud.manga,
+            local.manga, cloud.manga,
             keyFn = { it.id },
             newerFn = { a, b -> if (a.lastModifiedAt >= b.lastModifiedAt) a else b },
         )
         val mergedChapters = mergeLists(
-            local.chapters,
-            cloud.chapters,
+            local.chapters, cloud.chapters,
             keyFn = { it.id },
             newerFn = { a, b -> if (a.lastModifiedAt >= b.lastModifiedAt) a else b },
         )
         val mergedCategories = mergeLists(
-            local.categories,
-            cloud.categories,
+            local.categories, cloud.categories,
             keyFn = { it.id },
-            newerFn = { a, _ -> a }, // categories don't have timestamps, keep local
+            newerFn = { a, _ -> a },
         )
         val mergedTracks = mergeLists(
-            local.tracks,
-            cloud.tracks,
+            local.tracks, cloud.tracks,
             keyFn = { it.id },
-            newerFn = { a, _ -> a }, // keep local (external tracker state)
+            newerFn = { a, _ -> a },
         )
         val mergedHistory = mergeLists(
-            local.history,
-            cloud.history,
+            local.history, cloud.history,
             keyFn = { it.chapterId },
             newerFn = { a, b ->
                 val aTime = a.readAt?.time ?: 0L
@@ -269,14 +265,13 @@ class SyncService(
     ): List<T> {
         val localMap = local.associateBy(keyFn)
         val cloudMap = cloud.associateBy(keyFn)
-        val allKeys = localMap.keys + cloudMap.keys
-        return allKeys.distinct().mapNotNull { key ->
-            val localItem = localMap[key]
-            val cloudItem = cloudMap[key]
+        return (localMap.keys + cloudMap.keys).distinct().mapNotNull { key ->
+            val l = localMap[key]
+            val c = cloudMap[key]
             when {
-                localItem != null && cloudItem != null -> newerFn(localItem, cloudItem)
-                localItem != null -> localItem
-                cloudItem != null -> cloudItem
+                l != null && c != null -> newerFn(l, c)
+                l != null -> l
+                c != null -> c
                 else -> null
             }
         }
@@ -286,7 +281,6 @@ class SyncService(
 
     private suspend fun writeLocalData(data: SyncData) {
         handler.await(inTransaction = true) {
-            // Upsert manga library entries (must be done before chapters/tracks due to FK constraints)
             data.manga.forEach { manga ->
                 runCatching {
                     val existing = mangasQueries.getMangaById(manga.id).executeAsOneOrNull()
@@ -344,7 +338,6 @@ class SyncService(
                 }
             }
 
-            // Upsert categories (preserves remote ID so category-manga associations stay valid)
             data.categories.forEach { category ->
                 runCatching {
                     categoriesQueries.upsertById(
@@ -357,7 +350,6 @@ class SyncService(
                 }
             }
 
-            // Upsert tracks — manga_sync has UNIQUE (manga_id, sync_id) ON CONFLICT REPLACE
             data.tracks.forEach { track ->
                 runCatching {
                     manga_syncQueries.insert(
@@ -378,7 +370,6 @@ class SyncService(
                 }
             }
 
-            // Update chapter read progress synced from cloud
             data.chapters.forEach { chapter ->
                 runCatching {
                     chaptersQueries.update(
@@ -401,7 +392,6 @@ class SyncService(
                 }
             }
 
-            // Upsert history
             data.history.forEach { history ->
                 runCatching {
                     historyQueries.upsert(
@@ -418,55 +408,60 @@ class SyncService(
 
     private suspend fun uploadToCloud(userId: String, data: SyncData) {
         val userRef = firestore.collection("users").document(userId)
-        val batch = firestore.batch()
 
-        // Library (only favorites, respects syncLibrary toggle and manga selection)
+        // Collect all write operations as (docRef, data) pairs
+        val operations = mutableListOf<Pair<com.google.firebase.firestore.DocumentReference, Map<String, Any?>>>()
+
         if (syncPrefs.syncLibrary().get()) {
             data.manga.forEach { manga ->
-                val docRef = userRef.collection("library").document(manga.id.toString())
-                batch.set(docRef, SyncDataSerializer.mangaToMap(manga).filterValues { it != null }, SetOptions.merge())
+                operations += userRef.collection("library").document(manga.id.toString()) to
+                    SyncDataSerializer.mangaToMap(manga).filterValues { it != null }
             }
         }
 
-        // Chapters (only read/bookmarked or with progress, respects syncChapters toggle)
         if (syncPrefs.syncChapters().get()) {
             data.chapters
                 .filter { it.read || it.bookmark || it.lastPageRead > 0 }
                 .forEach { chapter ->
-                    val docRef = userRef.collection("chapters").document(chapter.id.toString())
-                    batch.set(docRef, SyncDataSerializer.chapterToMap(chapter).filterValues { it != null }, SetOptions.merge())
+                    operations += userRef.collection("chapters").document(chapter.id.toString()) to
+                        SyncDataSerializer.chapterToMap(chapter).filterValues { it != null }
                 }
         }
 
-        // Categories (respects syncCategories toggle)
         if (syncPrefs.syncCategories().get()) {
             data.categories.forEach { category ->
-                val docRef = userRef.collection("categories").document(category.id.toString())
-                batch.set(docRef, SyncDataSerializer.categoryToMap(category).filterValues { it != null }, SetOptions.merge())
+                operations += userRef.collection("categories").document(category.id.toString()) to
+                    SyncDataSerializer.categoryToMap(category).filterValues { it != null }
             }
         }
 
-        // Tracking (respects syncTracking toggle)
         if (syncPrefs.syncTracking().get()) {
             data.tracks.forEach { track ->
-                val docRef = userRef.collection("tracking").document(track.id.toString())
-                batch.set(docRef, SyncDataSerializer.trackToMap(track).filterValues { it != null }, SetOptions.merge())
+                operations += userRef.collection("tracking").document(track.id.toString()) to
+                    SyncDataSerializer.trackToMap(track).filterValues { it != null }
             }
         }
 
-        // History (entries with actual read dates, respects syncHistory toggle)
         if (syncPrefs.syncHistory().get()) {
             data.history
                 .filter { it.readAt != null }
                 .forEach { history ->
-                    val docRef = userRef.collection("history").document(history.chapterId.toString())
-                    batch.set(docRef, SyncDataSerializer.historyToMap(history).filterValues { it != null }, SetOptions.merge())
+                    operations += userRef.collection("history").document(history.chapterId.toString()) to
+                        SyncDataSerializer.historyToMap(history).filterValues { it != null }
                 }
         }
 
-        batch.commit().await()
+        // Split into chunks of BATCH_SIZE to stay under Firestore's 500-op limit
+        operations.chunked(BATCH_SIZE).forEach { chunk ->
+            val batch: WriteBatch = firestore.batch()
+            chunk.forEach { (docRef, docData) ->
+                batch.set(docRef, docData, SetOptions.merge())
+            }
+            batch.commit().await()
+            logcat(LogPriority.INFO) { "SyncService: committed batch of ${chunk.size} ops" }
+        }
 
-        // Upload encrypted sensitive settings (tracker tokens) separately
+        // Upload sensitive settings separately
         uploadSensitiveSettings(userRef)
 
         // Update profile's lastSyncAt
@@ -479,7 +474,6 @@ class SyncService(
     private suspend fun uploadSensitiveSettings(
         userRef: com.google.firebase.firestore.DocumentReference,
     ) {
-        // Collect all private preferences (tracker tokens, passwords) and encrypt them
         try {
             val allPrefs = preferenceStore.getAll()
             val privateEntries = allPrefs
@@ -506,56 +500,25 @@ class SyncService(
         }
     }
 
-    // ─── Helper mappers for DatabaseHandler inline usage ───────────────────────
+    // ─── Helper mappers ─────────────────────────────────────────────────────────
 
     private fun mapChapter(
-        id: Long,
-        mangaId: Long,
-        url: String,
-        name: String,
-        scanlator: String?,
-        read: Boolean,
-        bookmark: Boolean,
-        lastPageRead: Long,
-        pagesCount: Long,
-        chapterNumber: Double,
-        sourceOrder: Long,
-        dateFetch: Long,
-        dateUpload: Long,
-        lastModifiedAt: Long,
-        version: Long,
+        id: Long, mangaId: Long, url: String, name: String, scanlator: String?,
+        read: Boolean, bookmark: Boolean, lastPageRead: Long, pagesCount: Long,
+        chapterNumber: Double, sourceOrder: Long, dateFetch: Long, dateUpload: Long,
+        lastModifiedAt: Long, version: Long,
         @Suppress("UNUSED_PARAMETER") isSyncing: Long,
     ): Chapter = Chapter(
-        id = id,
-        mangaId = mangaId,
-        read = read,
-        bookmark = bookmark,
-        lastPageRead = lastPageRead,
-        pagesCount = pagesCount,
-        dateFetch = dateFetch,
-        sourceOrder = sourceOrder,
-        url = url,
-        name = name,
-        dateUpload = dateUpload,
-        chapterNumber = chapterNumber,
-        scanlator = scanlator,
-        lastModifiedAt = lastModifiedAt,
-        version = version,
+        id = id, mangaId = mangaId, read = read, bookmark = bookmark,
+        lastPageRead = lastPageRead, pagesCount = pagesCount, dateFetch = dateFetch,
+        sourceOrder = sourceOrder, url = url, name = name, dateUpload = dateUpload,
+        chapterNumber = chapterNumber, scanlator = scanlator,
+        lastModifiedAt = lastModifiedAt, version = version,
     )
 
     private fun mapCategory(
-        id: Long,
-        name: String,
-        order: Long,
-        flags: Long,
-        hidden: Boolean,
-    ): Category = Category(
-        id = id,
-        name = name,
-        order = order,
-        flags = flags,
-        hidden = hidden,
-    )
+        id: Long, name: String, order: Long, flags: Long, hidden: Boolean,
+    ): Category = Category(id = id, name = name, order = order, flags = flags, hidden = hidden)
 }
 
 // ─── Data Container ────────────────────────────────────────────────────────────
