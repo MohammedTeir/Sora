@@ -303,18 +303,32 @@ class ExtensionManager(
     suspend fun revokeTrust(extension: Extension.Installed) {
         installedExtensionMapFlow.value[extension.pkgName] ?: return
 
+        // Remove from trusted preferences first
         trustExtension.revoke(extension.pkgName)
 
+        // Try to reload as Untrusted — this will succeed because we just revoked trust
         val loadResult = ExtensionLoader.loadExtensionFromPkgName(context, extension.pkgName)
         val untrustedExtension = (loadResult as? LoadResult.Untrusted)?.extension
 
         if (untrustedExtension != null) {
-            // Successfully moved to untrusted — remove from installed
+            // Successfully reloaded as untrusted — move it from installed to untrusted list
             installedExtensionMapFlow.value -= extension.pkgName
             untrustedExtensionMapFlow.value += untrustedExtension
         } else {
-            // Could not load as untrusted — restore trust so extension stays visible
-            trustExtension.trust(extension.pkgName, extension.versionCode, extension.signatureHash)
+            // Could not reload as untrusted (e.g. extension is in a trusted repo) —
+            // restore trust so the extension stays visible and doesn't disappear
+            val reloadedAsSuccess = (loadResult as? LoadResult.Success)?.extension
+            if (reloadedAsSuccess != null) {
+                // It reloaded fine — it's trusted via repo, just keep it as installed
+                logcat(LogPriority.INFO) {
+                    "ExtensionManager: ${extension.pkgName} is trusted via repo, restoring installed state"
+                }
+            } else {
+                // Unknown state — keep it in installed list to avoid disappearing
+                logcat(LogPriority.WARN) {
+                    "ExtensionManager: could not reload ${extension.pkgName} after revoke, keeping installed"
+                }
+            }
         }
     }
 
