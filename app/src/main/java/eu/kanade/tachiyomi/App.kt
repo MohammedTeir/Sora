@@ -175,9 +175,18 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
     private fun initializeCloudSync() {
         val authPrefs = Injekt.get<eu.kanade.domain.auth.AuthPreferences>()
         val syncPrefs = Injekt.get<eu.kanade.domain.sync.SyncPreferences>()
-        if (authPrefs.isLoggedIn().get() && syncPrefs.syncOnStartup().get()) {
+        if (!authPrefs.isLoggedIn().get()) return
+
+        // One-time sync on startup (respects syncOnStartup toggle)
+        if (syncPrefs.syncOnStartup().get()) {
             eu.kanade.tachiyomi.data.sync.SyncWorker.enqueueSingleSync(this)
+        }
+
+        // Periodic background sync (respects autoSync toggle)
+        if (authPrefs.autoSync().get()) {
             eu.kanade.tachiyomi.data.sync.SyncWorker.enqueuePeriodicSync(this)
+        } else {
+            eu.kanade.tachiyomi.data.sync.SyncWorker.cancelAllSync(this)
         }
     }
 
