@@ -235,7 +235,7 @@ open class FeedScreenModel(
                         if (itemUI.source != null) {
                             withContext(coroutineDispatcher) {
                                 if (itemUI.savedSearch == null) {
-                                    itemUI.source.getPopularManga(1)
+                                    itemUI.source.getLatestUpdates(1)
                                 } else {
                                     itemUI.source.getSearchManga(
                                         1,
