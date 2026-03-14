@@ -48,7 +48,7 @@ fun Screen.feedTab(): TabContent {
     }
 
     return TabContent(
-        titleRes = MR.strings.popular,
+        titleRes = MR.strings.latest,
         actions = persistentListOf(
             AppBar.Action(
                 title = stringResource(MR.strings.action_add),
@@ -76,7 +76,7 @@ fun Screen.feedTab(): TabContent {
                     navigator.push(
                         BrowseSourceScreen(
                             source.id,
-                            GetRemoteManga.QUERY_POPULAR,
+                            GetRemoteManga.QUERY_LATEST,
                         ),
                     )
                 },
