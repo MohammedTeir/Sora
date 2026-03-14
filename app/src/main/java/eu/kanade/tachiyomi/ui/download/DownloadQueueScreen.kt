@@ -479,15 +479,17 @@ private fun DownloadQueueItem(
 
     val statusColor = when (status) {
         Download.State.DOWNLOADING -> SoraBlue
-        Download.State.PAUSED -> PauseOrange
-        Download.State.ERROR -> ErrorRed
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
+        Download.State.QUEUE       -> MaterialTheme.colorScheme.primary
+        Download.State.PAUSED      -> PauseOrange
+        Download.State.ERROR       -> ErrorRed
+        else                       -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val statusLabel = when (status) {
         Download.State.DOWNLOADING -> "DOWNLOADING"
-        Download.State.PAUSED -> "PAUSED"
-        Download.State.ERROR -> "ERROR"
-        else -> "WAITING"
+        Download.State.QUEUE       -> "QUEUED"
+        Download.State.PAUSED      -> "PAUSED"
+        Download.State.ERROR       -> "ERROR"
+        else                       -> "WAITING"
     }
 
     Column(
@@ -556,6 +558,7 @@ private fun DownloadQueueItem(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 when (status) {
                     Download.State.DOWNLOADING -> {
+                        // Currently downloading → show Pause
                         ItemIconButton(onClick = onPause) {
                             Icon(
                                 Icons.Default.Pause,
@@ -566,6 +569,7 @@ private fun DownloadQueueItem(
                         }
                     }
                     Download.State.PAUSED -> {
+                        // Paused individually → show Resume
                         ItemIconButton(onClick = onResume) {
                             Icon(
                                 Icons.Default.PlayArrow,
@@ -575,19 +579,31 @@ private fun DownloadQueueItem(
                             )
                         }
                     }
-                    else -> {
-                        if (!isRunning) {
-                            ItemIconButton(onClick = onResume) {
-                                Icon(
-                                    Icons.Default.PlayArrow,
-                                    "Resume",
-                                    Modifier.size(20.dp),
-                                    tint = SoraBlue,
-                                )
-                            }
-                        } else {
-                            Spacer(modifier = Modifier.size(36.dp))
+                    Download.State.ERROR -> {
+                        // Error → show Retry (resume resets it to QUEUE)
+                        ItemIconButton(onClick = onResume) {
+                            Icon(
+                                Icons.Default.PlayArrow,
+                                "Retry",
+                                Modifier.size(20.dp),
+                                tint = ErrorRed,
+                            )
                         }
+                    }
+                    Download.State.QUEUE -> {
+                        // In queue waiting → show Pause to remove from active queue
+                        ItemIconButton(onClick = onPause) {
+                            Icon(
+                                Icons.Default.Pause,
+                                "Pause",
+                                Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    else -> {
+                        // Any other state → placeholder spacer so layout stays stable
+                        Spacer(modifier = Modifier.size(36.dp))
                     }
                 }
 
@@ -636,11 +652,13 @@ private fun DownloadQueueItem(
                 fontWeight = FontWeight.Bold,
                 color = statusColor,
             )
-            val pagesText = when {
-                download.pages != null -> "${download.downloadedImages} / ${download.pages!!.size} pages"
-                status == Download.State.PAUSED -> "Paused"
-                else -> "Waiting..."
-            }
+        val pagesText = when {
+            status == Download.State.ERROR  -> "Error — tap retry"
+            status == Download.State.PAUSED -> "Paused"
+            status == Download.State.QUEUE  -> "Queued…"
+            download.pages != null          -> "${download.downloadedImages} / ${download.pages!!.size} pages"
+            else                            -> "Waiting…"
+        }
             Text(
                 text = pagesText,
                 fontSize = 12.sp,
