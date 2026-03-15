@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import tachiyomi.domain.library.service.LibraryPreferences
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import eu.kanade.presentation.theme.SoraBlue
 
 @Composable
 fun ReorderableCollectionItemScope.CategoryListItem(

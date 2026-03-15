@@ -452,6 +452,7 @@ private fun ExtensionContent(
                         }
                     },
                     onRevokeTrust = onRevokeTrust,
+                    onRevokeTrustRequest = { revokeTrustState = it },
                 )
             }
         }
@@ -508,6 +509,7 @@ private fun ExtensionItem(
     onClickItemAction: (Extension) -> Unit,
     onClickItemSecondaryAction: (Extension) -> Unit,
     onRevokeTrust: (Extension.Installed) -> Unit,
+    onRevokeTrustRequest: (Extension.Installed) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val (extension, installStep) = item
@@ -733,7 +735,7 @@ private fun ExtensionItem(
                                 // Show the revoke-trust confirmation dialog; do not call
                                 // onRevokeTrust directly — the user must confirm the action
                                 // and choose whether to also uninstall the extension.
-                                revokeTrustState = extension
+                                onRevokeTrustRequest(extension)
                             }
                         },
                         colors = androidx.compose.material3.SwitchDefaults.colors(

@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.TabText
 import tachiyomi.presentation.core.i18n.stringResource
+import eu.kanade.presentation.theme.SoraBlue
 
 object TabbedDialogPaddings {
     val Horizontal = 24.dp
