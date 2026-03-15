@@ -53,6 +53,11 @@ class SourcePreferences(
         emptySet(),
     )
 
+    fun revokedExtensions() = preferenceStore.getStringSet(
+        Preference.appStateKey("revoked_extensions"),
+        emptySet(),
+    )
+
     fun globalSearchFilterState() = preferenceStore.getBoolean(
         Preference.appStateKey("has_filters_toggle_state"),
         false,

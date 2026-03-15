@@ -12,12 +12,18 @@ class TrustExtension(
 ) {
 
     suspend fun isTrusted(pkgInfo: PackageInfo, fingerprints: List<String>): Boolean {
+        if (pkgInfo.packageName in preferences.revokedExtensions().get()) return false
+
         val trustedFingerprints = extensionRepoRepository.getAll().map { it.signingKeyFingerprint }.toHashSet()
         val key = "${pkgInfo.packageName}:${PackageInfoCompat.getLongVersionCode(pkgInfo)}:${fingerprints.last()}"
         return trustedFingerprints.any { fingerprints.contains(it) } || key in preferences.trustedExtensions().get()
     }
 
     fun trust(pkgName: String, versionCode: Long, signatureHash: String) {
+        preferences.revokedExtensions().getAndSet { exts ->
+            exts.filterNot { it == pkgName }.toMutableSet()
+        }
+
         preferences.trustedExtensions().getAndSet { exts ->
             // Remove previously trusted versions
             val removed = exts.filterNot { it.startsWith("$pkgName:") }.toMutableSet()
@@ -30,9 +36,14 @@ class TrustExtension(
         preferences.trustedExtensions().getAndSet { exts ->
             exts.filterNot { it.startsWith("$pkgName:") }.toMutableSet()
         }
+        
+        preferences.revokedExtensions().getAndSet { exts ->
+            exts.toMutableSet().also { it += pkgName }
+        }
     }
 
     fun revokeAll() {
         preferences.trustedExtensions().delete()
+        preferences.revokedExtensions().delete()
     }
 }
