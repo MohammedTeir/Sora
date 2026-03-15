@@ -67,6 +67,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.data.download.model.Download
+import eu.kanade.presentation.theme.SoraBlue
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import tachiyomi.domain.manga.model.asMangaCover
@@ -74,10 +75,10 @@ import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.screens.EmptyScreen
 
 // ── Colour palette ─────────────────────────────────────────────────────────
-private val SoraBlue = Color(0xFF2977FF)
 private val PauseOrange = Color(0xFFFF9800)
 private val ErrorRed = Color(0xFFE53935)
-private val CompletedGreen = Color(0xFF22C55E)
+// CompletedGreen removed — use MaterialTheme.colorScheme.tertiary at the call site instead.
+// The Sora colour scheme maps tertiary to the downloaded/success green (SoraGreen = 0xFF47A84A).
 
 object DownloadQueueScreen : Screen() {
 
@@ -775,7 +776,7 @@ private fun CompletedDownloadItem(download: Download) {
         Icon(
             imageVector = Icons.Default.CheckCircle,
             contentDescription = "Completed",
-            tint = CompletedGreen,
+            tint = MaterialTheme.colorScheme.tertiary, // tertiary = SoraGreen in the Sora colour scheme
             modifier = Modifier.size(22.dp),
         )
     }

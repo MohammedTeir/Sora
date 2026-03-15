@@ -30,6 +30,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import eu.kanade.tachiyomi.R
+import eu.kanade.presentation.theme.SoraBlue
 
 internal class WelcomeStep : OnboardingStep {
 
@@ -70,7 +71,7 @@ internal class WelcomeStep : OnboardingStep {
             Text(
                 text = buildAnnotatedString {
                     append("Welcome to ")
-                    withStyle(style = SpanStyle(color = Color(0xFF2D7CFF))) {
+                    withStyle(style = SpanStyle(color = SoraBlue)) {
                         append("Sora")
                     }
                 },

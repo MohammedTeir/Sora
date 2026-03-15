@@ -47,6 +47,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -54,6 +55,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -81,6 +85,23 @@ fun Screen.DiscoverScreen() {
     val snackbarHostState = remember { SnackbarHostState() }
     var showCreateSheet by rememberSaveable { mutableStateOf(false) }
     val navigator = LocalNavigator.currentOrThrow
+
+    // Re-run loadLists() every time the screen resumes (i.e. when the user returns
+    // from LoginScreen or any other pushed screen). This keeps isLoggedIn, myLists,
+    // and the FAB visibility in sync with the actual auth state without requiring
+    // a manual refresh tap.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner.lifecycle) {
+        val observer = object : DefaultLifecycleObserver {
+            override fun onResume(owner: LifecycleOwner) {
+                screenModel.loadLists()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     // Show snackbar for import message — key on the message value so it only
     // fires when a NEW non-null message arrives, never on null.
@@ -160,7 +181,7 @@ fun Screen.DiscoverScreen() {
         },
     ) { padding ->
         // Full-screen spinner only on the very first load (no content yet)
-        if (state.isInitialLoad && state.isLoading) {
+        if (state.isInitialLoad && state.isFetchingLists) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = SoraBlue)
             }
@@ -305,8 +326,10 @@ fun Screen.DiscoverScreen() {
                 }
             }
 
-            // Non-blocking refresh indicator at the top of content
-            if (state.isLoading && !state.isInitialLoad) {
+            // Non-blocking refresh indicator at the top of content.
+            // Tracks isFetchingLists only — upload/import operations have their
+            // own spinner inside the bottom sheet button.
+            if (state.isFetchingLists && !state.isInitialLoad) {
                 LinearProgressIndicator(
                     modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter),
                     color = SoraBlue,

@@ -25,6 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.reader.components.ChapterNavigator
+import eu.kanade.presentation.theme.ReaderBarAlphaDark
+import eu.kanade.presentation.theme.ReaderBarAlphaLight
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderOrientation
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
 import eu.kanade.tachiyomi.ui.reader.viewer.Viewer
@@ -66,9 +68,14 @@ fun ReaderAppBars(
     onClickSettings: () -> Unit,
 ) {
     val isRtl = viewer is R2LPagerViewer
+
+    // Bar background: slightly transparent so page content bleeds through at the edges,
+    // giving the reader a more immersive feel. Dark mode uses a lower alpha because the
+    // AMOLED surface is already very dark; light mode needs a higher alpha to stay legible.
+    val barAlpha = if (isSystemInDarkTheme()) ReaderBarAlphaDark else ReaderBarAlphaLight
     val backgroundColor = MaterialTheme.colorScheme
         .surfaceColorAtElevation(3.dp)
-        .copy(alpha = if (isSystemInDarkTheme()) 0.9f else 0.95f)
+        .copy(alpha = barAlpha)
 
     Column(modifier = Modifier.fillMaxHeight()) {
         AnimatedVisibility(
@@ -112,6 +119,7 @@ fun ReaderAppBars(
                     currentPage = currentPage,
                     totalPages = totalPages,
                     onPageIndexChange = onPageIndexChange,
+                    backgroundColor = backgroundColor,
                 )
                 ReaderBottomBar(
                     modifier = Modifier

@@ -207,7 +207,10 @@ private fun UpdatesUiItem(
                     Spacer(modifier = Modifier.width(8.dp))
                     Box(
                         modifier = Modifier
-                            .background(Color(0xFF22C55E), RoundedCornerShape(4.dp))
+                            // tertiary = downloaded/success green in the Sora colour scheme.
+                            // Using the scheme token ensures it adapts to light/dark and any
+                            // future palette overrides automatically.
+                            .background(MaterialTheme.colorScheme.tertiary, RoundedCornerShape(4.dp))
                             .padding(horizontal = 6.dp, vertical = 2.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -215,7 +218,7 @@ private fun UpdatesUiItem(
                             text = "NEW",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onTertiary,
                                 fontSize = 10.sp
                             )
                         )

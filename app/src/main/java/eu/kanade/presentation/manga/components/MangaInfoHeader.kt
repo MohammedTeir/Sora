@@ -90,6 +90,7 @@ import com.mikepenz.markdown.model.markdownAnnotatorConfig
 import com.mikepenz.markdown.utils.getUnescapedTextInNode
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.components.DropdownMenu
+import eu.kanade.presentation.theme.SoraBlue
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.util.system.copyToClipboard
@@ -803,8 +804,8 @@ fun MangaPrimaryActionButton(
             .height(56.dp),
         shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
         colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF2977FF), // Sora Blue
-            contentColor = Color.White,
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
         )
     ) {
         Text(

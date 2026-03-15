@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import eu.kanade.presentation.theme.MangaCoverScrim
 import eu.kanade.tachiyomi.ui.library.LibraryItem
 import kotlinx.coroutines.delay
 import tachiyomi.domain.manga.model.MangaCover
@@ -93,11 +94,14 @@ fun LibraryHeroCarousel(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
-                        Brush.verticalGradient(
-                            0f to Color.Transparent,
-                            0.4f to Color.Transparent,
-                            1f to Color(0xDD000000),
-                        ),
+                    // Gradient scrim — always dark regardless of theme: overlays a cover image.
+                    // MangaCoverScrim (0xAA000000) is used for subtle overlays; here we use a
+                    // denser variant to keep titles legible on bright covers.
+                    Brush.verticalGradient(
+                        0f to Color.Transparent,
+                        0.4f to Color.Transparent,
+                        1f to MangaCoverScrim.copy(alpha = 0.87f),
+                    ),
                     ),
             )
 
@@ -109,6 +113,7 @@ fun LibraryHeroCarousel(
             ) {
                 Text(
                     text = manga.title,
+                    // White is intentional: text is rendered over a dark image scrim.
                     color = Color.White,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
@@ -128,6 +133,7 @@ fun LibraryHeroCarousel(
 
                 Text(
                     text = subtitleText,
+                    // White @ 70% is intentional: secondary text over dark image scrim.
                     color = Color.White.copy(alpha = 0.7f),
                     fontSize = 13.sp,
                     maxLines = 1,

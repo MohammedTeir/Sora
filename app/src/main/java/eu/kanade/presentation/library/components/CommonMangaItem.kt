@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import eu.kanade.presentation.manga.components.MangaCover
 import eu.kanade.presentation.util.LocalAnimatedVisibilityScope
 import eu.kanade.presentation.util.LocalSharedTransitionScope
+import eu.kanade.presentation.theme.MangaCoverScrim
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.BadgeGroup
 import tachiyomi.presentation.core.i18n.stringResource
@@ -176,7 +177,7 @@ private fun BoxScope.CoverTextOverlay(
             .background(
                 Brush.verticalGradient(
                     0f to Color.Transparent,
-                    1f to Color(0xAA000000),
+                    1f to MangaCoverScrim,
                 ),
             )
             .fillMaxHeight(0.33f)
@@ -193,7 +194,7 @@ private fun BoxScope.CoverTextOverlay(
                 .padding(8.dp),
             title = title,
             style = MaterialTheme.typography.titleSmall.copy(
-                color = Color.White,
+                color = Color.White, // Always white: text sits on a dark scrim over a cover image
                 shadow = Shadow(
                     color = Color.Black,
                     blurRadius = 4f,

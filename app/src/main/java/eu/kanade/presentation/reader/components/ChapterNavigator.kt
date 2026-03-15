@@ -36,6 +36,8 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import eu.kanade.presentation.theme.ReaderBarAlphaDark
+import eu.kanade.presentation.theme.ReaderBarAlphaLight
 import eu.kanade.presentation.theme.TachiyomiPreviewTheme
 import eu.kanade.presentation.util.isTabletUi
 import tachiyomi.i18n.MR
@@ -52,22 +54,26 @@ fun ChapterNavigator(
     currentPage: Int,
     totalPages: Int,
     onPageIndexChange: (Int) -> Unit,
+    // backgroundColor is passed in from ReaderAppBars so the colour is computed exactly once
+    // for the entire bottom chrome (top bar + navigator row + bottom bar). The default value
+    // here exists only for standalone Previews and hypothetical direct callers — in production
+    // ReaderAppBars always supplies the pre-computed value, so isSystemInDarkTheme() is never
+    // evaluated at runtime from this site.
+    backgroundColor: Color = MaterialTheme.colorScheme
+        .surfaceColorAtElevation(3.dp)
+        .copy(alpha = if (isSystemInDarkTheme()) ReaderBarAlphaDark else ReaderBarAlphaLight),
 ) {
     val isTabletUi = isTabletUi()
     val horizontalPadding = if (isTabletUi) 24.dp else 8.dp
     val layoutDirection = if (isRtl) LayoutDirection.Rtl else LayoutDirection.Ltr
     val haptic = LocalHapticFeedback.current
 
-    // Match with toolbar background color set in ReaderActivity
-    val backgroundColor = MaterialTheme.colorScheme
-        .surfaceColorAtElevation(3.dp)
-        .copy(alpha = if (isSystemInDarkTheme()) 0.9f else 0.95f)
     val buttonColor = IconButtonDefaults.filledIconButtonColors(
         containerColor = backgroundColor,
         disabledContainerColor = backgroundColor,
     )
 
-    // We explicitly handle direction based on the reader viewer rather than the system direction
+    // We explicitly handle direction based on the reader viewer rather than the system direction.
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         Row(
             modifier = Modifier
@@ -100,7 +106,8 @@ fun ChapterNavigator(
                     ) {
                         Box(contentAlignment = Alignment.CenterEnd) {
                             Text(text = currentPage.toString())
-                            // Taking up full length so the slider doesn't shift when 'currentPage' length changes
+                            // Invisible phantom text reserves the maximum width so the slider
+                            // track does not shift as the currentPage digit count changes.
                             Text(text = totalPages.toString(), color = Color.Transparent)
                         }
 

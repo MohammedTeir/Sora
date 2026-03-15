@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import eu.kanade.presentation.theme.SoraBlue
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.relativeDateText
 import eu.kanade.presentation.util.isTabletUi
@@ -125,7 +126,7 @@ private fun UpcomingToolbar() {
             Icon(
                 imageVector = Icons.Outlined.Book,
                 contentDescription = null,
-                tint = androidx.compose.ui.graphics.Color(0xFF2D7CFF),
+                tint = SoraBlue,
                 modifier = Modifier.size(24.dp),
             )
             androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(6.dp))
@@ -167,7 +168,7 @@ private fun DateHeading(
             style = MaterialTheme.typography.bodyMedium,
         )
         Badge(
-            containerColor = androidx.compose.ui.graphics.Color(0xFF2D7CFF),
+            containerColor = SoraBlue,
             contentColor = androidx.compose.ui.graphics.Color.White,
         ) {
             Text("$mangaCount")

@@ -117,7 +117,7 @@ fun LibraryContent(
                             textStyle = MaterialTheme.typography.bodyMedium.copy(
                                 color = MaterialTheme.colorScheme.onSurface,
                             ),
-                            cursorBrush = SolidColor(androidx.compose.ui.graphics.Color(0xFF2977FF)), // Sora Blue
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }

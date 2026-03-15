@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import soup.compose.material.motion.animation.materialSharedAxisX
 import soup.compose.material.motion.animation.rememberSlideDistance
+import eu.kanade.presentation.theme.SoraBlue
 
 @Composable
 fun OnboardingScreen(
@@ -106,7 +107,7 @@ fun OnboardingScreen(
                                     .width(if (index == currentStep - 1) 24.dp else 12.dp)
                                     .clip(CircleShape)
                                     .background(
-                                        if (index <= currentStep - 1) Color(0xFF2D7CFF) else MaterialTheme.colorScheme.surfaceVariant
+                                        if (index <= currentStep - 1) SoraBlue else MaterialTheme.colorScheme.surfaceVariant
                                     )
                             )
                         }
@@ -152,7 +153,7 @@ fun OnboardingScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(56.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2D7CFF)),
+                            colors = ButtonDefaults.buttonColors(containerColor = SoraBlue),
                             shape = CircleShape
                         ) {
                             Text("Next", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
@@ -179,7 +180,7 @@ fun OnboardingScreen(
                             .fillMaxWidth()
                             .height(56.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF2D7CFF),
+                            containerColor = SoraBlue,
                             disabledContainerColor = Color(0xFF333333)
                         ),
                         shape = CircleShape
@@ -196,7 +197,7 @@ fun OnboardingScreen(
                                 .fillMaxWidth()
                                 .height(56.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF2D7CFF),
+                                containerColor = SoraBlue,
                             ),
                             shape = CircleShape
                         ) {
@@ -222,7 +223,7 @@ fun OnboardingScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2D7CFF)),
+                        colors = ButtonDefaults.buttonColors(containerColor = SoraBlue),
                         shape = CircleShape
                     ) {
                         Text("Go to Home", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)

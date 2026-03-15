@@ -77,6 +77,7 @@ import androidx.core.net.toUri
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.hippo.unifile.UniFile
+import eu.kanade.presentation.theme.SoraBlue
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.presentation.util.LocalBackPress
 import eu.kanade.tachiyomi.data.cache.ChapterCache
@@ -122,7 +123,7 @@ object SettingsDataScreen : SearchableSettings {
     private val FireOrange = Color(0xFFFFA000)
 
     // Storage chart — high-contrast palette so every slice is distinguishable
-    private val MangaColor = Color(0xFF2977FF)  // Sora Blue
+    private val MangaColor @Composable get() = SoraBlue
     private val CacheColor  = Color(0xFFFFB300)  // Amber
     private val OtherColor  = Color(0xFFEF5350)  // Coral Red
     private val FreeColor   = Color(0xFF78909C)  // Blue-Grey

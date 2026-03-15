@@ -171,6 +171,9 @@ private fun ExtensionContent(
 ) {
     val context = LocalContext.current
     var trustState by remember { mutableStateOf<Extension.Untrusted?>(null) }
+    // Tracks an installed extension whose trust the user wants to revoke.
+    // Null = no dialog shown; non-null = confirmation dialog shown for that extension.
+    var revokeTrustState by remember { mutableStateOf<Extension.Installed?>(null) }
     var selectedFilter by remember { mutableStateOf<String>("All") }
     var selectedLanguage by remember { mutableStateOf<String?>(null) }
     val installGranted = rememberRequestPackageInstallsPermissionState(initialValue = true)
@@ -468,6 +471,32 @@ private fun ExtensionContent(
             },
         )
     }
+
+    // Revoke-trust confirmation dialog.
+    // Shown when the user toggles off the "Trust source" switch on an installed extension.
+    // Offers two explicit actions so the intent is unambiguous:
+    //   • "Revoke trust" — keeps the APK installed but marks it untrusted (shows warning badge).
+    //   • "Revoke & uninstall" — revokes trust AND uninstalls the extension APK.
+    // Dismissing (back / outside tap) cancels the action entirely; the switch stays ON.
+    if (revokeTrustState != null) {
+        ExtensionRevokeTrustDialog(
+            extensionName = revokeTrustState!!.name,
+            onClickRevokeOnly = {
+                onRevokeTrust(revokeTrustState!!)
+                revokeTrustState = null
+            },
+            onClickRevokeAndUninstall = {
+                onRevokeTrust(revokeTrustState!!)
+                onUninstallExtension(revokeTrustState!!)
+                revokeTrustState = null
+            },
+            onDismissRequest = {
+                // User cancelled — do nothing; switch visually snaps back to ON
+                // because the extension is still Extension.Installed in the state flow.
+                revokeTrustState = null
+            },
+        )
+    }
 }
 
 @Composable
@@ -617,11 +646,13 @@ private fun ExtensionItem(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     text = "INSTALLED",
-                                    color = Color(0xFF22C55E),
+                                    // tertiary = SoraGreen in the Sora colour scheme —
+                                    // same semantic slot used by the downloaded badge in the library.
+                                    color = MaterialTheme.colorScheme.tertiary,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier
-                                        .background(Color(0xFF22C55E).copy(alpha = 0.12f), RoundedCornerShape(4.dp))
+                                        .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f), RoundedCornerShape(4.dp))
                                         .padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }
@@ -699,7 +730,10 @@ private fun ExtensionItem(
                             if (extension is Extension.Untrusted) {
                                 onClickItemAction(extension)
                             } else if (extension is Extension.Installed) {
-                                onRevokeTrust(extension)
+                                // Show the revoke-trust confirmation dialog; do not call
+                                // onRevokeTrust directly — the user must confirm the action
+                                // and choose whether to also uninstall the extension.
+                                revokeTrustState = extension
                             }
                         },
                         colors = androidx.compose.material3.SwitchDefaults.colors(
@@ -789,6 +823,47 @@ private fun ExtensionTrustDialog(
         dismissButton = {
             TextButton(onClick = onClickDismiss) {
                 Text(text = stringResource(MR.strings.ext_uninstall))
+            }
+        },
+        onDismissRequest = onDismissRequest,
+    )
+}
+
+/**
+ * Confirmation dialog shown when the user toggles off the "Trust source" switch on an
+ * already-trusted (installed) extension.
+ *
+ * Two distinct actions are offered so the outcome is always predictable:
+ * - [onClickRevokeOnly] — strips the trust entry from preferences and moves the extension
+ *   to the untrusted list, but does **not** uninstall the APK.
+ * - [onClickRevokeAndUninstall] — same as above, then also triggers an APK uninstall.
+ *
+ * Dismissing without choosing cancels the operation entirely; the extension stays trusted.
+ */
+@Composable
+private fun ExtensionRevokeTrustDialog(
+    extensionName: String,
+    onClickRevokeOnly: () -> Unit,
+    onClickRevokeAndUninstall: () -> Unit,
+    onDismissRequest: () -> Unit,
+) {
+    AlertDialog(
+        title = {
+            Text(text = stringResource(MR.strings.ext_revoke_trust_title))
+        },
+        text = {
+            Text(text = stringResource(MR.strings.ext_revoke_trust_message, extensionName))
+        },
+        confirmButton = {
+            // Primary action: revoke AND uninstall — the most complete removal.
+            TextButton(onClick = onClickRevokeAndUninstall) {
+                Text(text = stringResource(MR.strings.ext_revoke_and_uninstall))
+            }
+        },
+        dismissButton = {
+            // Secondary action: revoke trust only, keep the APK installed but marked untrusted.
+            TextButton(onClick = onClickRevokeOnly) {
+                Text(text = stringResource(MR.strings.ext_revoke_trust_only))
             }
         },
         onDismissRequest = onDismissRequest,

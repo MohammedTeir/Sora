@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import eu.kanade.presentation.more.settings.screen.SettingsDataScreen
 import eu.kanade.tachiyomi.util.system.toast
+import eu.kanade.presentation.theme.SoraBlue
 import kotlinx.coroutines.flow.collectLatest
 import tachiyomi.domain.storage.service.StoragePreferences
 import tachiyomi.i18n.MR
@@ -76,7 +77,7 @@ internal class StorageStep : OnboardingStep {
                 Icon(
                     imageVector = Icons.Outlined.Folder,
                     contentDescription = null,
-                    tint = Color(0xFF2D7CFF),
+                    tint = SoraBlue,
                     modifier = Modifier.size(56.dp)
                 )
             }
@@ -131,7 +132,7 @@ internal class StorageStep : OnboardingStep {
                     Icon(
                         imageVector = Icons.Outlined.Folder,
                         contentDescription = null,
-                        tint = Color(0xFF2D7CFF)
+                        tint = SoraBlue
                     )
                 }
 

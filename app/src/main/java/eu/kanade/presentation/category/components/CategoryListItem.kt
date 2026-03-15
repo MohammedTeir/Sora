@@ -64,7 +64,7 @@ fun ReorderableCollectionItemScope.CategoryListItem(
         try {
             Color(android.graphics.Color.parseColor(colorHexStr))
         } catch (e: Exception) {
-            Color(0xFF2D7CFF)
+            SoraBlue
         }
     }
 

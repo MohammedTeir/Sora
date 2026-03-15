@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import eu.kanade.presentation.theme.TachiyomiPreviewTheme
+import eu.kanade.presentation.theme.SoraBlue
 
 internal class RestoreStep(
     private val onRestoreBackup: () -> Unit,
@@ -54,14 +55,14 @@ internal class RestoreStep(
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF2D7CFF).copy(alpha = 0.2f))
-                    .border(2.dp, Color(0xFF2D7CFF), CircleShape),
+                    .background(SoraBlue.copy(alpha = 0.2f))
+                    .border(2.dp, SoraBlue, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Check,
                     contentDescription = null,
-                    tint = Color(0xFF2D7CFF),
+                    tint = SoraBlue,
                     modifier = Modifier.size(40.dp)
                 )
             }
@@ -95,7 +96,7 @@ internal class RestoreStep(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .border(1.dp, Color(0xFF2D7CFF), RoundedCornerShape(16.dp)) // Highlight this option
+                    .border(1.dp, SoraBlue, RoundedCornerShape(16.dp)) // Highlight this option
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -104,7 +105,7 @@ internal class RestoreStep(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF2D7CFF)),
+                        .background(SoraBlue),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(

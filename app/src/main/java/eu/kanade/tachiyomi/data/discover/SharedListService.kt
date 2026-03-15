@@ -29,7 +29,12 @@ data class SharedList(
     fun getMangaItems(): List<SharedMangaItem> = manga.map { m ->
         SharedMangaItem(
             title = m["title"] as? String ?: "",
-            sourceId = (m["sourceId"] as? Long) ?: 0L,
+            // Firestore's Android SDK deserialises numeric fields as either
+            // java.lang.Integer (when the value fits in 32 bits) or java.lang.Long.
+            // A direct `as? Long` cast returns null for Integer values, silently
+            // producing 0L and breaking source matching during list import.
+            // Casting via Number first handles both boxed types safely.
+            sourceId = (m["sourceId"] as? Number)?.toLong() ?: 0L,
             coverUrl = m["coverUrl"] as? String ?: "",
             sourceUrl = m["sourceUrl"] as? String ?: "",
         )

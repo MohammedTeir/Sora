@@ -38,6 +38,7 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import eu.kanade.presentation.theme.SoraBlue
 import eu.kanade.presentation.components.SearchToolbar
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.SourceFilter
 import tachiyomi.i18n.MR
@@ -76,7 +77,7 @@ fun GlobalSearchToolbar(
                             Icon(
                                 imageVector = Icons.Outlined.Book,
                                 contentDescription = null,
-                                tint = androidx.compose.ui.graphics.Color(0xFF2D7CFF),
+                                tint = SoraBlue,
                                 modifier = Modifier.size(24.dp),
                             )
                             androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(6.dp))

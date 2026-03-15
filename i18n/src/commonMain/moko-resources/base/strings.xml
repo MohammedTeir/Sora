@@ -411,6 +411,10 @@
     <string name="ext_installer_shizuku_stopped">Shizuku is not running</string>
     <string name="ext_installer_shizuku_unavailable_dialog">Install and start Shizuku to use Shizuku as extension installer.</string>
     <string name="ext_revoke_trust">Revoke trusted unknown extensions</string>
+    <string name="ext_revoke_trust_title">Remove trust?</string>
+    <string name="ext_revoke_trust_message">Do you want to remove trust from \"%s\"?\n\nChoose \"Revoke &amp; uninstall\" to also remove the extension from your device, or \"Revoke trust only\" to keep it installed but mark it as untrusted.</string>
+    <string name="ext_revoke_and_uninstall">Revoke &amp; uninstall</string>
+    <string name="ext_revoke_trust_only">Revoke trust only</string>
 
     <!-- Extension repos -->
     <string name="label_extension_repos">Extension repos</string>

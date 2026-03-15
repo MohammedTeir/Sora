@@ -30,6 +30,10 @@ fun ReaderBottomBar(
 ) {
     Row(
         modifier = modifier
+            // Consumes all pointer events that reach this Row, preventing them from falling
+            // through to the underlying reader page. Without this, taps on the bottom bar's
+            // empty horizontal space (e.g. between icon buttons) would register as page-tap
+            // events and toggle the bar's own visibility — causing an immediate hide on open.
             .pointerInput(Unit) {},
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,

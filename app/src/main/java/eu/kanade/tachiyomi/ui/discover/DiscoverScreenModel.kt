@@ -31,25 +31,36 @@ class DiscoverScreenModel(
         val trendingLists: List<SharedList> = emptyList(),
         val recentLists: List<SharedList> = emptyList(),
         val myLists: List<SharedList> = emptyList(),
-        val isLoading: Boolean = false,
+        // isFetchingLists — true only while the Firestore read queries are in-flight.
+        // Used to show/hide the LinearProgressIndicator and the initial full-screen spinner.
+        val isFetchingLists: Boolean = false,
+        // isUploadingList — true only while an upload or import operation is in-flight.
+        // Kept separate so a completed upload can immediately trigger a list refresh
+        // without the guard in loadLists() blocking it.
+        val isUploadingList: Boolean = false,
         val isInitialLoad: Boolean = true,
         val isLoggedIn: Boolean = false,
         val missingMangaTitles: List<String> = emptyList(),
-        // Separate fields for snackbar so clearing one doesn't trigger the other
         val importMessage: String? = null,
         val errorMessage: String? = null,
-    )
+    ) {
+        // Convenience accessor used by the UI to show progress indicators.
+        val isLoading: Boolean get() = isFetchingLists || isUploadingList
+    }
 
     init {
         loadLists()
     }
 
     fun loadLists() {
-        // Guard: don't start a second load if one is already running
-        if (state.value.isLoading) return
+        // Guard: only block if a *list-fetch* is already running.
+        // Intentionally does NOT check isUploadingList — this allows uploadList()
+        // and deleteMyList() to call loadLists() immediately after they finish
+        // without the guard silently dropping the refresh.
+        if (state.value.isFetchingLists) return
 
         screenModelScope.launch {
-            mutableState.update { it.copy(isLoading = true) }
+            mutableState.update { it.copy(isFetchingLists = true) }
 
             val loggedIn = authService.isLoggedIn()
 
@@ -64,12 +75,12 @@ class DiscoverScreenModel(
 
             mutableState.update {
                 it.copy(
-                    trendingLists = trendingDeferred.await(),
-                    recentLists   = recentDeferred.await(),
-                    myLists       = myListsDeferred.await(),
-                    isLoading     = false,
-                    isInitialLoad = false,
-                    isLoggedIn    = loggedIn,
+                    trendingLists   = trendingDeferred.await(),
+                    recentLists     = recentDeferred.await(),
+                    myLists         = myListsDeferred.await(),
+                    isFetchingLists = false,
+                    isInitialLoad   = false,
+                    isLoggedIn      = loggedIn,
                 )
             }
         }
@@ -77,7 +88,7 @@ class DiscoverScreenModel(
 
     fun importList(sharedList: SharedList) {
         screenModelScope.launch {
-            mutableState.update { it.copy(isLoading = true) }
+            mutableState.update { it.copy(isUploadingList = true) }
             try {
                 // 1. Create a new category named after the list
                 createCategoryWithName.await(sharedList.title)
@@ -88,16 +99,16 @@ class DiscoverScreenModel(
                 if (newCategory == null) {
                     mutableState.update {
                         it.copy(
-                            isLoading    = false,
-                            errorMessage = "Could not create category '${sharedList.title}'.",
+                            isUploadingList = false,
+                            errorMessage    = "Could not create category '${sharedList.title}'.",
                         )
                     }
                     return@launch
                 }
 
                 // 3. Match manga in shared list against the user's library by title
-                val libraryManga = getLibraryManga.await()
-                val mangaItems   = sharedList.getMangaItems()
+                val libraryManga  = getLibraryManga.await()
+                val mangaItems    = sharedList.getMangaItems()
                 val missingTitles = mutableListOf<String>()
                 var importedCount = 0
 
@@ -130,17 +141,17 @@ class DiscoverScreenModel(
 
                 mutableState.update {
                     it.copy(
-                        isLoading            = false,
-                        importMessage        = message,
-                        missingMangaTitles   = missingTitles,
+                        isUploadingList    = false,
+                        importMessage      = message,
+                        missingMangaTitles = missingTitles,
                     )
                 }
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR) { "DiscoverScreenModel: importList failed: ${e.message}" }
                 mutableState.update {
                     it.copy(
-                        isLoading    = false,
-                        errorMessage = "Import failed: ${e.localizedMessage}",
+                        isUploadingList = false,
+                        errorMessage    = "Import failed: ${e.localizedMessage}",
                     )
                 }
             }
@@ -157,13 +168,17 @@ class DiscoverScreenModel(
             return
         }
         screenModelScope.launch {
-            mutableState.update { it.copy(isLoading = true) }
+            mutableState.update { it.copy(isUploadingList = true) }
             sharedListService.uploadList(title, selectedManga)
                 .onSuccess {
+                    // Clear the upload flag BEFORE calling loadLists() so the
+                    // isFetchingLists guard in loadLists() is the only active guard.
+                    // Previously isLoading was still true here, which caused loadLists()
+                    // to return immediately — leaving the screen empty after a successful upload.
                     mutableState.update {
                         it.copy(
-                            isLoading     = false,
-                            importMessage = "List '$title' shared successfully!",
+                            isUploadingList = false,
+                            importMessage   = "List '$title' shared successfully!",
                         )
                     }
                     loadLists()
@@ -171,8 +186,8 @@ class DiscoverScreenModel(
                 .onFailure { e ->
                     mutableState.update {
                         it.copy(
-                            isLoading    = false,
-                            errorMessage = e.localizedMessage ?: "Upload failed",
+                            isUploadingList = false,
+                            errorMessage    = e.localizedMessage ?: "Upload failed",
                         )
                     }
                 }
@@ -181,6 +196,8 @@ class DiscoverScreenModel(
 
     fun deleteMyList(listId: String) {
         screenModelScope.launch {
+            // Clear isUploadingList before calling loadLists() for the same reason
+            // as uploadList — so the isFetchingLists guard doesn't block the refresh.
             sharedListService.deleteList(listId)
             loadLists()
         }

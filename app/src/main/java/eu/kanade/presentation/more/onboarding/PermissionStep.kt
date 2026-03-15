@@ -56,6 +56,7 @@ import eu.kanade.presentation.util.rememberRequestPackageInstallsPermissionState
 import eu.kanade.tachiyomi.core.security.PrivacyPreferences
 import eu.kanade.tachiyomi.util.system.launchRequestPackageInstallsPermission
 import eu.kanade.tachiyomi.util.system.telemetryIncluded
+import eu.kanade.presentation.theme.SoraBlue
 import uy.kohesive.injekt.injectLazy
 
 internal class PermissionStep : OnboardingStep {
@@ -199,7 +200,7 @@ internal class PermissionStep : OnboardingStep {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = Color(0xFF2D7CFF)
+                    tint = SoraBlue
                 )
             }
 
@@ -229,7 +230,7 @@ internal class PermissionStep : OnboardingStep {
                 onCheckedChange = { onToggle(it) },
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
-                    checkedTrackColor = Color(0xFF2D7CFF), // SoraBlue
+                    checkedTrackColor = SoraBlue, // SoraBlue
                     uncheckedThumbColor = Color(0xFF9CA3AF),
                     uncheckedTrackColor = Color(0xFF374151),
                 )

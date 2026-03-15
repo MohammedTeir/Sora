@@ -51,6 +51,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import eu.kanade.presentation.theme.SoraBlue
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.delay
@@ -178,7 +179,7 @@ fun CategoryCreateBottomSheet(
                         fontSize = 16.sp
                     ),
                     singleLine = true,
-                    cursorBrush = SolidColor(Color(0xFF2D7CFF))
+                    cursorBrush = SolidColor(SoraBlue)
                 )
             }
 
@@ -228,7 +229,7 @@ fun CategoryCreateBottomSheet(
                     .clip(RoundedCornerShape(20.dp))
                     .background(
                         Brush.horizontalGradient(
-                            colors = listOf(Color(0xFF2D7CFF), Color(0xFF5A9DFF))
+                            colors = listOf(SoraBlue, Color(0xFF5A9DFF))
                         )
                     )
                     .clickable(enabled = name.isNotEmpty() && !nameAlreadyExists) {

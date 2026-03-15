@@ -15,6 +15,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Modifier
+import eu.kanade.presentation.theme.SoraBlue
 import eu.kanade.presentation.category.components.CategoryFloatingActionButton
 import eu.kanade.presentation.category.components.CategoryListItem
 import eu.kanade.presentation.category.components.CategoryDeleteDialog
@@ -115,7 +116,7 @@ fun CategoryScreen(
                     onClick = onClickCreate,
                     modifier = Modifier
                         .size(44.dp)
-                        .background(Color(0xFF2D7CFF), CircleShape) // Sora Blue
+                        .background(SoraBlue, CircleShape) // Sora Blue
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Add,
