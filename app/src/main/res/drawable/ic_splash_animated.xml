@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Animated Vector Drawable for the splash screen.
+  Plays:
+    - logo_group: scaleX + scaleY 0.2 → 1.0 (overshoot bounce) over 700ms
+    - logo_path:  fillAlpha 0 → 1 (fade-in) over 700ms
+-->
+<animated-vector
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_splash_animated_base">
+
+    <!--  Scale X animation on the logo group -->
+    <target
+        android:name="logo_group"
+        android:animation="@animator/splash_scale_x" />
+
+    <!--  Scale Y animation on the logo group -->
+    <target
+        android:name="logo_group"
+        android:animation="@animator/splash_scale_y" />
+
+    <!--  Fade-in animation on the logo path -->
+    <target
+        android:name="logo_path"
+        android:animation="@animator/splash_fade_in" />
+
+</animated-vector>

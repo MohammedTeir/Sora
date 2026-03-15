@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ObjectAnimator for the logo group scale and the path fill-alpha.
+  Duration: 700ms — scale slides in from 0.2 to 1.0, alpha 0 -> 1.
+-->
+<objectAnimator xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="1200"
+    android:interpolator="@android:anim/overshoot_interpolator"
+    android:propertyName="scaleX"
+    android:valueFrom="0.2"
+    android:valueTo="1.0"
+    android:valueType="floatType" />

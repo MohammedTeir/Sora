@@ -1,0 +1,79 @@
+package eu.kanade.tachiyomi.data.auth
+
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.GoogleAuthProvider
+import kotlinx.coroutines.tasks.await
+import logcat.LogPriority
+import logcat.logcat
+
+class FirebaseAuthService {
+
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+
+    fun getCurrentUser(): FirebaseUser? = auth.currentUser
+
+    fun isLoggedIn(): Boolean = auth.currentUser != null
+
+    fun getUserId(): String? = auth.currentUser?.uid
+
+    fun getUserEmail(): String? = auth.currentUser?.email
+
+    fun getUserDisplayName(): String? = auth.currentUser?.displayName
+
+    suspend fun signIn(email: String, password: String): Result<String> {
+        return try {
+            val result = auth.signInWithEmailAndPassword(email, password).await()
+            val uid = result.user?.uid ?: return Result.failure(Exception("Sign in succeeded but user is null"))
+            logcat(LogPriority.INFO) { "FirebaseAuthService: signed in user $uid" }
+            Result.success(uid)
+        } catch (e: Exception) {
+            logcat(LogPriority.ERROR) { "FirebaseAuthService: sign in failed: ${e.message}" }
+            Result.failure(e)
+        }
+    }
+
+    suspend fun signUp(email: String, password: String): Result<String> {
+        return try {
+            val result = auth.createUserWithEmailAndPassword(email, password).await()
+            val uid = result.user?.uid ?: return Result.failure(Exception("Sign up succeeded but user is null"))
+            logcat(LogPriority.INFO) { "FirebaseAuthService: created user $uid" }
+            Result.success(uid)
+        } catch (e: Exception) {
+            logcat(LogPriority.ERROR) { "FirebaseAuthService: sign up failed: ${e.message}" }
+            Result.failure(e)
+        }
+    }
+
+    suspend fun signInWithGoogle(idToken: String): Result<String> {
+        return try {
+            val credential = GoogleAuthProvider.getCredential(idToken, null)
+            val result = auth.signInWithCredential(credential).await()
+            val uid = result.user?.uid ?: return Result.failure(Exception("Google sign-in succeeded but user is null"))
+            logcat(LogPriority.INFO) { "FirebaseAuthService: Google sign-in user $uid" }
+            Result.success(uid)
+        } catch (e: Exception) {
+            logcat(LogPriority.ERROR) { "FirebaseAuthService: Google sign-in failed: ${e.message}" }
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Force-refreshes the Firebase ID token so Firestore calls use a valid credential.
+     * Returns true if the token was refreshed successfully, false otherwise.
+     */
+    suspend fun refreshToken(): Boolean {
+        return try {
+            auth.currentUser?.getIdToken(true)?.await()
+            true
+        } catch (e: Exception) {
+            logcat(LogPriority.WARN) { "FirebaseAuthService: token refresh failed: ${e.message}" }
+            false
+        }
+    }
+
+    fun signOut() {
+        logcat(LogPriority.INFO) { "FirebaseAuthService: signing out" }
+        auth.signOut()
+    }
+}
