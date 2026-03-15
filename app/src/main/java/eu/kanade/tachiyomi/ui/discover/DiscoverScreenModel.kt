@@ -48,9 +48,9 @@ class DiscoverScreenModel(
         val isLoading: Boolean get() = isFetchingLists || isUploadingList
     }
 
-    init {
-        loadLists()
-    }
+    // Loading is driven by the lifecycle observer in DiscoverScreen.kt
+    // (onResume → loadLists()).  Removing the init-based call prevents
+    // two concurrent fetches on first composition.
 
     fun loadLists() {
         // Guard: only block if a *list-fetch* is already running.
@@ -62,26 +62,37 @@ class DiscoverScreenModel(
         screenModelScope.launch {
             mutableState.update { it.copy(isFetchingLists = true) }
 
-            val loggedIn = authService.isLoggedIn()
+            try {
+                val loggedIn = authService.isLoggedIn()
 
-            // All three fetches run in parallel.
-            // Trending & Recent are public (no auth required by Firestore rules).
-            // My Lists requires login.
-            val trendingDeferred = async { sharedListService.getTrendingLists() }
-            val recentDeferred   = async { sharedListService.getRecentLists() }
-            val myListsDeferred  = async {
-                if (loggedIn) sharedListService.getMyLists() else emptyList()
-            }
+                // All three fetches run in parallel.
+                // Trending & Recent are public (no auth required by Firestore rules).
+                // My Lists requires login.
+                val trendingDeferred = async { sharedListService.getTrendingLists() }
+                val recentDeferred   = async { sharedListService.getRecentLists() }
+                val myListsDeferred  = async {
+                    if (loggedIn) sharedListService.getMyLists() else emptyList()
+                }
 
-            mutableState.update {
-                it.copy(
-                    trendingLists   = trendingDeferred.await(),
-                    recentLists     = recentDeferred.await(),
-                    myLists         = myListsDeferred.await(),
-                    isFetchingLists = false,
-                    isInitialLoad   = false,
-                    isLoggedIn      = loggedIn,
-                )
+                mutableState.update {
+                    it.copy(
+                        trendingLists   = trendingDeferred.await(),
+                        recentLists     = recentDeferred.await(),
+                        myLists         = myListsDeferred.await(),
+                        isFetchingLists = false,
+                        isInitialLoad   = false,
+                        isLoggedIn      = loggedIn,
+                    )
+                }
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR) { "DiscoverScreenModel: loadLists failed: ${e.message}" }
+                mutableState.update {
+                    it.copy(
+                        isFetchingLists = false,
+                        isInitialLoad   = false,
+                        errorMessage    = "Failed to load lists. Pull down to retry.",
+                    )
+                }
             }
         }
     }
@@ -146,6 +157,8 @@ class DiscoverScreenModel(
                         missingMangaTitles = missingTitles,
                     )
                 }
+                // Refresh lists so the updated import count is visible.
+                loadLists()
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR) { "DiscoverScreenModel: importList failed: ${e.message}" }
                 mutableState.update {
