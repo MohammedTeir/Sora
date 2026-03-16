@@ -131,6 +131,20 @@ class DownloadQueueScreenModel(
 
     fun moveSeriesToBottom(mangaId: Long) = downloadManager.moveSeriesToBottom(mangaId)
 
+    /**
+     * Called by the drag-and-drop reorder callback on every frame while the
+     * user is dragging. Uses [DownloadManager.reorderInPlace] which only swaps
+     * the list order in the StateFlow without touching download statuses or
+     * triggering a pause/clear/restart cycle.
+     *
+     * The old [reorder] function called [DownloadManager.reorderQueue] which
+     * calls [Downloader.updateQueue] → pause() + internalClearQueue() +
+     * addAllToQueue(). That mutation chain fires statusFlow on every drag frame,
+     * which caused [queuedDownloads] to emit a new list and reset the local
+     * MutableStateList mid-drag — the rubber-band effect.
+     */
+    fun reorderOnDrop(downloads: List<Download>) = downloadManager.reorderInPlace(downloads)
+
     fun reorder(downloads: List<Download>) = downloadManager.reorderQueue(downloads)
 
     // ── Series-level cancel ────────────────────────────────────────────────
