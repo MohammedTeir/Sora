@@ -60,9 +60,16 @@ import cafe.adriel.voyager.core.screen.Screen
 @Composable
 fun Screen.CreateListBottomSheet(
     screenModel: DiscoverScreenModel,
+    // ── FIX 3: LibraryScreenModel passed in from DiscoverScreen instead of
+    // being created here with rememberScreenModel { LibraryScreenModel() }.
+    //
+    // The old code created a NEW LibraryScreenModel every time the sheet opened,
+    // which triggered a fresh library fetch each time and lost any cached data
+    // on re-open. Passing it from the parent means one instance lives as long
+    // as the Discover tab is in the back stack.
+    libraryScreenModel: LibraryScreenModel,
     onDismiss: () -> Unit,
 ) {
-    val libraryScreenModel = rememberScreenModel { LibraryScreenModel() }
     val libraryState by libraryScreenModel.state.collectAsState()
     val discoverState by screenModel.state.collectAsState()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -71,9 +78,26 @@ fun Screen.CreateListBottomSheet(
     var listTitle by rememberSaveable { mutableStateOf("") }
     val selectedMangaIds = remember { mutableStateListOf<Long>() }
 
-    // Flatten all library manga from favorites
     val allLibraryManga: List<LibraryManga> = remember(libraryState.libraryData.favorites) {
         libraryState.libraryData.favorites.map { it.libraryManga }
+    }
+
+    // ── FIX 2: Auto-dismiss when upload completes successfully.
+    // Previously the sheet was dismissed immediately on button tap (before the
+    // upload coroutine finished), which triggered onResume → loadLists() while
+    // isUploadingList was still true. The resulting isFetchingLists=true made
+    // isLoading=true, so when the user reopened the sheet the button showed a
+    // spinner (discoverState.isLoading == true) and was disabled — appearing stuck.
+    //
+    // Now we keep the sheet open while isUploadingList=true (the user sees the
+    // spinner in the button), and only dismiss once the upload + refresh both
+    // complete (isUploadingList=false AND importMessage is set, meaning success).
+    // On failure the sheet stays open so the user can retry or edit.
+    LaunchedEffect(discoverState.isUploadingList, discoverState.importMessage) {
+        val uploadJustFinished = !discoverState.isUploadingList && discoverState.importMessage != null
+        if (uploadJustFinished) {
+            scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+        }
     }
 
     ModalBottomSheet(
@@ -121,11 +145,8 @@ fun Screen.CreateListBottomSheet(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                if (isSelected) {
-                                    selectedMangaIds.remove(libManga.manga.id)
-                                } else {
-                                    selectedMangaIds.add(libManga.manga.id)
-                                }
+                                if (isSelected) selectedMangaIds.remove(libManga.manga.id)
+                                else selectedMangaIds.add(libManga.manga.id)
                             }
                             .padding(vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -166,22 +187,31 @@ fun Screen.CreateListBottomSheet(
                         .filter { it.manga.id in selectedMangaIds }
                         .map { libManga ->
                             SharedMangaItem(
-                                title = libManga.manga.title,
-                                sourceId = libManga.manga.source,
-                                coverUrl = libManga.manga.thumbnailUrl ?: "",
+                                title     = libManga.manga.title,
+                                sourceId  = libManga.manga.source,
+                                coverUrl  = libManga.manga.thumbnailUrl ?: "",
                                 sourceUrl = libManga.manga.url,
                             )
                         }
+                    // ── FIX 2 (cont.): No longer call sheetState.hide() here.
+                    // The LaunchedEffect above handles dismissal once the upload
+                    // and subsequent loadLists() have both completed.
                     screenModel.uploadList(listTitle, selectedItems)
-                    scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = SoraBlue),
-                enabled = !discoverState.isLoading && listTitle.isNotBlank() && selectedMangaIds.isNotEmpty(),
+                // ── FIX 2 (cont.): Gate only on isUploadingList, NOT isLoading.
+                // isLoading = isUploadingList || isFetchingLists.
+                // Using isLoading caused the button to appear disabled/stuck
+                // whenever a background loadLists() refresh was running — even
+                // when no upload was in flight. Now the button is only locked
+                // during an actual upload operation.
+                enabled = !discoverState.isUploadingList && listTitle.isNotBlank() && selectedMangaIds.isNotEmpty(),
             ) {
-                if (discoverState.isLoading) {
+                // Show spinner only during actual upload, not background refresh.
+                if (discoverState.isUploadingList) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                 } else {
                     Text("Upload List", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
