@@ -152,11 +152,31 @@ internal class DownloadNotifier(private val context: Context) {
 
     /**
      * Resets the state once downloads are completed.
+     *
+     * Bug 3 fix: previously this called dismissProgress() which silently cancelled
+     * the notification the moment all downloads finished. Users had no way to know
+     * downloads were done unless they happened to be looking at the screen.
+     *
+     * Now we replace the ongoing progress notification with a persistent
+     * "Downloads complete" notification that stays until the user taps or swipes
+     * it away — matching standard Android download manager behaviour.
      */
     fun onComplete() {
-        dismissProgress()
+        with(progressNotificationBuilder) {
+            setContentTitle(context.stringResource(MR.strings.download_notifier_downloader_title))
+            setContentText(context.stringResource(MR.strings.download_notifier_download_finished))
+            setSmallIcon(android.R.drawable.stat_sys_download_done)
+            setProgress(0, 0, false)
+            setOngoing(false)        // dismissible by the user
+            setAutoCancel(true)      // also dismissed on tap
+            clearActions()
+            // Tap → open the download queue screen
+            setContentIntent(NotificationHandler.openDownloadManagerPendingActivity(context))
 
-        // Reset states to default
+            show(Notifications.ID_DOWNLOAD_CHAPTER_PROGRESS)
+        }
+
+        // Reset state so the next download session starts fresh
         isDownloading = false
     }
 
