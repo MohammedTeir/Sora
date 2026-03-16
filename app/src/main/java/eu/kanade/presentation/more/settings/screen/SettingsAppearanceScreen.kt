@@ -91,6 +91,14 @@ object SettingsAppearanceScreen : SearchableSettings {
                     preference = uiPreferences.imagesInDescription(),
                     title = stringResource(MR.strings.pref_display_images_description),
                 ),
+                // Issue #1: Material You / Dynamic Color toggle.
+                // Only meaningful on Android 12+ (API 31) — on older versions the
+                // preference is stored but TachiyomiTheme ignores it gracefully.
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = uiPreferences.useDynamicColor(),
+                    title = "Dynamic Color (Material You)",
+                    subtitle = "Use your wallpaper colors as the app theme (Android 12+ only)",
+                ),
             ),
         )
     }
