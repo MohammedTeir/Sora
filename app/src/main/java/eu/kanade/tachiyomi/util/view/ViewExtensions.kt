@@ -18,11 +18,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionContext
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.theme.LocalDarkTheme
 import eu.kanade.presentation.theme.TachiyomiTheme
 import eu.kanade.tachiyomi.R
+import tachiyomi.presentation.core.util.collectAsState
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
 inline fun ComponentActivity.setComposeContent(
     parent: CompositionContext? = null,
@@ -31,8 +36,14 @@ inline fun ComponentActivity.setComposeContent(
     setContent(parent) {
         // Use the global singleton so that the HomeTab toggle affects all Compose roots.
         val darkThemeState = AppThemeState.isDark
+        // Issue #1: read the dynamic-color preference at the root so every screen
+        // automatically inherits Material You colours when enabled.
+        val useDynamicColor by Injekt.get<UiPreferences>().useDynamicColor().collectAsState()
         CompositionLocalProvider(LocalDarkTheme provides darkThemeState) {
-            TachiyomiTheme(isDark = darkThemeState.value) {
+            TachiyomiTheme(
+                isDark = darkThemeState.value,
+                useDynamicColor = useDynamicColor,
+            ) {
                 CompositionLocalProvider(
                     LocalTextStyle provides MaterialTheme.typography.bodySmall,
                     LocalContentColor provides MaterialTheme.colorScheme.onBackground,
@@ -51,8 +62,12 @@ fun ComposeView.setComposeContent(
     setContent {
         // Use the global singleton so that the HomeTab toggle affects all Compose roots.
         val darkThemeState = AppThemeState.isDark
+        val useDynamicColor by Injekt.get<UiPreferences>().useDynamicColor().collectAsState()
         CompositionLocalProvider(LocalDarkTheme provides darkThemeState) {
-            TachiyomiTheme(isDark = darkThemeState.value) {
+            TachiyomiTheme(
+                isDark = darkThemeState.value,
+                useDynamicColor = useDynamicColor,
+            ) {
                 CompositionLocalProvider(
                     LocalTextStyle provides MaterialTheme.typography.bodySmall,
                     LocalContentColor provides MaterialTheme.colorScheme.onBackground,
