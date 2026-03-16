@@ -1,9 +1,11 @@
 package eu.kanade.tachiyomi.ui.download
 
+import android.content.Context
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.model.Download
+import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -139,6 +141,25 @@ class DownloadQueueScreenModel(
 
     fun setParallelLimit(value: Int) {
         downloadPreferences.parallelSourceLimit().set(value)
+    }
+
+    // ── Open chapter ───────────────────────────────────────────────────────
+
+    /**
+     * Bug 2 fix: launches the reader for a completed download directly from
+     * the download queue screen.
+     *
+     * Previously CompletedDownloadItem had no click handler at all so there
+     * was no way to open the chapter from this page.
+     */
+    fun openChapter(context: Context, download: Download) {
+        context.startActivity(
+            ReaderActivity.newIntent(
+                context   = context,
+                mangaId   = download.manga.id,
+                chapterId = download.chapter.id,
+            ),
+        )
     }
 
     // ── State ──────────────────────────────────────────────────────────────
