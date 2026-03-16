@@ -193,7 +193,12 @@ data object LibraryTab : Tab {
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         ) { contentPadding ->
             when {
-                state.isLoading -> {
+                // Only show the full-screen spinner on the very first load
+                // when there is genuinely no content yet to display.
+                // After the first load completes (isLoading=false, isInitialized=true),
+                // subsequent refreshes show a LinearProgressIndicator inside
+                // LibraryContent instead of replacing the whole screen.
+                state.isLoading && !state.libraryData.isInitialized -> {
                     LoadingScreen(Modifier.padding(contentPadding))
                 }
                 state.searchQuery.isNullOrEmpty() && !state.hasActiveFilters && state.isLibraryEmpty -> {
@@ -260,6 +265,7 @@ data object LibraryTab : Tab {
                         currentPage = state.coercedActiveCategoryIndex,
                         hasActiveFilters = state.hasActiveFilters,
                         showPageTabs = state.showCategoryTabs || !state.searchQuery.isNullOrEmpty(),
+                        isRefreshing = state.isRefreshing,
                         onChangeCurrentPage = screenModel::updateActiveCategoryIndex,
                         onClickManga = { navigator.push(MangaScreen(it)) },
                         onContinueReadingClicked = { it: LibraryManga ->
