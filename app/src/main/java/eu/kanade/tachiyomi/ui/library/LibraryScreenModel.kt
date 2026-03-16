@@ -147,6 +147,7 @@ class LibraryScreenModel(
                     mutableState.update { state ->
                         state.copy(
                             isLoading = false,
+                            isRefreshing = false,
                             groupedFavorites = groupedFavorites,
                         )
                     }
@@ -777,6 +778,13 @@ class LibraryScreenModel(
     data class State(
         val isInitialized: Boolean = false,
         val isLoading: Boolean = true,
+        // Issue #14 fix: isRefreshing is true while a background library update
+        // is running BUT we already have content to show. The old pattern replaced
+        // the whole screen with LoadingScreen whenever isLoading was true, causing
+        // a blank screen every time the user pulled-to-refresh or returned to the
+        // tab after an update. Now the grid stays visible and only a thin
+        // LinearProgressIndicator appears at the top during a background refresh.
+        val isRefreshing: Boolean = false,
         val searchQuery: String? = null,
         val selection: Set</* Manga */ Long> = setOf(),
         val hasActiveFilters: Boolean = false,
