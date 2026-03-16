@@ -226,6 +226,15 @@ class DownloadManager(
     }
 
     /**
+     * Reorders the queue in-place — no pause/clear/restart cycle.
+     * Use this for drag-and-drop UI operations where statuses must not change.
+     * See [Downloader.reorderInPlace] for the full explanation.
+     */
+    fun reorderInPlace(downloads: List<Download>) {
+        downloader.reorderInPlace(downloads)
+    }
+
+    /**
      * Tells the downloader to enqueue the given list of chapters.
      *
      * @param manga the manga of the chapters.
