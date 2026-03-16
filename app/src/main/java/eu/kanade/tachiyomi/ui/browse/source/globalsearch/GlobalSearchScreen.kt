@@ -64,7 +64,7 @@ class GlobalSearchScreen(
             GlobalSearchScreen(
                 state = state,
                 navigateUp = navigator::pop,
-                onChangeSearchQuery = screenModel::updateSearchQuery,
+                onChangeSearchQuery = screenModel::onQueryChanged,
                 onSearch = { query ->
                     screenModel.updateSearchQuery(query)
                     screenModel.addRecentSearch(query)
