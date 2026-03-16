@@ -736,6 +736,27 @@ class Downloader(
         }
     }
 
+    /**
+     * Reorders the in-memory queue without touching download statuses or
+     * triggering a pause/clear/restart cycle.
+     *
+     * This is the correct call for drag-and-drop reordering in the UI:
+     * - [updateQueue] calls pause() → internalClearQueue() → addAllToQueue()
+     *   which sets every status to NOT_DOWNLOADED then back to QUEUE, firing
+     *   statusFlow on every intermediate drag frame and causing the UI list to
+     *   reset mid-drag (rubber-band effect).
+     * - This function simply swaps the list reference so the order is committed
+     *   to the persistent store and the StateFlow emits the new order, without
+     *   any status side-effects.
+     */
+    fun reorderInPlace(downloads: List<Download>) {
+        _queueState.update {
+            store.clear()
+            store.addAll(downloads)
+            downloads
+        }
+    }
+
     companion object {
         const val TMP_DIR_SUFFIX = "_tmp"
         const val WARNING_NOTIF_TIMEOUT_MS = 30_000L
