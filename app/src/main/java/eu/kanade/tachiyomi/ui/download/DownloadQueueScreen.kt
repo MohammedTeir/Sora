@@ -51,6 +51,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
@@ -62,6 +63,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
@@ -123,13 +125,54 @@ object DownloadQueueScreen : Screen() {
                 return@Scaffold
             }
 
-            // Mutable list for drag-and-drop reordering
-            val queueState = remember(queuedDownloads) { queuedDownloads.toMutableStateList() }
+            // ── Drag-and-drop reordering ──────────────────────────────────
+            //
+            // Bug fixes:
+            //
+            // 1. RUBBER-BAND (item snaps back):
+            //    Previously queueState was created with remember(queuedDownloads)
+            //    which reset the MutableStateList on every new emission from the
+            //    upstream flow. The reorder callback called screenModel.reorder()
+            //    on every drag frame which triggered updateQueue() → pause() +
+            //    internalClearQueue() + addAllToQueue(). That status mutation fired
+            //    statusFlow → statusTrigger → queuedDownloads emitted a new list →
+            //    remember(queuedDownloads) allocated a fresh MutableStateList from
+            //    the canonical order, wiping the in-progress drag position.
+            //
+            //    Fix: use rememberSaveable with no keys so the list is ONLY reset on
+            //    first composition or process death. The LaunchedEffect below syncs
+            //    upstream additions/removals into the local list without replacing it.
+            //    The reorder callback calls reorderOnDrop() which uses reorderInPlace()
+            //    — a status-neutral swap that does NOT trigger the pause/clear cycle.
+            //
+            // 2. OVERLAPPING CARDS (layout conflict during drag):
+            //    The dragged item needs to visually lift above its neighbours.
+            //    ReorderableItem exposes `isDragging`; we use Modifier.zIndex(1f)
+            //    on the dragged card so it renders on top of adjacent items.
+
+            val queueState = remember { queuedDownloads.toMutableStateList() }
+
+            // Keep local list in sync with upstream (items added / cancelled externally)
+            // without replacing the entire list, which would abort an in-progress drag.
+            LaunchedEffect(queuedDownloads) {
+                // Remove items no longer in the upstream queue
+                val upstreamIds = queuedDownloads.map { it.chapter.id }.toSet()
+                queueState.removeAll { it.chapter.id !in upstreamIds }
+                // Add items that appeared in the upstream queue but aren't local yet
+                queuedDownloads.forEach { dl ->
+                    if (queueState.none { it.chapter.id == dl.chapter.id }) {
+                        queueState.add(dl)
+                    }
+                }
+            }
+
             val lazyListState = rememberLazyListState()
 
             val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
+                // Move item in the local visual list immediately (smooth animation)
                 queueState.add(to.index, queueState.removeAt(from.index))
-                screenModel.reorder(queueState.toList())
+                // Commit to the downloader store without touching statuses
+                screenModel.reorderOnDrop(queueState.toList())
             }
 
             LazyColumn(
@@ -164,11 +207,14 @@ object DownloadQueueScreen : Screen() {
                                 },
                                 label = "drag_bg",
                             )
+                            // Bug 2 fix: zIndex(1f) lifts the dragged card above its
+                            // neighbours so it renders on top instead of overlapping.
                             DownloadQueueItem(
                                 download = download,
                                 isRunning = isRunning,
                                 dragModifier = Modifier.draggableHandle(),
                                 containerColor = containerColor,
+                                modifier = if (isDragging) Modifier.zIndex(1f) else Modifier,
                                 onResume = { screenModel.resumeDownload(download.chapter) },
                                 onPause = { screenModel.pauseDownload(download.chapter) },
                                 onCancel = { screenModel.cancelDownload(download.chapter) },
@@ -468,6 +514,7 @@ private fun DownloadQueueItem(
     isRunning: Boolean,
     dragModifier: Modifier,
     containerColor: Color,
+    modifier: Modifier = Modifier,
     onResume: () -> Unit,
     onPause: () -> Unit,
     onCancel: () -> Unit,
@@ -499,7 +546,7 @@ private fun DownloadQueueItem(
     }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(containerColor)
