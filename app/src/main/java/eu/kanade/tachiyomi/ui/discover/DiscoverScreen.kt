@@ -81,6 +81,7 @@ import cafe.adriel.voyager.core.screen.Screen
 @Composable
 fun Screen.DiscoverScreen() {
     val screenModel = rememberScreenModel { DiscoverScreenModel() }
+    val libraryScreenModel = rememberScreenModel { LibraryScreenModel() } 
     val state by screenModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showCreateSheet by rememberSaveable { mutableStateOf(false) }
