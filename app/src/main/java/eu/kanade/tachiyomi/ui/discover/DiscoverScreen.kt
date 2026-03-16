@@ -74,6 +74,7 @@ import coil3.compose.AsyncImage
 import eu.kanade.presentation.theme.SoraBlue
 import eu.kanade.tachiyomi.data.discover.SharedList
 import eu.kanade.tachiyomi.ui.auth.LoginScreen
+import eu.kanade.tachiyomi.ui.library.LibraryScreenModel
 
 import cafe.adriel.voyager.core.screen.Screen
 
@@ -81,7 +82,12 @@ import cafe.adriel.voyager.core.screen.Screen
 @Composable
 fun Screen.DiscoverScreen() {
     val screenModel = rememberScreenModel { DiscoverScreenModel() }
-    val libraryScreenModel = rememberScreenModel { LibraryScreenModel() } 
+
+    // FIX 3: Hoist LibraryScreenModel here so one instance lives for the
+    // lifetime of the Discover tab instead of being recreated every time
+    // the bottom sheet opens, which triggered a fresh library fetch each time.
+    val libraryScreenModel = rememberScreenModel { LibraryScreenModel() }
+
     val state by screenModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showCreateSheet by rememberSaveable { mutableStateOf(false) }
@@ -349,8 +355,9 @@ fun Screen.DiscoverScreen() {
 
     if (showCreateSheet) {
         CreateListBottomSheet(
-            screenModel = screenModel,
-            onDismiss = { showCreateSheet = false },
+            screenModel        = screenModel,
+            libraryScreenModel = libraryScreenModel,
+            onDismiss          = { showCreateSheet = false },
         )
     }
 }
