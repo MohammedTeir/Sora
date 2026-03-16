@@ -1,5 +1,6 @@
 package eu.kanade.presentation.library.components
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -54,6 +56,9 @@ fun LibraryContent(
     currentPage: Int,
     hasActiveFilters: Boolean,
     showPageTabs: Boolean,
+    // Issue #14: new param — true while a background data refresh is running.
+    // Callers pass state.isRefreshing from LibraryScreenModel.State.
+    isRefreshing: Boolean,
     onChangeCurrentPage: (Int) -> Unit,
     onClickManga: (Long) -> Unit,
     onContinueReadingClicked: ((LibraryManga) -> Unit)?,
@@ -157,6 +162,11 @@ fun LibraryContent(
             )
         }
 
+        // Issue #14 fix: wrap in Box so the LinearProgressIndicator can
+        // overlay the grid without replacing it. The grid is always rendered
+        // regardless of isRefreshing, so stale content is visible during
+        // background updates (pull-to-refresh, periodic library update).
+        Box {
         PullRefresh(
             refreshing = isRefreshing,
             enabled = selection.isEmpty(),
@@ -195,6 +205,19 @@ fun LibraryContent(
                 onClickContinueReading = onContinueReadingClicked,
             )
         }
+
+        // Thin non-blocking progress bar shown during background data refresh.
+        // Appears at the top of the content area so the grid beneath stays
+        // fully interactive — the user can keep scrolling and tapping while
+        // new data loads in the background.
+        if (isRefreshing) {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter),
+            )
+        }
+        } // end Box
 
         LaunchedEffect(pagerState.currentPage) {
             onChangeCurrentPage(pagerState.currentPage)
