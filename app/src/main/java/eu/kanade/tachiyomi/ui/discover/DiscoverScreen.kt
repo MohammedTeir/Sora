@@ -86,10 +86,6 @@ fun Screen.DiscoverScreen() {
     var showCreateSheet by rememberSaveable { mutableStateOf(false) }
     val navigator = LocalNavigator.currentOrThrow
 
-    // Re-run loadLists() every time the screen resumes (i.e. when the user returns
-    // from LoginScreen or any other pushed screen). This keeps isLoggedIn, myLists,
-    // and the FAB visibility in sync with the actual auth state without requiring
-    // a manual refresh tap.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner.lifecycle) {
         val observer = object : DefaultLifecycleObserver {
@@ -103,8 +99,6 @@ fun Screen.DiscoverScreen() {
         }
     }
 
-    // Show snackbar for import message — key on the message value so it only
-    // fires when a NEW non-null message arrives, never on null.
     LaunchedEffect(state.importMessage) {
         val msg = state.importMessage ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(msg)
@@ -116,7 +110,6 @@ fun Screen.DiscoverScreen() {
         screenModel.clearErrorMessage()
     }
 
-    // Missing manga dialog
     if (state.missingMangaTitles.isNotEmpty()) {
         AlertDialog(
             onDismissRequest = { screenModel.clearMissingManga() },
@@ -180,7 +173,14 @@ fun Screen.DiscoverScreen() {
             }
         },
     ) { padding ->
-        // Full-screen spinner only on the very first load (no content yet)
+
+        // ── FIX 1: Full-screen spinner ONLY on the very first load AND only
+        // when the lists are still empty (no stale content to show yet).
+        // Previously this triggered on every fetch while isInitialLoad=false was
+        // never reset after first load, causing a blank screen on return visits.
+        //
+        // isInitialLoad is set false by loadLists() the first time it succeeds,
+        // so this block only ever shows once — on cold open with no cached data.
         if (state.isInitialLoad && state.isFetchingLists) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = SoraBlue)
@@ -294,8 +294,18 @@ fun Screen.DiscoverScreen() {
                     }
                 }
 
-                // Empty state (not loading, no lists)
-                if (!state.isLoading && state.trendingLists.isEmpty() && state.recentLists.isEmpty()) {
+                // ── FIX 1 (cont.): Empty state now uses isFetchingLists directly
+                // instead of isLoading. Previously isLoading included isUploadingList,
+                // so while a background loadLists() was running after an upload the
+                // empty-state guard was true (hidden), AND all section guards were false
+                // (lists not yet populated), leaving the LazyColumn with zero visible
+                // items — a blank white screen.
+                //
+                // Keying only on isFetchingLists means:
+                //   - While fetching: empty state hidden (correct — wait for data)
+                //   - While uploading but NOT fetching: empty state can show if needed
+                //   - After fetch: if truly empty, the empty state shows correctly
+                if (!state.isFetchingLists && state.trendingLists.isEmpty() && state.recentLists.isEmpty()) {
                     item {
                         Box(
                             modifier = Modifier.fillMaxWidth().padding(top = 80.dp),
@@ -326,9 +336,7 @@ fun Screen.DiscoverScreen() {
                 }
             }
 
-            // Non-blocking refresh indicator at the top of content.
-            // Tracks isFetchingLists only — upload/import operations have their
-            // own spinner inside the bottom sheet button.
+            // Non-blocking refresh indicator. Unchanged — correct behaviour.
             if (state.isFetchingLists && !state.isInitialLoad) {
                 LinearProgressIndicator(
                     modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter),
@@ -368,7 +376,6 @@ fun SharedListCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // Cover grid (up to 4 covers in 2x2)
             val mangaItems = list.getMangaItems()
             Box(
                 modifier = Modifier
@@ -408,7 +415,6 @@ fun SharedListCard(
                                         modifier = Modifier.weight(1f).fillMaxSize(),
                                     )
                                 } else if (left != null) {
-                                    // Fill empty slot
                                     Box(modifier = Modifier.weight(1f))
                                 }
                             }
