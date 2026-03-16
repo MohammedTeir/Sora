@@ -19,6 +19,7 @@ import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
+import okio.Path.Companion.toOkioPath
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.allowRgb565
 import coil3.request.crossfade
@@ -243,7 +244,7 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
             // 256 MB covers roughly 2000-3000 typical manga thumbnails at ~80-120 KB each.
             diskCache(
                 DiskCache.Builder()
-                    .directory(context.cacheDir.resolve("coil_cover_cache"))
+                    .directory(context.cacheDir.resolve("coil_cover_cache").toOkioPath())
                     .maxSizeBytes(256L * 1024 * 1024)
                     .build(),
             )
