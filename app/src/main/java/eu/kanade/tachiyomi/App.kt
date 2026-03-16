@@ -17,6 +17,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
+import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.allowRgb565
@@ -225,6 +226,25 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
             memoryCache(
                 MemoryCache.Builder()
                     .maxSizePercent(context)
+                    .build(),
+            )
+
+            // Issue #7 fix: add a disk cache for cover images and browse thumbnails.
+            //
+            // Without this, every cover image fetched over the network (library grid,
+            // browse source, manga details) is decoded and stored only in memory.
+            // On the next cold launch — or after the OS trims the memory cache —
+            // every image re-downloads from the network.
+            //
+            // This cache is intentionally separate from ChapterCache (which stores
+            // decoded reader pages in "chapter_disk_cache"). Coil's disk cache stores
+            // compressed originals keyed by URL, so covers survive across app restarts.
+            //
+            // 256 MB covers roughly 2000-3000 typical manga thumbnails at ~80-120 KB each.
+            diskCache(
+                DiskCache.Builder()
+                    .directory(context.cacheDir.resolve("coil_cover_cache"))
+                    .maxSizeBytes(256L * 1024 * 1024)
                     .build(),
             )
 
