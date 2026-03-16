@@ -68,6 +68,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.presentation.theme.SoraBlue
+import androidx.compose.ui.platform.LocalContext
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import tachiyomi.domain.manga.model.asMangaCover
@@ -85,6 +86,7 @@ object DownloadQueueScreen : Screen() {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val context = LocalContext.current
         val screenModel = rememberScreenModel { DownloadQueueScreenModel() }
 
         val queuedDownloads by screenModel.queuedDownloads.collectAsState()
@@ -192,7 +194,10 @@ object DownloadQueueScreen : Screen() {
                         items = completed,
                         key = { "done_${it.chapter.id}" },
                     ) { download ->
-                        CompletedDownloadItem(download = download)
+                        CompletedDownloadItem(
+                            download = download,
+                            onRead = { screenModel.openChapter(context, download) },
+                        )
                     }
 
                     item(key = "clear_btn") {
@@ -738,12 +743,18 @@ private fun DownloadItemMenu(
 // ── Completed item ─────────────────────────────────────────────────────────
 
 @Composable
-private fun CompletedDownloadItem(download: Download) {
+private fun CompletedDownloadItem(
+    download: Download,
+    // Bug 2 fix: this callback was missing — the row had no click handler so
+    // there was no way to open the chapter from the download queue screen.
+    onRead: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onRead)          // tap the row to open the chapter
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -771,12 +782,18 @@ private fun CompletedDownloadItem(download: Download) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            // Hint so the user knows the row is tappable
+            Text(
+                text = "Tap to read",
+                fontSize = 11.sp,
+                color = SoraBlue.copy(alpha = 0.8f),
+            )
         }
         Spacer(modifier = Modifier.width(8.dp))
         Icon(
             imageVector = Icons.Default.CheckCircle,
             contentDescription = "Completed",
-            tint = MaterialTheme.colorScheme.tertiary, // tertiary = SoraGreen in the Sora colour scheme
+            tint = MaterialTheme.colorScheme.tertiary,
             modifier = Modifier.size(22.dp),
         )
     }
