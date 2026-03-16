@@ -14,7 +14,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,7 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import eu.kanade.core.preference.asToggleableState
+import eu.kanade.core.preference.TriStateFilterChip
 import eu.kanade.presentation.category.visualName
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
@@ -278,8 +277,9 @@ fun ChangeCategoryDialog(
                     ) {
                         when (checkbox) {
                             is CheckboxState.TriState -> {
-                                TriStateCheckbox(
-                                    state = checkbox.asToggleableState(),
+                                TriStateFilterChip(
+                                    state = checkbox,
+                                    label = checkbox.value.visualName,
                                     onClick = { onChange(checkbox) },
                                 )
                             }
@@ -291,10 +291,14 @@ fun ChangeCategoryDialog(
                             }
                         }
 
-                        Text(
-                            text = checkbox.value.visualName,
-                            modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
-                        )
+                        // Label is now rendered inside TriStateFilterChip for TriState items.
+                        // Only show the standalone Text for State (plain checkbox) items.
+                        if (checkbox is CheckboxState.State) {
+                            Text(
+                                text = checkbox.value.visualName,
+                                modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
+                            )
+                        }
                     }
                 }
             }
