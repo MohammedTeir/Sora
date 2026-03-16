@@ -1,13 +1,13 @@
 package eu.kanade.tachiyomi.ui.updates
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.ui.res.painterResource
+import eu.kanade.tachiyomi.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -39,7 +39,7 @@ data object UpdatesTab : Tab {
             return TabOptions(
                 index = 3u,
                 title = stringResource(MR.strings.label_recent_updates),
-                icon = rememberVectorPainter(Icons.Outlined.Refresh),
+                icon = painterResource(R.drawable.ic_nav_updates),
             )
         }
 

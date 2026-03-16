@@ -30,9 +30,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.sp
+import eu.kanade.tachiyomi.R
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Book
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
@@ -115,7 +117,7 @@ data object BrowseTab : Tab {
             return TabOptions(
                 index = 2u,
                 title = stringResource(MR.strings.browse),
-                icon = rememberVectorPainter(Icons.Outlined.Book),
+                icon = painterResource(R.drawable.ic_nav_browse),
             )
         }
 

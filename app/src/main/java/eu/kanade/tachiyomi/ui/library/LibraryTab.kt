@@ -14,8 +14,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.res.painterResource
+import eu.kanade.tachiyomi.R
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material3.Button
@@ -88,7 +89,7 @@ data object LibraryTab : Tab {
             return TabOptions(
                 index = 1u,
                 title = stringResource(MR.strings.label_library),
-                icon = rememberVectorPainter(Icons.AutoMirrored.Outlined.MenuBook),
+                icon = painterResource(R.drawable.ic_nav_library),
             )
         }
 
@@ -212,7 +213,7 @@ data object LibraryTab : Tab {
                         verticalArrangement = Arrangement.Center,
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.MenuBook,
+                            painter = painterResource(R.drawable.ic_nav_library),
                             contentDescription = null,
                             modifier = Modifier.size(80.dp),
                             tint = SoraBlue.copy(alpha = 0.6f),

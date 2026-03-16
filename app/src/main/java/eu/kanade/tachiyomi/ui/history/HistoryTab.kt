@@ -1,9 +1,7 @@
 package eu.kanade.tachiyomi.ui.history
 
 import android.content.Context
-import androidx.compose.animation.graphics.res.animatedVectorResource
-import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
-import androidx.compose.animation.graphics.vector.AnimatedImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,12 +43,10 @@ data object HistoryTab : Tab {
     override val options: TabOptions
         @Composable
         get() {
-            val isSelected = LocalTabNavigator.current.current.key == key
-            val image = AnimatedImageVector.animatedVectorResource(R.drawable.anim_history_enter)
             return TabOptions(
                 index = 4u,
                 title = stringResource(MR.strings.label_recent_manga),
-                icon = rememberAnimatedVectorPainter(image, isSelected),
+                icon = painterResource(R.drawable.ic_nav_history),
             )
         }
 

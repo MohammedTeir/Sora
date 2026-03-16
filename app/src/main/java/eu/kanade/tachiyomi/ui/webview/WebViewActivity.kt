@@ -8,7 +8,9 @@ import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.core.net.toUri
+import androidx.compose.runtime.CompositionLocalProvider
 import eu.kanade.presentation.webview.WebViewScreenContent
+import eu.kanade.core.util.LocalSourceManager
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.online.HttpSource
@@ -68,7 +70,8 @@ class WebViewActivity : BaseActivity() {
         }
 
         setComposeContent {
-            WebViewScreenContent(
+            CompositionLocalProvider(LocalSourceManager provides sourceManager) {
+                WebViewScreenContent(
                 onNavigateUp = { finish() },
                 initialTitle = intent.extras?.getString(TITLE_KEY),
                 url = url,
@@ -78,6 +81,7 @@ class WebViewActivity : BaseActivity() {
                 onOpenInBrowser = this::openInBrowser,
                 onClearCookies = this::clearCookies,
             )
+            }
         }
     }
 

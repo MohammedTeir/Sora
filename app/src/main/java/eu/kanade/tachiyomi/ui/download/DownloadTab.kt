@@ -1,9 +1,8 @@
 package eu.kanade.tachiyomi.ui.download
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Download
+import androidx.compose.ui.res.painterResource
+import eu.kanade.tachiyomi.R
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
@@ -20,7 +19,7 @@ data object DownloadTab : Tab {
             return TabOptions(
                 index = 6u,
                 title = stringResource(MR.strings.label_downloads),
-                icon = rememberVectorPainter(Icons.Outlined.Download),
+                icon = painterResource(R.drawable.ic_nav_downloads),
             )
         }
 

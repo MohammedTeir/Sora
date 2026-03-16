@@ -29,7 +29,9 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
+import eu.kanade.core.util.LocalSourceManager
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -247,7 +249,8 @@ class ReaderActivity : BaseActivity() {
     }
 
     private fun ReaderActivityBinding.setComposeOverlay(): Unit = composeOverlay.setComposeContent {
-        val state by viewModel.state.collectAsState()
+        CompositionLocalProvider(LocalSourceManager provides Injekt.get()) {
+            val state by viewModel.state.collectAsState()
         val showPageNumber by readerPreferences.showPageNumber().collectAsState()
         val settingsScreenModel = remember {
             ReaderSettingsScreenModel(
@@ -329,6 +332,7 @@ class ReaderActivity : BaseActivity() {
                 )
             }
             null -> {}
+        }
         }
     }
 

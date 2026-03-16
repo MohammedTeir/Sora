@@ -1,6 +1,7 @@
 package eu.kanade.core.util
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocal
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -24,7 +25,7 @@ import tachiyomi.domain.source.service.SourceManager
 //         /* Navigator / theme / content */
 //     }
 // ─────────────────────────────────────────────────────────────────────────────
-val LocalSourceManager: CompositionLocal<SourceManager> = staticCompositionLocalOf {
+val LocalSourceManager = staticCompositionLocalOf<SourceManager> {
     error(
         "LocalSourceManager not provided. " +
             "Wrap your root composable with " +

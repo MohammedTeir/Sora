@@ -7,6 +7,10 @@ import eu.kanade.tachiyomi.data.track.TrackerManager
 import eu.kanade.tachiyomi.ui.base.activity.BaseActivity
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.util.view.setComposeContent
+import androidx.compose.runtime.CompositionLocalProvider
+import eu.kanade.core.util.LocalSourceManager
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import tachiyomi.presentation.core.screens.LoadingScreen
 import uy.kohesive.injekt.injectLazy
 
@@ -20,7 +24,9 @@ abstract class BaseOAuthLoginActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
 
         setComposeContent {
-            LoadingScreen()
+            CompositionLocalProvider(LocalSourceManager provides Injekt.get()) {
+                LoadingScreen()
+            }
         }
 
         val data = intent.data
