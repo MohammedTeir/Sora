@@ -6,6 +6,7 @@ import androidx.compose.runtime.produceState
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import eu.kanade.domain.source.service.SourcePreferences
+import eu.kanade.presentation.components.SEARCH_DEBOUNCE_MILLIS
 import eu.kanade.presentation.util.ioCoroutineScope
 import eu.kanade.tachiyomi.extension.ExtensionManager
 import eu.kanade.tachiyomi.source.CatalogueSource
@@ -17,7 +18,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
@@ -67,6 +70,20 @@ abstract class SearchScreenModel(
 
     protected var extensionFilter: String? = null
 
+    // Bug #13 fix: debounced query channel.
+    // Previously every call to onQueryChanged() fired search() immediately,
+    // launching concurrent network requests against every enabled source on
+    // each keystroke. With 50 extensions that is 50 requests per character.
+    //
+    // The flow below waits SEARCH_DEBOUNCE_MILLIS (250 ms) of typing silence
+    // before calling search(), and flatMapLatest cancels any in-flight search
+    // the moment a new query arrives — so only the final query after the user
+    // stops typing ever reaches the network.
+    //
+    // setSourceFilter() and explicit onSearch() calls still go directly to
+    // search() so they fire immediately (user intent is unambiguous).
+    private val debouncedQueryFlow = MutableStateFlow<String?>(null)
+
     open val sortComparator = { map: Map<CatalogueSource, SearchItemResult> ->
         compareBy<CatalogueSource>(
             { (map[it] as? SearchItemResult.Success)?.isEmpty ?: true },
@@ -114,6 +131,19 @@ abstract class SearchScreenModel(
             }
             mutableState.update { it.copy(trendingSearches = trending.toImmutableList()) }
         }
+
+        // Debounce: wait for typing to settle before firing source requests.
+        screenModelScope.launch {
+            debouncedQueryFlow
+                .debounce(SEARCH_DEBOUNCE_MILLIS)
+                .distinctUntilChanged()
+                .collectLatest { query ->
+                    if (!query.isNullOrBlank()) {
+                        updateSearchQuery(query)
+                        search()
+                    }
+                }
+        }
     }
 
     @Composable
@@ -155,6 +185,20 @@ abstract class SearchScreenModel(
 
     fun updateSearchQuery(query: String?) {
         mutableState.update { it.copy(searchQuery = query) }
+    }
+
+    /**
+     * Called from the search bar's onValueChange — feeds the debounce flow.
+     *
+     * Use this for live-typing updates. The query is forwarded to [search]
+     * only after [SEARCH_DEBOUNCE_MILLIS] ms of silence, cancelling any
+     * in-flight search automatically via [kotlinx.coroutines.flow.collectLatest].
+     *
+     * For explicit user-confirmed searches (IME action, trending tap, recent
+     * tap) call [updateSearchQuery] + [search] directly so they fire immediately.
+     */
+    fun onQueryChanged(query: String) {
+        debouncedQueryFlow.value = query
     }
 
     fun setSourceFilter(filter: SourceFilter) {
