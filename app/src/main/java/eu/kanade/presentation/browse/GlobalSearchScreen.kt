@@ -1,32 +1,15 @@
 package eu.kanade.presentation.browse
 
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
-import androidx.compose.ui.Modifier
-import eu.kanade.presentation.browse.components.GlobalSearchCardRow
-import eu.kanade.presentation.browse.components.GlobalSearchErrorResultItem
-import eu.kanade.presentation.browse.components.GlobalSearchLoadingResultItem
-import eu.kanade.presentation.browse.components.GlobalSearchResultItem
-import eu.kanade.presentation.browse.components.GlobalSearchToolbar
-import eu.kanade.tachiyomi.source.CatalogueSource
-import eu.kanade.tachiyomi.ui.browse.source.globalsearch.SearchItemResult
-import eu.kanade.tachiyomi.ui.browse.source.globalsearch.SearchScreenModel
-import eu.kanade.tachiyomi.ui.browse.source.globalsearch.SourceFilter
-import eu.kanade.tachiyomi.util.system.LocaleHelper
-import tachiyomi.domain.manga.model.Manga
-import tachiyomi.presentation.core.components.material.Scaffold
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -34,30 +17,57 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.draw.clip
+import eu.kanade.presentation.browse.components.GlobalSearchCardRow
+import eu.kanade.presentation.browse.components.GlobalSearchErrorResultItem
+import eu.kanade.presentation.browse.components.GlobalSearchLoadingResultItem
+import eu.kanade.presentation.browse.components.GlobalSearchResultItem
+import eu.kanade.presentation.manga.components.MangaCover
+import eu.kanade.presentation.theme.SoraBlue
+import eu.kanade.tachiyomi.source.CatalogueSource
+import eu.kanade.tachiyomi.ui.browse.source.globalsearch.SearchItemResult
+import eu.kanade.tachiyomi.ui.browse.source.globalsearch.SearchScreenModel
+import eu.kanade.tachiyomi.ui.browse.source.globalsearch.SourceFilter
+import eu.kanade.tachiyomi.util.system.LocaleHelper
+import tachiyomi.domain.manga.model.Manga
+import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.util.runOnEnterKeyPressed
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Root composable
+// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun GlobalSearchScreen(
@@ -76,22 +86,21 @@ fun GlobalSearchScreen(
     onClearRecent: () -> Unit,
     onClickTrending: (SearchScreenModel.TrendingItem) -> Unit,
 ) {
-    val backgroundColor = androidx.compose.material3.MaterialTheme.colorScheme.background
+    val bgColor = MaterialTheme.colorScheme.background
+
     Scaffold(
-        topBar = { scrollBehavior ->
-            CustomSearchHeader(
+        topBar = {
+            SearchHeader(
                 searchQuery = state.searchQuery,
                 onChangeSearchQuery = onChangeSearchQuery,
-                onSearch = { query ->
-                    onSearch(query)
-                },
-                navigateUp = navigateUp
+                onSearch = onSearch,
+                navigateUp = navigateUp,
             )
         },
-        containerColor = backgroundColor,
+        containerColor = bgColor,
     ) { paddingValues ->
         if (state.searchQuery.isNullOrBlank()) {
-            CustomSearchIdleContent(
+            SearchIdleContent(
                 contentPadding = paddingValues,
                 recentSearches = state.recentSearches,
                 suggestedManga = state.suggestedManga,
@@ -102,7 +111,7 @@ fun GlobalSearchScreen(
                 onClickSuggested = onClickItem,
             )
         } else {
-            Box(modifier = Modifier.background(backgroundColor).fillMaxSize()) {
+            Box(modifier = Modifier.background(bgColor).fillMaxSize()) {
                 GlobalSearchContent(
                     items = state.filteredItems,
                     contentPadding = paddingValues,
@@ -116,8 +125,21 @@ fun GlobalSearchScreen(
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Search header — "Search" title + input pill
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Kept for backward compatibility with any existing call sites
 @Composable
 fun CustomSearchHeader(
+    searchQuery: String?,
+    onChangeSearchQuery: (String?) -> Unit,
+    onSearch: (String) -> Unit,
+    navigateUp: () -> Unit,
+) = SearchHeader(searchQuery, onChangeSearchQuery, onSearch, navigateUp)
+
+@Composable
+internal fun SearchHeader(
     searchQuery: String?,
     onChangeSearchQuery: (String?) -> Unit,
     onSearch: (String) -> Unit,
@@ -127,23 +149,23 @@ fun CustomSearchHeader(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    val bgColor = androidx.compose.material3.MaterialTheme.colorScheme.background
-    val onBgColor = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
-    val surfaceColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainerHigh
-    val onSurfaceVariantColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+    val bgColor = MaterialTheme.colorScheme.background
+    val onBgColor = MaterialTheme.colorScheme.onBackground
+    val surfaceColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(bgColor)
-            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
     ) {
-        // Title row (no profile icon)
+        // "Search" bold heading
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = "Search",
@@ -153,25 +175,29 @@ fun CustomSearchHeader(
             )
         }
 
+        // Search input pill — rounded, icon + field + clear button
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .background(surfaceColor, RoundedCornerShape(12.dp))
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp, bottom = 12.dp)
+                .background(surfaceColor, RoundedCornerShape(14.dp))
+                .padding(horizontal = 16.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 imageVector = Icons.Outlined.Search,
                 contentDescription = null,
-                tint = onSurfaceVariantColor,
-                modifier = Modifier.size(20.dp)
+                tint = onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
             )
             Spacer(modifier = Modifier.width(10.dp))
             BasicTextField(
                 value = searchQuery ?: "",
-                onValueChange = onChangeSearchQuery,
-                textStyle = androidx.compose.ui.text.TextStyle(color = onBgColor, fontSize = 16.sp),
+                onValueChange = { onChangeSearchQuery(it) },
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    color = onBgColor,
+                    fontSize = 16.sp,
+                ),
                 modifier = Modifier
                     .weight(1f)
                     .focusRequester(focusRequester)
@@ -182,43 +208,55 @@ fun CustomSearchHeader(
                             keyboardController?.hide()
                         }
                     },
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    imeAction = androidx.compose.ui.text.input.ImeAction.Search
-                ),
-                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(
                     onSearch = {
                         if (!searchQuery.isNullOrBlank()) {
                             onSearch(searchQuery)
                             focusManager.clearFocus()
                             keyboardController?.hide()
                         }
-                    }
+                    },
                 ),
                 singleLine = true,
-                cursorBrush = SolidColor(onBgColor),
-                decorationBox = { innerTextField ->
+                cursorBrush = SolidColor(SoraBlue),
+                decorationBox = { inner ->
                     if (searchQuery.isNullOrBlank()) {
-                        Text("Search for manga, authors...", color = onSurfaceVariantColor, fontSize = 16.sp)
+                        Text(
+                            text = "Search for manga, authors...",
+                            color = onSurfaceVariant,
+                            fontSize = 16.sp,
+                        )
                     }
-                    innerTextField()
-                }
+                    inner()
+                },
             )
             if (!searchQuery.isNullOrEmpty()) {
+                Spacer(modifier = Modifier.width(6.dp))
                 IconButton(
                     onClick = { onChangeSearchQuery("") },
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(20.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Close,
                         contentDescription = "Clear",
-                        tint = onSurfaceVariantColor,
+                        tint = onSurfaceVariant,
                     )
                 }
             }
         }
     }
+
+    // Auto-focus the field when this screen appears
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Idle content — shown when the query is blank
+// Sections: Recent Searches → Trending Searches → Suggested for You
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Kept for backward compatibility
 @Composable
 fun CustomSearchIdleContent(
     contentPadding: PaddingValues,
@@ -229,146 +267,285 @@ fun CustomSearchIdleContent(
     onClearRecent: () -> Unit,
     onClickTrending: (SearchScreenModel.TrendingItem) -> Unit,
     onClickSuggested: (Manga) -> Unit,
+) = SearchIdleContent(
+    contentPadding, recentSearches, suggestedManga,
+    trendingSearches, onClickRecent, onClearRecent,
+    onClickTrending, onClickSuggested,
+)
+
+@Composable
+internal fun SearchIdleContent(
+    contentPadding: PaddingValues,
+    recentSearches: List<String>,
+    suggestedManga: List<Manga>,
+    trendingSearches: List<SearchScreenModel.TrendingItem>,
+    onClickRecent: (String) -> Unit,
+    onClearRecent: () -> Unit,
+    onClickTrending: (SearchScreenModel.TrendingItem) -> Unit,
+    onClickSuggested: (Manga) -> Unit,
 ) {
-    val bgColor = androidx.compose.material3.MaterialTheme.colorScheme.background
-    val onBgColor = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
-    val surfaceColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainerHigh
-    val subtleColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+    val bgColor = MaterialTheme.colorScheme.background
+    val onBgColor = MaterialTheme.colorScheme.onBackground
+    val surfaceColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    val subtleColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     LazyColumn(
         contentPadding = contentPadding,
-        modifier = Modifier.fillMaxSize().background(bgColor),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(bgColor),
     ) {
-        // Recent Searches
+
+        // ── RECENT SEARCHES ───────────────────────────────────────────────
         if (recentSearches.isNotEmpty()) {
-            item {
+            item(key = "recent_header") {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 16.dp, top = 20.dp, bottom = 10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Recent Searches", color = onBgColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Text("Clear All", color = subtleColor, fontSize = 14.sp, modifier = Modifier.clickable { onClearRecent() })
+                    Text(
+                        text = "RECENT SEARCHES",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 0.7.sp,
+                        color = subtleColor,
+                    )
+                    Text(
+                        text = "Clear All",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = SoraBlue,
+                        modifier = Modifier.clickable { onClearRecent() },
+                    )
                 }
+            }
 
+            item(key = "recent_chips") {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(recentSearches) { query ->
+                    items(recentSearches, key = { "rc_$it" }) { query ->
                         Box(
                             modifier = Modifier
                                 .background(surfaceColor, RoundedCornerShape(20.dp))
                                 .clickable { onClickRecent(query) }
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        ) {
-                            Text(query, color = onBgColor, fontSize = 14.sp)
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-        }
-
-        // Trending Searches
-        if (trendingSearches.isNotEmpty()) {
-            item {
-                Text(
-                    text = "Trending Searches",
-                    color = onBgColor,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-                )
-                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    trendingSearches.forEach { item ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onClickTrending(item) }
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
                         ) {
                             Text(
-                                text = item.rank.toString(),
-                                color = subtleColor,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.width(32.dp)
+                                text = query,
+                                color = onBgColor,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
                             )
-                            Column {
-                                Text(item.title, color = onBgColor, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-                                Text(item.subtitle, color = subtleColor, fontSize = 12.sp)
-                            }
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(28.dp))
             }
         }
 
-        // Suggested for you
-        if (suggestedManga.isNotEmpty()) {
-            item {
-                Text(
-                    text = "Suggested For You",
-                    color = onBgColor,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-                )
+        // ── TRENDING SEARCHES ─────────────────────────────────────────────
+        if (trendingSearches.isNotEmpty()) {
+            item(key = "trending_header") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, top = 4.dp, bottom = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.TrendingUp,
+                        contentDescription = null,
+                        tint = SoraBlue,
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Text(
+                        text = "Trending Searches",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = onBgColor,
+                    )
+                }
+            }
 
-                val chunked = suggestedManga.chunked(2)
-                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    chunked.forEach { rowItems ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            rowItems.forEach { manga ->
-                                Column(modifier = Modifier.weight(1f).clickable { onClickSuggested(manga) }) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .aspectRatio(0.7f)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(surfaceColor)
-                                    ) {
-                                        eu.kanade.presentation.manga.components.MangaCover.Book(
-                                            data = manga,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = manga.title,
-                                        color = onBgColor,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = manga.artist ?: manga.author ?: "",
-                                        color = subtleColor,
-                                        fontSize = 12.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-                            if (rowItems.size == 1) {
-                                Spacer(modifier = Modifier.weight(1f))
-                            }
-                        }
+            items(trendingSearches, key = { "trend_${it.rank}" }) { item ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onClickTrending(item) }
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    // Blue rank number
+                    Text(
+                        text = item.rank.toString(),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SoraBlue,
+                        modifier = Modifier.width(28.dp),
+                    )
+                    // Title + subtitle
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = item.title,
+                            fontSize = 16.sp,
+                            color = onBgColor,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = item.subtitle,
+                            fontSize = 12.sp,
+                            color = subtleColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    // Trailing arrow hint
+                    Icon(
+                        imageVector = Icons.Outlined.Search,
+                        contentDescription = null,
+                        tint = subtleColor.copy(alpha = 0.4f),
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+
+            item(key = "trending_spacer") { Spacer(modifier = Modifier.height(28.dp)) }
+        }
+
+        // ── SUGGESTED FOR YOU ─────────────────────────────────────────────
+        if (suggestedManga.isNotEmpty()) {
+            item(key = "suggested_header") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, bottom = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Suggested for You",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = onBgColor,
+                    )
+                }
+            }
+
+            item(key = "suggested_row") {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp, bottom = 32.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(suggestedManga, key = { "sug_${it.id}" }) { manga ->
+                        SuggestedMangaCard(
+                            manga = manga,
+                            onClick = { onClickSuggested(manga) },
+                        )
                     }
                 }
             }
         }
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Suggested manga card — 111×167 cover + badge + title + genre
+// All data comes from the real Manga domain model — zero mock data.
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun SuggestedMangaCard(
+    manga: Manga,
+    onClick: () -> Unit,
+) {
+    val onBgColor = MaterialTheme.colorScheme.onBackground
+    val subtleColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+    Column(
+        modifier = Modifier
+            .width(111.dp)
+            .clickable(onClick = onClick),
+    ) {
+        // Cover + unread badge overlay
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(167.dp)
+                .clip(RoundedCornerShape(12.dp)),
+        ) {
+            MangaCover.Book(
+                data = manga,
+                modifier = Modifier.fillMaxSize(),
+                contentDescription = manga.title,
+            )
+
+            // Unread count badge (top-right, SoraBlue pill)
+            val unread = manga.unreadCount
+            if (unread > 0) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = SoraBlue,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp),
+                ) {
+                    Text(
+                        text = if (unread > 99) "99+" else unread.toString(),
+                        color = androidx.compose.ui.graphics.Color.White,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Manga title
+        Text(
+            text = manga.title,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = onBgColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+
+        // Genre — first 2 genres from the real genre list, joined by " • "
+        // Falls back to author name if no genres are stored yet.
+        val genreText = manga.genre
+            ?.split(",")
+            ?.take(2)
+            ?.joinToString(" • ") { it.trim() }
+            .takeUnless { it.isNullOrBlank() }
+            ?: manga.author
+            ?: ""
+
+        if (genreText.isNotBlank()) {
+            Text(
+                text = genreText,
+                fontSize = 10.sp,
+                color = subtleColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Results content — grouped per source, unchanged from original
+// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 internal fun GlobalSearchContent(
@@ -380,10 +557,13 @@ internal fun GlobalSearchContent(
     onLongClickItem: (Manga) -> Unit,
     fromSourceId: Long? = null,
 ) {
-    val bgColor = androidx.compose.material3.MaterialTheme.colorScheme.background
+    val bgColor = MaterialTheme.colorScheme.background
+
     LazyColumn(
         contentPadding = contentPadding,
-        modifier = Modifier.background(bgColor).fillMaxSize()
+        modifier = Modifier
+            .background(bgColor)
+            .fillMaxSize(),
     ) {
         items.forEach { (source, result) ->
             item(key = source.id) {
@@ -396,20 +576,16 @@ internal fun GlobalSearchContent(
                     modifier = Modifier.animateItem(),
                 ) {
                     when (result) {
-                        SearchItemResult.Loading -> {
-                            GlobalSearchLoadingResultItem()
-                        }
-                        is SearchItemResult.Success -> {
-                            GlobalSearchCardRow(
-                                titles = result.result,
-                                getManga = getManga,
-                                onClick = onClickItem,
-                                onLongClick = onLongClickItem,
-                            )
-                        }
-                        is SearchItemResult.Error -> {
-                            GlobalSearchErrorResultItem(message = result.throwable.message)
-                        }
+                        SearchItemResult.Loading -> GlobalSearchLoadingResultItem()
+                        is SearchItemResult.Success -> GlobalSearchCardRow(
+                            titles = result.result,
+                            getManga = getManga,
+                            onClick = onClickItem,
+                            onLongClick = onLongClickItem,
+                        )
+                        is SearchItemResult.Error -> GlobalSearchErrorResultItem(
+                            message = result.throwable.message,
+                        )
                     }
                 }
             }
