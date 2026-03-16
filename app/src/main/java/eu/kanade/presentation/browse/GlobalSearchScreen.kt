@@ -31,7 +31,6 @@ import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -179,7 +178,7 @@ internal fun SearchHeader(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, bottom = 12.dp)
+                .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
                 .background(surfaceColor, RoundedCornerShape(14.dp))
                 .padding(horizontal = 16.dp, vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -302,7 +301,7 @@ internal fun SearchIdleContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, top = 20.dp, bottom = 10.dp),
+                        .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -354,7 +353,7 @@ internal fun SearchIdleContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, top = 4.dp, bottom = 10.dp),
+                        .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -427,7 +426,7 @@ internal fun SearchIdleContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, bottom = 12.dp),
+                        .padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -442,7 +441,7 @@ internal fun SearchIdleContent(
 
             item(key = "suggested_row") {
                 LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp, bottom = 32.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     items(suggestedManga, key = { "sug_${it.id}" }) { manga ->
@@ -475,7 +474,7 @@ private fun SuggestedMangaCard(
             .width(111.dp)
             .clickable(onClick = onClick),
     ) {
-        // Cover + unread badge overlay
+        // Cover
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -487,26 +486,6 @@ private fun SuggestedMangaCard(
                 modifier = Modifier.fillMaxSize(),
                 contentDescription = manga.title,
             )
-
-            // Unread count badge (top-right, SoraBlue pill)
-            val unread = manga.unreadCount
-            if (unread > 0) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = SoraBlue,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(6.dp),
-                ) {
-                    Text(
-                        text = if (unread > 99) "99+" else unread.toString(),
-                        color = androidx.compose.ui.graphics.Color.White,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                    )
-                }
-            }
         }
 
         Spacer(modifier = Modifier.height(6.dp))
@@ -521,13 +500,13 @@ private fun SuggestedMangaCard(
             overflow = TextOverflow.Ellipsis,
         )
 
-        // Genre — first 2 genres from the real genre list, joined by " • "
+        // Genre — first 2 entries from the real genre list, joined by " • "
+        // manga.genre is already List<String>? in the domain model.
         // Falls back to author name if no genres are stored yet.
         val genreText = manga.genre
-            ?.split(",")
             ?.take(2)
             ?.joinToString(" • ") { it.trim() }
-            .takeUnless { it.isNullOrBlank() }
+            ?.takeUnless { it.isBlank() }
             ?: manga.author
             ?: ""
 
