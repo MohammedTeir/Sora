@@ -244,9 +244,18 @@ class Downloader(
         try {
             downloadChapter(download)
 
-            // Remove successful download from queue
+            // Bug 1 fix: previously removeFromQueue() was called here on success,
+            // which called store.remove(download) — deleting the entry from
+            // SharedPreferences before the app could die. On restart store.restore()
+            // had nothing to load, so the queue appeared empty.
+            //
+            // Now we only remove the download from the IN-MEMORY queue (so the UI
+            // stops showing it as active), but we do NOT touch the store here.
+            // The store entry is only cleared in internalClearQueue() / removeFromQueueIf()
+            // when the user explicitly cancels, or in store.restore() which clears
+            // after successfully reloading (line 113 in DownloadStore.kt).
             if (download.status == Download.State.DOWNLOADED) {
-                removeFromQueue(download)
+                _queueState.update { it - download }
             }
             if (areAllDownloadsFinished()) {
                 stop()
