@@ -102,7 +102,7 @@ class LibraryScreenModel(
                 val showSystemCategory = favorites.any { it.libraryManga.categories.contains(0) }
                 val filteredFavorites = favorites
                     .applyFilters(tracksMap, trackingFilters, itemPreferences)
-                    .let { if (searchQuery == null) it else it.filter { m -> m.matches(searchQuery) } }
+                    .let { if (searchQuery == null) it else it.fastFilter { m -> m.matches(searchQuery) } }
 
                 LibraryData(
                     isInitialized = true,
