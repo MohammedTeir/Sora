@@ -164,19 +164,17 @@ internal class DownloadNotifier(private val context: Context) {
     fun onComplete() {
         with(progressNotificationBuilder) {
             setContentTitle(context.stringResource(MR.strings.download_notifier_downloader_title))
-            setContentText(context.stringResource(MR.strings.download_notifier_download_finished))
+            setContentText("All downloads complete")
             setSmallIcon(android.R.drawable.stat_sys_download_done)
             setProgress(0, 0, false)
-            setOngoing(false)        // dismissible by the user
-            setAutoCancel(true)      // also dismissed on tap
+            setOngoing(false)
+            setAutoCancel(true)
             clearActions()
-            // Tap → open the download queue screen
             setContentIntent(NotificationHandler.openDownloadManagerPendingActivity(context))
 
             show(Notifications.ID_DOWNLOAD_CHAPTER_PROGRESS)
         }
 
-        // Reset state so the next download session starts fresh
         isDownloading = false
     }
 
