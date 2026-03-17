@@ -246,7 +246,10 @@ class MainActivity : BaseActivity() {
             }
             } // end CompositionLocalProvider(LocalSourceManager)
 
-            // Splash overlay removed
+            var showSplash by remember { mutableStateOf(isLaunch) }
+            if (showSplash) {
+                SplashContent(onFinished = { showSplash = false })
+            }
 
             var showChangelog by remember { mutableStateOf(didMigration == true && !BuildConfig.DEBUG) }
             if (showChangelog) {
