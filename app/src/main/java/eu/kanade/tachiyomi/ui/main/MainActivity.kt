@@ -134,16 +134,9 @@ class MainActivity : BaseActivity() {
         }
 
         setComposeContent {
-            var showSplash by remember { mutableStateOf(isLaunch) }
             var didMigration by remember { mutableStateOf<Boolean?>(null) }
             LaunchedEffect(Unit) {
-                val startTime = System.currentTimeMillis()
                 didMigration = Migrator.awaitAndRelease()
-                val elapsed = System.currentTimeMillis() - startTime
-                if (elapsed < SPLASH_MIN_DURATION) {
-                    kotlinx.coroutines.delay(SPLASH_MIN_DURATION - elapsed)
-                }
-                showSplash = false
             }
 
             val context = LocalContext.current
@@ -253,13 +246,7 @@ class MainActivity : BaseActivity() {
             }
             } // end CompositionLocalProvider(LocalSourceManager)
 
-            androidx.compose.animation.AnimatedVisibility(
-                visible = showSplash,
-                enter = androidx.compose.animation.fadeIn(),
-                exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(500)),
-            ) {
-                SplashContent()
-            }
+            // Splash overlay removed
 
             var showChangelog by remember { mutableStateOf(didMigration == true && !BuildConfig.DEBUG) }
             if (showChangelog) {
@@ -430,7 +417,5 @@ class MainActivity : BaseActivity() {
         const val INTENT_SEARCH = "eu.kanade.tachiyomi.SEARCH"
         const val INTENT_SEARCH_QUERY = "query"
         const val INTENT_SEARCH_FILTER = "filter"
-
-        private const val SPLASH_MIN_DURATION = 2000L // ms
     }
 }
