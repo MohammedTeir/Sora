@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import eu.kanade.tachiyomi.R
@@ -47,7 +48,7 @@ fun SplashContent(onFinished: () -> Unit) {
 
     LaunchedEffect(Unit) {
         // Sequential Animation Logic
-        flameProgress.animateTo(1f, tween(2000, easing = FastOutSlowInInterpolator))
+        flameProgress.animateTo(1f, tween(2000, easing = FastOutSlowInEasing))
         
         launch {
             delay(200) // 2.2s total delay for arcs after flame start
@@ -67,7 +68,7 @@ fun SplashContent(onFinished: () -> Unit) {
         }
         launch {
             delay(1300) // 3.3s total
-            loadingProgress.animateTo(1f, tween(1500, easing = LinearOutSlowInInterpolator))
+            loadingProgress.animateTo(1f, tween(1500, easing = LinearOutSlowInEasing))
             delay(500) // Brief pause at full bar
             onFinished()
         }
@@ -153,7 +154,7 @@ fun SplashContent(onFinished: () -> Unit) {
             // Left Side Vertical Asset (from Resources)
             AnimatedVisibility(
                 visible = showLeftSide,
-                enter = slideInHorizontally(tween(1000, easing = LinearOutSlowInInterpolator)) { -it } + fadeIn(tween(1000)),
+                enter = slideInHorizontally(tween(1000, easing = LinearOutSlowInEasing)) { -it } + fadeIn(tween(1000)),
                 modifier = Modifier.align(Alignment.CenterStart).padding(start = 32.dp)
             ) {
                 Image(
