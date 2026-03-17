@@ -198,6 +198,7 @@ abstract class SearchScreenModel(
      * tap) call [updateSearchQuery] + [search] directly so they fire immediately.
      */
     fun onQueryChanged(query: String) {
+        mutableState.update { it.copy(searchQuery = query) }
         debouncedQueryFlow.value = query
     }
 
