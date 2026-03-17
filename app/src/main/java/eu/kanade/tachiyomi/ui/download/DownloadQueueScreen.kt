@@ -76,6 +76,13 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 import tachiyomi.domain.manga.model.asMangaCover
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.screens.EmptyScreen
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 // ── Colour palette ─────────────────────────────────────────────────────────
 private val PauseOrange = Color(0xFFFF9800)
@@ -99,6 +106,9 @@ object DownloadQueueScreen : Screen() {
         val hasContent = queuedDownloads.isNotEmpty() ||
             screenState.completedDownloads.isNotEmpty()
 
+        val lazyListState = rememberLazyListState()
+        val coroutineScope = rememberCoroutineScope()
+
         Scaffold(
             topBar = {
                 DownloadQueueHeader(
@@ -113,6 +123,26 @@ object DownloadQueueScreen : Screen() {
                     onClearCompleted = screenModel::clearCompleted,
                     onSetParallelLimit = screenModel::setParallelLimit,
                 )
+            },
+            floatingActionButton = {
+                AnimatedVisibility(
+                    visible = lazyListState.firstVisibleItemIndex > 0,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                ) {
+                    FloatingActionButton(
+                        onClick = {
+                            coroutineScope.launch {
+                                lazyListState.animateScrollToItem(0)
+                            }
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowUpward,
+                            contentDescription = "Scroll to top",
+                        )
+                    }
+                }
             },
             containerColor = MaterialTheme.colorScheme.background,
         ) { contentPadding ->
@@ -165,8 +195,6 @@ object DownloadQueueScreen : Screen() {
                     }
                 }
             }
-
-            val lazyListState = rememberLazyListState()
 
             val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
                 // Move item in the local visual list immediately (smooth animation)

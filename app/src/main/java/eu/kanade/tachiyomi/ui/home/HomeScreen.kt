@@ -84,7 +84,6 @@ object HomeScreen : Screen() {
         UpdatesTab,
         HistoryTab,
         DiscoverTab,
-        DownloadTab,
         MoreTab,
     )
 

@@ -10,6 +10,7 @@ import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.history.model.History
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.track.model.Track
+import mihon.domain.extensionrepo.model.ExtensionRepo
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -259,6 +260,32 @@ object SyncDataSerializer {
             )
         } catch (e: Exception) {
             logcat(LogPriority.WARN) { "SyncDataSerializer: failed to deserialize track: ${e.message}" }
+            null
+        }
+    }
+
+    // ─── Extension Repo ────────────────────────────────────────────────────────
+
+    fun extensionRepoToMap(repo: ExtensionRepo): Map<String, Any?> = mapOf(
+        "baseUrl" to repo.baseUrl,
+        "name" to repo.name,
+        "shortName" to repo.shortName,
+        "website" to repo.website,
+        "signingKeyFingerprint" to repo.signingKeyFingerprint,
+        "updatedAt" to System.currentTimeMillis(),
+    )
+
+    fun mapToExtensionRepo(map: Map<String, Any?>): ExtensionRepo? {
+        return try {
+            ExtensionRepo(
+                baseUrl = map["baseUrl"] as? String ?: return null,
+                name = map["name"] as? String ?: return null,
+                shortName = map["shortName"] as? String,
+                website = map["website"] as? String ?: return null,
+                signingKeyFingerprint = map["signingKeyFingerprint"] as? String ?: return null,
+            )
+        } catch (e: Exception) {
+            logcat(LogPriority.WARN) { "SyncDataSerializer: failed to deserialize extension repo: ${e.message}" }
             null
         }
     }

@@ -26,6 +26,7 @@ import tachiyomi.domain.track.model.Track
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.util.Date
+import mihon.domain.extensionrepo.model.ExtensionRepo
 
 sealed class SyncResult {
     data object Success : SyncResult()
@@ -168,12 +169,21 @@ class SyncService(
                 emptyList()
             }
 
+            val extensionRepos = try {
+                extension_reposQueries.findAll { baseUrl, name, shortName, website, signingKeyFingerprint ->
+                    ExtensionRepo(baseUrl, name, shortName, website, signingKeyFingerprint)
+                }.executeAsList()
+            } catch (e: Exception) {
+                emptyList()
+            }
+
             SyncData(
                 manga = allManga,
                 chapters = chapters,
                 categories = categories,
                 tracks = tracks,
                 history = history,
+                extensionRepos = extensionRepos,
             )
         }
     }
@@ -189,6 +199,7 @@ class SyncService(
         val categoryDocs = userRef.collection("categories").get().await()
         val trackDocs    = userRef.collection("tracking").get().await()
         val historyDocs  = userRef.collection("history").get().await()
+        val extensionRepoDocs = try { userRef.collection("extensionRepos").get().await() } catch (e: Exception) { null }
 
         val manga = mangaDocs.documents.mapNotNull {
             SyncDataSerializer.mapToManga(it.data as? Map<String, Any?> ?: return@mapNotNull null)
@@ -205,6 +216,9 @@ class SyncService(
         val history = historyDocs.documents.mapNotNull {
             SyncDataSerializer.mapToHistory(it.data as? Map<String, Any?> ?: return@mapNotNull null)
         }
+        val extensionRepos = extensionRepoDocs?.documents?.mapNotNull {
+            SyncDataSerializer.mapToExtensionRepo(it.data as? Map<String, Any?> ?: return@mapNotNull null)
+        } ?: emptyList()
 
         return SyncData(
             manga = manga,
@@ -212,6 +226,7 @@ class SyncService(
             categories = categories,
             tracks = tracks,
             history = history,
+            extensionRepos = extensionRepos,
         )
     }
 
@@ -247,6 +262,11 @@ class SyncService(
                 if (aTime >= bTime) a else b
             },
         )
+        val mergedExtensionRepos = mergeLists(
+            local.extensionRepos, cloud.extensionRepos,
+            keyFn = { it.baseUrl },
+            newerFn = { a, _ -> a },
+        )
 
         return SyncData(
             manga = mergedManga,
@@ -254,6 +274,7 @@ class SyncService(
             categories = mergedCategories,
             tracks = mergedTracks,
             history = mergedHistory,
+            extensionRepos = mergedExtensionRepos,
         )
     }
 
@@ -401,6 +422,18 @@ class SyncService(
                     )
                 }
             }
+
+            data.extensionRepos.forEach { repo ->
+                runCatching {
+                    extension_reposQueries.insert(
+                        base_url = repo.baseUrl,
+                        name = repo.name,
+                        short_name = repo.shortName,
+                        website = repo.website,
+                        fingerprint = repo.signingKeyFingerprint,
+                    )
+                }
+            }
         }
     }
 
@@ -449,6 +482,12 @@ class SyncService(
                     operations += userRef.collection("history").document(history.chapterId.toString()) to
                         SyncDataSerializer.historyToMap(history).filterValues { it != null }
                 }
+        }
+
+        data.extensionRepos.forEach { repo ->
+            val docId = android.util.Base64.encodeToString(repo.baseUrl.toByteArray(), android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP)
+            operations += userRef.collection("extensionRepos").document(docId) to
+                SyncDataSerializer.extensionRepoToMap(repo).filterValues { it != null }
         }
 
         // Split into chunks of BATCH_SIZE to stay under Firestore's 500-op limit
@@ -529,4 +568,5 @@ data class SyncData(
     val categories: List<Category>,
     val tracks: List<Track>,
     val history: List<History>,
+    val extensionRepos: List<ExtensionRepo> = emptyList(),
 )
