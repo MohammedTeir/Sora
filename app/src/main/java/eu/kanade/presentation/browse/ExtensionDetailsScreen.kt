@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Launch
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -24,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +57,7 @@ import eu.kanade.presentation.more.settings.widget.TrailingWidgetBuffer
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.extension.model.Extension
 import eu.kanade.tachiyomi.source.ConfigurableSource
+import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.ui.browse.extension.details.ExtensionDetailsScreenModel
 import eu.kanade.tachiyomi.util.system.LocaleHelper
 import eu.kanade.tachiyomi.util.system.copyToClipboard
@@ -76,6 +81,12 @@ fun ExtensionDetailsScreen(
     onClickUninstall: () -> Unit,
     onClickSource: (sourceId: Long) -> Unit,
     onClickIncognito: (Boolean) -> Unit,
+    onClickCustomUrl: (sourceId: Long) -> Unit,
+    onDismissCustomUrlDialog: () -> Unit,
+    onSaveCustomUrl: (sourceId: Long, url: String) -> Unit,
+    getCustomUrl: (sourceId: Long) -> String,
+    getSourceBaseUrl: (sourceId: Long) -> String,
+    onClickOpenWebView: (sourceId: Long) -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
     val url = remember(state.extension) {
@@ -149,7 +160,19 @@ fun ExtensionDetailsScreen(
             onClickUninstall = onClickUninstall,
             onClickSource = onClickSource,
             onClickIncognito = onClickIncognito,
+            onClickCustomUrl = onClickCustomUrl,
+            onClickOpenWebView = onClickOpenWebView,
         )
+
+        if (state.customUrlDialog != null) {
+            CustomUrlDialog(
+                sourceId = state.customUrlDialog,
+                currentUrl = getCustomUrl(state.customUrlDialog),
+                defaultUrl = getSourceBaseUrl(state.customUrlDialog),
+                onDismiss = onDismissCustomUrlDialog,
+                onSave = onSaveCustomUrl,
+            )
+        }
     }
 }
 
@@ -163,6 +186,8 @@ private fun ExtensionDetails(
     onClickUninstall: () -> Unit,
     onClickSource: (sourceId: Long) -> Unit,
     onClickIncognito: (Boolean) -> Unit,
+    onClickCustomUrl: (sourceId: Long) -> Unit,
+    onClickOpenWebView: (sourceId: Long) -> Unit,
 ) {
     val context = LocalContext.current
     var showNsfwWarning by remember { mutableStateOf(false) }
@@ -204,6 +229,8 @@ private fun ExtensionDetails(
                 source = source,
                 onClickSourcePreferences = onClickSourcePreferences,
                 onClickSource = onClickSource,
+                onClickCustomUrl = onClickCustomUrl,
+                onClickOpenWebView = onClickOpenWebView,
             )
         }
     }
@@ -417,6 +444,8 @@ private fun SourceSwitchPreference(
     source: ExtensionSourceItem,
     onClickSourcePreferences: (sourceId: Long) -> Unit,
     onClickSource: (sourceId: Long) -> Unit,
+    onClickCustomUrl: (sourceId: Long) -> Unit,
+    onClickOpenWebView: (sourceId: Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -432,6 +461,23 @@ private fun SourceSwitchPreference(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                if (source.source is HttpSource) {
+                    IconButton(onClick = { onClickCustomUrl(source.source.id) }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Link,
+                            contentDescription = "Custom URL",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    IconButton(onClick = { onClickOpenWebView(source.source.id) }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Language,
+                            contentDescription = "Open in WebView",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+
                 if (source.source is ConfigurableSource) {
                     IconButton(onClick = { onClickSourcePreferences(source.source.id) }) {
                         Icon(
@@ -450,6 +496,65 @@ private fun SourceSwitchPreference(
             }
         },
         onPreferenceClick = { onClickSource(source.source.id) },
+    )
+}
+
+@Composable
+private fun CustomUrlDialog(
+    sourceId: Long,
+    currentUrl: String,
+    defaultUrl: String,
+    onDismiss: () -> Unit,
+    onSave: (sourceId: Long, url: String) -> Unit,
+) {
+    var inputUrl by rememberSaveable(sourceId) { mutableStateOf(currentUrl) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Custom Mirror URL") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Redirect all requests for this source to a different base URL. " +
+                        "Leave empty to use the default.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (defaultUrl.isNotBlank()) {
+                    Text(
+                        text = "Default: $defaultUrl",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                OutlinedTextField(
+                    value = inputUrl,
+                    onValueChange = { inputUrl = it },
+                    placeholder = { Text(defaultUrl.ifBlank { "https://example.com" }) },
+                    singleLine = true,
+                    label = { Text("Mirror URL") },
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(sourceId, inputUrl) }) {
+                Text(stringResource(MR.strings.action_save))
+            }
+        },
+        dismissButton = {
+            Row {
+                if (currentUrl.isNotBlank()) {
+                    TextButton(
+                        onClick = { onSave(sourceId, "") },
+                    ) {
+                        Text(stringResource(MR.strings.action_reset))
+                    }
+                }
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(MR.strings.action_cancel))
+                }
+            }
+        },
     )
 }
 

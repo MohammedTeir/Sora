@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit
 class NetworkHelper(
     private val context: Context,
     private val preferences: NetworkPreferences,
+    private val extraApplicationInterceptors: List<okhttp3.Interceptor> = emptyList(),
 ) {
 
     val cookieJar = AndroidCookieJar()
@@ -35,6 +36,7 @@ class NetworkHelper(
             .addInterceptor(UserAgentInterceptor(::defaultUserAgentProvider))
             .addNetworkInterceptor(IgnoreGzipInterceptor())
             .addNetworkInterceptor(BrotliInterceptor)
+            .apply { extraApplicationInterceptors.forEach { addInterceptor(it) } }
 
         if (preferences.verboseLogging().get()) {
             val httpLoggingInterceptor = HttpLoggingInterceptor().apply {
