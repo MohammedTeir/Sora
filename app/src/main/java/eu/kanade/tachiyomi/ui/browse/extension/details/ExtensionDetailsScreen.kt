@@ -10,6 +10,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.browse.ExtensionDetailsScreen
 import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.ui.webview.WebViewScreen
 import kotlinx.coroutines.flow.collectLatest
 import tachiyomi.presentation.core.screens.LoadingScreen
 
@@ -40,6 +41,17 @@ data class ExtensionDetailsScreen(
             onClickUninstall = screenModel::uninstallExtension,
             onClickSource = screenModel::toggleSource,
             onClickIncognito = screenModel::toggleIncognito,
+            onClickCustomUrl = screenModel::showCustomUrlDialog,
+            onDismissCustomUrlDialog = screenModel::dismissCustomUrlDialog,
+            onSaveCustomUrl = screenModel::saveCustomUrl,
+            getCustomUrl = screenModel::getCustomUrl,
+            getSourceBaseUrl = screenModel::getSourceBaseUrl,
+            onClickOpenWebView = { sourceId ->
+                val url = screenModel.getSourceWebViewUrl(sourceId)
+                if (url.isNotBlank()) {
+                    navigator.push(WebViewScreen(url = url, sourceId = sourceId))
+                }
+            },
         )
 
         LaunchedEffect(Unit) {

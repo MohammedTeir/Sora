@@ -182,28 +182,54 @@ class DiscoverScreenModel(
         }
         screenModelScope.launch {
             mutableState.update { it.copy(isUploadingList = true) }
-            sharedListService.uploadList(title, selectedManga)
-                .onSuccess {
-                    // Clear the upload flag BEFORE calling loadLists() so the
-                    // isFetchingLists guard in loadLists() is the only active guard.
-                    // Previously isLoading was still true here, which caused loadLists()
-                    // to return immediately — leaving the screen empty after a successful upload.
-                    mutableState.update {
-                        it.copy(
-                            isUploadingList = false,
-                            importMessage   = "List '$title' shared successfully!",
+
+            // Refactored to if/else so we can reference the returned docId (String)
+            // for the optimistic SharedList — `.onSuccess { }` is not a suspend lambda
+            // so we cannot call suspend functions (getUserId, etc.) inside it.
+            val result = sharedListService.uploadList(title, selectedManga)
+
+            if (result.isSuccess) {
+                val docId = result.getOrNull() ?: ""
+
+                // Optimistic update: add the newly created list to both myLists and
+                // recentLists immediately so the user sees it without waiting for
+                // Firestore propagation. The background loadLists() call below will
+                // eventually replace this entry with the real Firestore document.
+                val optimisticList = SharedList(
+                    id          = docId,
+                    title       = title,
+                    creatorName = "You",
+                    manga       = selectedManga.map {
+                        mapOf<String, Any>(
+                            "title"     to it.title,
+                            "sourceId"  to it.sourceId,
+                            "coverUrl"  to it.coverUrl,
+                            "sourceUrl" to it.sourceUrl,
                         )
-                    }
-                    loadLists()
+                    },
+                    timestamp   = System.currentTimeMillis(),
+                )
+
+                mutableState.update { state ->
+                    state.copy(
+                        isUploadingList = false,
+                        importMessage   = "List '$title' shared successfully!",
+                        // Prepend so the new list appears first
+                        myLists         = listOf(optimisticList) + state.myLists,
+                        recentLists     = listOf(optimisticList) + state.recentLists,
+                    )
                 }
-                .onFailure { e ->
-                    mutableState.update {
-                        it.copy(
-                            isUploadingList = false,
-                            errorMessage    = e.localizedMessage ?: "Upload failed",
-                        )
-                    }
+                // Background refresh — replaces optimistic entry with real Firestore data.
+                loadLists()
+            } else {
+                val e = result.exceptionOrNull()
+                mutableState.update {
+                    it.copy(
+                        isUploadingList = false,
+                        errorMessage    = e?.localizedMessage ?: "Upload failed",
+                    )
                 }
+            }
         }
     }
 

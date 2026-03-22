@@ -121,7 +121,10 @@ class DownloadQueueScreenModel(
         val current = downloadManager.queueState.value.toMutableList()
         if (current.remove(download)) {
             current.add(0, download)
-            downloadManager.reorderQueue(current)
+            // Use reorderInPlace (not reorderQueue) to avoid the pause/clear/restart
+            // cycle that triggered a full status mutation and caused the list to
+            // rubber-band back to its original order after the move.
+            downloadManager.reorderInPlace(current)
         }
     }
 

@@ -160,7 +160,8 @@ class DownloadManager(
         val current = queueState.value.toMutableList()
         if (current.remove(download)) {
             current.add(download)
-            reorderQueue(current)
+            // reorderInPlace: no pause/clear/restart, no status mutation, no rubber-band.
+            reorderInPlace(current)
         }
     }
 
@@ -172,7 +173,7 @@ class DownloadManager(
         val series = current.filter { it.manga.id == mangaId }
         current.removeAll(series)
         current.addAll(0, series)
-        reorderQueue(current)
+        reorderInPlace(current)
     }
 
     /**
@@ -183,7 +184,7 @@ class DownloadManager(
         val series = current.filter { it.manga.id == mangaId }
         current.removeAll(series)
         current.addAll(series)
-        reorderQueue(current)
+        reorderInPlace(current)
     }
 
     /**

@@ -196,7 +196,7 @@ fun Screen.CreateListBottomSheet(
                     // ── FIX 2 (cont.): No longer call sheetState.hide() here.
                     // The LaunchedEffect above handles dismissal once the upload
                     // and subsequent loadLists() have both completed.
-                    screenModel.uploadList(listTitle, selectedItems)
+                    screenModel.uploadList(listTitle.trim(), selectedItems)
                 },
                 modifier = Modifier
                     .fillMaxWidth()

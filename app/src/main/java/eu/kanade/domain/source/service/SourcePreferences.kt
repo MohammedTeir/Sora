@@ -84,4 +84,6 @@ class SourcePreferences(
         Preference.appStateKey("recent_searches"),
         emptySet(),
     )
+
+    fun customUrlOverride(host: String) = preferenceStore.getString("custom_url_override_$host", "")
 }
