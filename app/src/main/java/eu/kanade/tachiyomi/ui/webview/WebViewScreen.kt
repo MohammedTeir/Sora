@@ -13,6 +13,8 @@ class WebViewScreen(
     private val url: String,
     private val initialTitle: String? = null,
     private val sourceId: Long? = null,
+    private val sourceBaseUrl: String? = null,
+    private val customMirrorUrl: String? = null,
 ) : Screen(), AssistContentScreen {
 
     private var assistUrl: String? = null
@@ -34,6 +36,8 @@ class WebViewScreen(
             onShare = { screenModel.shareWebpage(context, it) },
             onOpenInBrowser = { screenModel.openInBrowser(context, it) },
             onClearCookies = screenModel::clearCookies,
+            sourceBaseUrl = sourceBaseUrl,
+            customMirrorUrl = customMirrorUrl,
         )
     }
 }
