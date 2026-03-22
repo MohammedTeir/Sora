@@ -48,8 +48,16 @@ data class ExtensionDetailsScreen(
             getSourceBaseUrl = screenModel::getSourceBaseUrl,
             onClickOpenWebView = { sourceId ->
                 val url = screenModel.getSourceWebViewUrl(sourceId)
+                val baseUrl = screenModel.getSourceBaseUrl(sourceId)
                 if (url.isNotBlank()) {
-                    navigator.push(WebViewScreen(url = url, sourceId = sourceId))
+                    navigator.push(
+                        WebViewScreen(
+                            url = url,
+                            sourceId = sourceId,
+                            sourceBaseUrl = baseUrl.takeIf { url != baseUrl },
+                            customMirrorUrl = url.takeIf { url != baseUrl },
+                        ),
+                    )
                 }
             },
         )

@@ -2,6 +2,7 @@ package eu.kanade.presentation.webview
 
 import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Message
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -75,6 +76,8 @@ fun WebViewScreenContent(
     onClearCookies: (String) -> Unit,
     headers: Map<String, String> = emptyMap(),
     onUrlChange: (String) -> Unit = {},
+    sourceBaseUrl: String? = null,
+    customMirrorUrl: String? = null,
 ) {
     val coroutineScope = rememberCoroutineScope()
 
@@ -134,6 +137,21 @@ fun WebViewScreenContent(
 
                 // Ignore intents urls
                 if (url.startsWith("intent://")) return true
+
+                // Rewrite links that point to the original source host back to the custom mirror
+                if (sourceBaseUrl != null && customMirrorUrl != null) {
+                    val originalHost = Uri.parse(sourceBaseUrl).host
+                    val mirrorUri = Uri.parse(customMirrorUrl)
+                    if (originalHost != null && request?.url?.host == originalHost) {
+                        val rewritten = request!!.url.buildUpon()
+                            .scheme(mirrorUri.scheme ?: "https")
+                            .authority(mirrorUri.authority ?: originalHost)
+                            .build()
+                            .toString()
+                        view?.loadUrl(rewritten, headers)
+                        return true
+                    }
+                }
 
                 // Only open valid web urls
                 if (url.startsWith("http") || url.startsWith("https")) {
