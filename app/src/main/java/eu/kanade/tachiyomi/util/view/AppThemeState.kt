@@ -9,5 +9,5 @@ import androidx.compose.runtime.mutableStateOf
  * toggling dark mode in HomeTab is immediately reflected everywhere in the app.
  */
 object AppThemeState {
-    val isDark = mutableStateOf(false)
+    val isDark = mutableStateOf(true)
 }
