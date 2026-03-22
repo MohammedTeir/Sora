@@ -53,6 +53,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -182,9 +183,38 @@ object DownloadQueueScreen : Screen() {
 
             val queueState = remember { queuedDownloads.toMutableStateList() }
 
+            // Tracks whether a drag gesture has started (used to detect drop).
+            var hasDragged by remember { mutableStateOf(false) }
+
+            val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
+                // Only update the local visual list during drag.
+                // Backend commit is deferred to drop (see LaunchedEffect below) so that
+                // reorderInPlace → StateFlow emission → queuedDownloads re-emission cannot
+                // schedule the sync LaunchedEffect while the gesture is still in flight.
+                queueState.add(to.index, queueState.removeAt(from.index))
+            }
+
+            // Commit the final reordered list to the downloader store exactly once,
+            // on the frame when isAnyItemDragging transitions true → false (drop).
+            LaunchedEffect(reorderableState) {
+                snapshotFlow { reorderableState.isAnyItemDragging }
+                    .collect { dragging ->
+                        if (dragging) {
+                            hasDragged = true
+                        } else if (hasDragged) {
+                            hasDragged = false
+                            // One backend call on drop — uses reorderInPlace (no pause/restart)
+                            screenModel.reorderOnDrop(queueState.toList())
+                        }
+                    }
+            }
+
             // Keep local list in sync with upstream (items added / cancelled externally)
             // without replacing the entire list, which would abort an in-progress drag.
+            // Guard: skip entirely while a drag is live to avoid mutating queueState
+            // underneath the gesture (root cause of rubber-band snap and index crashes).
             LaunchedEffect(queuedDownloads) {
+                if (reorderableState.isAnyItemDragging) return@LaunchedEffect
                 // Remove items no longer in the upstream queue
                 val upstreamIds = queuedDownloads.map { it.chapter.id }.toSet()
                 queueState.removeAll { it.chapter.id !in upstreamIds }
@@ -194,13 +224,6 @@ object DownloadQueueScreen : Screen() {
                         queueState.add(dl)
                     }
                 }
-            }
-
-            val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-                // Move item in the local visual list immediately (smooth animation)
-                queueState.add(to.index, queueState.removeAt(from.index))
-                // Commit to the downloader store without touching statuses
-                screenModel.reorderOnDrop(queueState.toList())
             }
 
             LazyColumn(

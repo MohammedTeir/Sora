@@ -220,14 +220,16 @@ internal fun SearchHeader(
                 singleLine = true,
                 cursorBrush = SolidColor(SoraBlue),
                 decorationBox = { inner ->
-                    if (searchQuery.isNullOrBlank()) {
-                        Text(
-                            text = "Search for manga, authors...",
-                            color = onSurfaceVariant,
-                            fontSize = 16.sp,
-                        )
+                    Box {
+                        if (searchQuery.isNullOrBlank()) {
+                            Text(
+                                text = "Search for manga, authors...",
+                                color = onSurfaceVariant,
+                                fontSize = 16.sp,
+                            )
+                        }
+                        inner()
                     }
-                    inner()
                 },
             )
             if (!searchQuery.isNullOrEmpty()) {
