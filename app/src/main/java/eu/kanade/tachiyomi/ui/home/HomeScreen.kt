@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -18,7 +19,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -87,6 +87,16 @@ object HomeScreen : Screen() {
         MoreTab,
     )
 
+    // Bottom nav shows only 5 items (M3 recommendation: 3-5 max)
+    // HistoryTab and DiscoverTab remain accessible via tab switching / deep links
+    private val BOTTOM_NAV_TABS = listOf(
+        HomeTab,
+        LibraryTab,
+        BrowseTab,
+        UpdatesTab,
+        MoreTab,
+    )
+
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
@@ -117,7 +127,7 @@ object HomeScreen : Screen() {
                                 exit = shrinkVertically(),
                             ) {
                                 NavigationBar {
-                                    TABS.fastForEach {
+                                    BOTTOM_NAV_TABS.fastForEach {
                                         NavigationBarItem(it)
                                     }
                                 }
@@ -207,7 +217,7 @@ object HomeScreen : Screen() {
             label = {
                 Text(
                     text = tab.options.title,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -215,9 +225,9 @@ object HomeScreen : Screen() {
             colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
                 selectedIconColor = eu.kanade.presentation.theme.SoraBlue,
                 selectedTextColor = eu.kanade.presentation.theme.SoraBlue,
-                indicatorColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
-                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                indicatorColor = eu.kanade.presentation.theme.SoraBlue.copy(alpha = 0.15f),
+                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
             ),
             alwaysShowLabel = true,
         )
@@ -304,6 +314,7 @@ object HomeScreen : Screen() {
             Icon(
                 painter = tab.options.icon!!,
                 contentDescription = tab.options.title,
+                modifier = Modifier.size(24.dp),
             )
         }
     }
