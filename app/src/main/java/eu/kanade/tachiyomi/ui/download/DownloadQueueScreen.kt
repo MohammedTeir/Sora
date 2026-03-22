@@ -197,10 +197,20 @@ object DownloadQueueScreen : Screen() {
             }
 
             val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-                // Move item in the local visual list immediately (smooth animation)
-                queueState.add(to.index, queueState.removeAt(from.index))
-                // Commit to the downloader store without touching statuses
-                screenModel.reorderOnDrop(queueState.toList())
+                // Use key-based lookup instead of LazyColumn absolute indices.
+                // from.index / to.index are absolute positions in the full LazyColumn
+                // (0 = "queue_header", 1..N = downloads, N+1 = "completed_header", …).
+                // queueState only holds download items (indices 0..N-1), so using raw
+                // LazyColumn indices caused IndexOutOfBoundsException when dragging
+                // near the completed section. The keys are download.chapter.id (Long).
+                val fromKey = from.key as? Long ?: return@rememberReorderableLazyListState
+                val toKey   = to.key   as? Long ?: return@rememberReorderableLazyListState
+                val fromIdx = queueState.indexOfFirst { it.chapter.id == fromKey }
+                val toIdx   = queueState.indexOfFirst { it.chapter.id == toKey }
+                if (fromIdx >= 0 && toIdx >= 0) {
+                    queueState.add(toIdx, queueState.removeAt(fromIdx))
+                    screenModel.reorderOnDrop(queueState.toList())
+                }
             }
 
             LazyColumn(
