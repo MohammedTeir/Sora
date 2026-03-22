@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import logcat.LogPriority
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import tachiyomi.core.common.util.system.logcat
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -138,10 +139,44 @@ class ExtensionDetailsScreenModel(
         }
     }
 
+    fun showCustomUrlDialog(sourceId: Long) {
+        mutableState.update { it.copy(customUrlDialog = sourceId) }
+    }
+
+    fun dismissCustomUrlDialog() {
+        mutableState.update { it.copy(customUrlDialog = null) }
+    }
+
+    fun getCustomUrl(sourceId: Long): String {
+        val source = state.value.extension?.sources?.firstOrNull { it.id == sourceId } as? HttpSource ?: return ""
+        val host = source.baseUrl.toHttpUrlOrNull()?.host ?: return ""
+        return preferences.customUrlOverride(host).get()
+    }
+
+    fun saveCustomUrl(sourceId: Long, customUrl: String) {
+        val source = state.value.extension?.sources?.firstOrNull { it.id == sourceId } as? HttpSource ?: return
+        val host = source.baseUrl.toHttpUrlOrNull()?.host ?: return
+        preferences.customUrlOverride(host).set(customUrl.trim())
+        mutableState.update { it.copy(customUrlDialog = null) }
+    }
+
+    /** Returns the URL to open in WebView: custom URL if set, otherwise the source's baseUrl. */
+    fun getSourceWebViewUrl(sourceId: Long): String {
+        val source = state.value.extension?.sources?.firstOrNull { it.id == sourceId } as? HttpSource ?: return ""
+        val host = source.baseUrl.toHttpUrlOrNull()?.host ?: return source.baseUrl
+        val custom = preferences.customUrlOverride(host).get().trim()
+        return custom.ifBlank { source.baseUrl }
+    }
+
+    fun getSourceBaseUrl(sourceId: Long): String {
+        return (state.value.extension?.sources?.firstOrNull { it.id == sourceId } as? HttpSource)?.baseUrl ?: ""
+    }
+
     @Immutable
     data class State(
         val extension: Extension.Installed? = null,
         val isIncognito: Boolean = false,
+        val customUrlDialog: Long? = null,
         private val _sources: ImmutableList<ExtensionSourceItem>? = null,
     ) {
 
