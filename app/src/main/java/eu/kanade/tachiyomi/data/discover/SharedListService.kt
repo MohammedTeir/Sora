@@ -82,14 +82,19 @@ class SharedListService(
     suspend fun getMyLists(): List<SharedList> {
         val userId = authService.getUserId() ?: return emptyList()
         return try {
+            // whereEqualTo("creatorId") + orderBy("timestamp") requires a composite
+            // index in the Firebase console. Without it Firestore throws
+            // FAILED_PRECONDITION which is silently swallowed → always returns empty.
+            // Fix: query with the single-field filter only (auto-indexed) and sort
+            // the small result set client-side — users rarely have more than a few
+            // dozen lists, so this is not a performance concern.
             val snapshot = collection
                 .whereEqualTo("creatorId", userId)
-                .orderBy("timestamp", Query.Direction.DESCENDING)
                 .get()
                 .await()
-            snapshot.documents.mapNotNull { doc ->
-                doc.toObject(SharedList::class.java)?.copy(id = doc.id)
-            }
+            snapshot.documents
+                .mapNotNull { doc -> doc.toObject(SharedList::class.java)?.copy(id = doc.id) }
+                .sortedByDescending { it.timestamp }
         } catch (e: Exception) {
             logcat(LogPriority.ERROR) { "SharedListService: getMyLists failed: ${e.message}" }
             emptyList()
