@@ -76,6 +76,7 @@ import eu.kanade.presentation.util.Screen as VoyagerScreen
 import eu.kanade.tachiyomi.data.discover.SharedList
 import eu.kanade.tachiyomi.ui.auth.LoginScreen
 import eu.kanade.tachiyomi.ui.library.LibraryScreenModel
+import cafe.adriel.voyager.core.screen.Screen
 
 /** Standalone Voyager screen — push via navigator.push(DiscoverScreen). */
 data object DiscoverScreen : VoyagerScreen() {
@@ -87,7 +88,7 @@ data object DiscoverScreen : VoyagerScreen() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DiscoverContent() {
+fun Screen.DiscoverContent() {
     val screenModel = rememberScreenModel { DiscoverScreenModel() }
 
     // FIX 3: Hoist LibraryScreenModel here so one instance lives for the
