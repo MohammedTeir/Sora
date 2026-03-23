@@ -25,6 +25,14 @@ val Throwable.formattedMessage: String
             is NoResultsException -> return context.stringResource(MR.strings.no_results_found)
             is SourceNotInstalledException -> return context.stringResource(MR.strings.loader_not_implemented_error)
         }
+        // JSON parser received an HTML page — most likely a bad mirror URL or a
+        // site returning a login/error page instead of its API response.
+        if (this::class.simpleName == "JsonDecodingException" &&
+            message?.contains("<!DOCTYPE", ignoreCase = true) == true
+        ) {
+            return "The source returned an HTML page instead of data. " +
+                "If you set a custom mirror URL, it may be incompatible with this source — try resetting it."
+        }
         return when (val className = this::class.simpleName) {
             "Exception", "IOException" -> message ?: className
             else -> "$className: $message"
