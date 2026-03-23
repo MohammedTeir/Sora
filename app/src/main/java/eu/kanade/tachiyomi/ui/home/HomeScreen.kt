@@ -40,7 +40,6 @@ import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.ui.browse.BrowseTab
-import eu.kanade.tachiyomi.ui.discover.DiscoverTab
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
 import eu.kanade.tachiyomi.ui.download.DownloadTab
 import eu.kanade.tachiyomi.ui.history.HistoryTab
@@ -83,7 +82,6 @@ object HomeScreen : Screen() {
         BrowseTab,
         UpdatesTab,
         HistoryTab,
-        DiscoverTab,
         MoreTab,
     )
 

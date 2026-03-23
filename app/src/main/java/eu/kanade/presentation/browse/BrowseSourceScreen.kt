@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Book
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.SnackbarDuration
@@ -23,7 +24,9 @@ import eu.kanade.presentation.browse.components.BrowseSourceList
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.util.formattedMessage
 import eu.kanade.tachiyomi.source.Source
+import eu.kanade.tachiyomi.source.online.HttpSource
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.flow.StateFlow
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.domain.library.model.LibraryDisplayMode
@@ -50,6 +53,7 @@ fun BrowseSourceContent(
     onLocalSourceHelpClick: () -> Unit,
     onMangaClick: (Manga) -> Unit,
     onMangaLongClick: (Manga) -> Unit,
+    onSetMirrorUrlClick: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
 
@@ -96,23 +100,40 @@ fun BrowseSourceContent(
                     ),
                 )
             } else {
-                persistentListOf(
-                    EmptyScreenAction(
-                        stringRes = MR.strings.action_retry,
-                        icon = Icons.Outlined.Refresh,
-                        onClick = mangaList::refresh,
-                    ),
-                    EmptyScreenAction(
-                        stringRes = MR.strings.action_open_in_web_view,
-                        icon = Icons.Outlined.Public,
-                        onClick = onWebViewClick,
-                    ),
-                    EmptyScreenAction(
-                        stringRes = MR.strings.label_help,
-                        icon = Icons.AutoMirrored.Outlined.HelpOutline,
-                        onClick = onHelpClick,
-                    ),
-                )
+                buildList {
+                    add(
+                        EmptyScreenAction(
+                            stringRes = MR.strings.action_retry,
+                            icon = Icons.Outlined.Refresh,
+                            onClick = mangaList::refresh,
+                        ),
+                    )
+                    add(
+                        EmptyScreenAction(
+                            stringRes = MR.strings.action_open_in_web_view,
+                            icon = Icons.Outlined.Public,
+                            onClick = onWebViewClick,
+                        ),
+                    )
+                    // Show "Set Mirror URL" only when an HTTP error occurred and the
+                    // source is an HttpSource (the callback is null for LocalSource).
+                    if (errorState != null && source is HttpSource && onSetMirrorUrlClick != null) {
+                        add(
+                            EmptyScreenAction(
+                                stringRes = MR.strings.action_set_mirror_url,
+                                icon = Icons.Outlined.Link,
+                                onClick = onSetMirrorUrlClick,
+                            ),
+                        )
+                    }
+                    add(
+                        EmptyScreenAction(
+                            stringRes = MR.strings.label_help,
+                            icon = Icons.AutoMirrored.Outlined.HelpOutline,
+                            onClick = onHelpClick,
+                        ),
+                    )
+                }.toPersistentList()
             },
         )
 

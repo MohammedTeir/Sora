@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.outlined.AttachMoney
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.CloudQueue
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.GetApp
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Notifications
@@ -69,6 +70,7 @@ fun MoreScreen(
     onClickDataAndStorage: () -> Unit,
     onClickSettings: () -> Unit,
     onClickAbout: () -> Unit,
+    onClickDiscover: () -> Unit,
     // Auth
     isLoggedIn: Boolean = false,
     userDisplayName: String = "",
@@ -235,6 +237,13 @@ fun MoreScreen(
                     icon = Icons.AutoMirrored.Outlined.Label,
                     title = "Categories",
                     onClick = onClickCategories,
+                )
+                MenuDivider()
+                MenuItem(
+                    icon = Icons.Outlined.Explore,
+                    title = "Share Lists",
+                    subtitle = "Discover & share reading lists",
+                    onClick = onClickDiscover,
                 )
             }
 

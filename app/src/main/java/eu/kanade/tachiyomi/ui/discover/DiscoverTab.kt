@@ -24,6 +24,6 @@ data object DiscoverTab : Tab {
 
     @Composable
     override fun Content() {
-        DiscoverScreen()
+        DiscoverContent()
     }
 }
