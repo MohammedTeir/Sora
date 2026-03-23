@@ -26,6 +26,7 @@ import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.sync.SyncWorker
 import eu.kanade.tachiyomi.ui.auth.LoginScreen
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
+import eu.kanade.tachiyomi.ui.discover.DiscoverScreen
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
 import eu.kanade.tachiyomi.ui.setting.SettingsScreen
 import eu.kanade.tachiyomi.ui.settings.sync.SyncSettingsScreen
@@ -80,6 +81,7 @@ data object MoreTab : Tab {
             onClickDataAndStorage = { navigator.push(SettingsScreen(SettingsScreen.Destination.DataAndStorage)) },
             onClickSettings = { navigator.push(SettingsScreen()) },
             onClickAbout = { navigator.push(SettingsScreen(SettingsScreen.Destination.About)) },
+            onClickDiscover = { navigator.push(DiscoverScreen) },
             // Auth
             isLoggedIn = authState.isLoggedIn,
             userDisplayName = authState.userDisplayName,
