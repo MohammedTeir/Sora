@@ -72,15 +72,22 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import coil3.compose.AsyncImage
 import eu.kanade.presentation.theme.SoraBlue
+import eu.kanade.presentation.util.Screen as VoyagerScreen
 import eu.kanade.tachiyomi.data.discover.SharedList
 import eu.kanade.tachiyomi.ui.auth.LoginScreen
 import eu.kanade.tachiyomi.ui.library.LibraryScreenModel
 
-import cafe.adriel.voyager.core.screen.Screen
+/** Standalone Voyager screen — push via navigator.push(DiscoverScreen). */
+data object DiscoverScreen : VoyagerScreen() {
+    @Composable
+    override fun Content() {
+        DiscoverContent()
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Screen.DiscoverScreen() {
+fun DiscoverContent() {
     val screenModel = rememberScreenModel { DiscoverScreenModel() }
 
     // FIX 3: Hoist LibraryScreenModel here so one instance lives for the
@@ -181,13 +188,8 @@ fun Screen.DiscoverScreen() {
         },
     ) { padding ->
 
-        // ── FIX 1: Full-screen spinner ONLY on the very first load AND only
+        // Full-screen spinner ONLY on the very first load AND only
         // when the lists are still empty (no stale content to show yet).
-        // Previously this triggered on every fetch while isInitialLoad=false was
-        // never reset after first load, causing a blank screen on return visits.
-        //
-        // isInitialLoad is set false by loadLists() the first time it succeeds,
-        // so this block only ever shows once — on cold open with no cached data.
         if (state.isInitialLoad && state.isFetchingLists) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = SoraBlue)
@@ -301,17 +303,6 @@ fun Screen.DiscoverScreen() {
                     }
                 }
 
-                // ── FIX 1 (cont.): Empty state now uses isFetchingLists directly
-                // instead of isLoading. Previously isLoading included isUploadingList,
-                // so while a background loadLists() was running after an upload the
-                // empty-state guard was true (hidden), AND all section guards were false
-                // (lists not yet populated), leaving the LazyColumn with zero visible
-                // items — a blank white screen.
-                //
-                // Keying only on isFetchingLists means:
-                //   - While fetching: empty state hidden (correct — wait for data)
-                //   - While uploading but NOT fetching: empty state can show if needed
-                //   - After fetch: if truly empty, the empty state shows correctly
                 if (!state.isFetchingLists && state.trendingLists.isEmpty() && state.recentLists.isEmpty()) {
                     item {
                         Box(
@@ -343,7 +334,7 @@ fun Screen.DiscoverScreen() {
                 }
             }
 
-            // Non-blocking refresh indicator. Unchanged — correct behaviour.
+            // Non-blocking refresh indicator.
             if (state.isFetchingLists && !state.isInitialLoad) {
                 LinearProgressIndicator(
                     modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter),
