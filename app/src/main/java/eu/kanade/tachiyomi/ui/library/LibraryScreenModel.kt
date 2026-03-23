@@ -562,8 +562,13 @@ class LibraryScreenModel(
             if (deleteFromLibrary) {
                 val toDelete = mangas.map {
                     it.removeCovers(coverCache)
+                    // Reset dateAdded to 0 when unfavoriting, consistent with
+                    // UpdateManga.awaitUpdateFavorite. Without this the stale
+                    // dateAdded value can cause the manga to re-appear or behave
+                    // incorrectly after the next browse/library sync.
                     MangaUpdate(
                         favorite = false,
+                        dateAdded = 0,
                         id = it.id,
                     )
                 }

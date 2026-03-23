@@ -60,11 +60,15 @@ class DiscoverScreenModel(
         if (state.value.isFetchingLists) return
 
         screenModelScope.launch {
-            mutableState.update { it.copy(isFetchingLists = true) }
+            // Check auth status BEFORE starting any Firestore calls so the FAB
+            // (and "My Lists" section) are shown correctly even when the network
+            // calls fail. Previously isLoggedIn was only updated inside the try
+            // success block, so a Firestore error on cold-start would leave
+            // isLoggedIn = false for the rest of the session.
+            val loggedIn = authService.isLoggedIn()
+            mutableState.update { it.copy(isFetchingLists = true, isLoggedIn = loggedIn) }
 
             try {
-                val loggedIn = authService.isLoggedIn()
-
                 // All three fetches run in parallel.
                 // Trending & Recent are public (no auth required by Firestore rules).
                 // My Lists requires login.
@@ -81,11 +85,11 @@ class DiscoverScreenModel(
                         myLists         = myListsDeferred.await(),
                         isFetchingLists = false,
                         isInitialLoad   = false,
-                        isLoggedIn      = loggedIn,
                     )
                 }
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR) { "DiscoverScreenModel: loadLists failed: ${e.message}" }
+                // isLoggedIn is already set above, so the FAB stays visible on error.
                 mutableState.update {
                     it.copy(
                         isFetchingLists = false,
