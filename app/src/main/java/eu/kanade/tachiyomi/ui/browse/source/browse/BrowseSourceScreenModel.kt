@@ -22,7 +22,9 @@ import eu.kanade.presentation.util.ioCoroutineScope
 import eu.kanade.tachiyomi.data.cache.CoverCache
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.model.FilterList
+import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.removeCovers
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.SharingStarted
@@ -57,7 +59,7 @@ class BrowseSourceScreenModel(
     private val sourceId: Long,
     listingQuery: String?,
     sourceManager: SourceManager = Injekt.get(),
-    sourcePreferences: SourcePreferences = Injekt.get(),
+    private val sourcePreferences: SourcePreferences = Injekt.get(),
     private val libraryPreferences: LibraryPreferences = Injekt.get(),
     private val coverCache: CoverCache = Injekt.get(),
     private val getRemoteManga: GetRemoteManga = Injekt.get(),
@@ -333,8 +335,36 @@ class BrowseSourceScreenModel(
         }
     }
 
+    // ── Custom mirror URL ────────────────────────────────────────────────────────
+
+    /** Current custom mirror URL for this source, or empty string if none set. */
+    fun getCustomUrl(): String {
+        val httpSource = source as? HttpSource ?: return ""
+        val host = httpSource.baseUrl.toHttpUrlOrNull()?.host ?: return ""
+        return sourcePreferences.customUrlOverride(host).get()
+    }
+
+    /** The source's built-in base URL (used as placeholder / "default" label). */
+    fun getSourceBaseUrl(): String = (source as? HttpSource)?.baseUrl ?: ""
+
+    /**
+     * Persist [customUrl] as the mirror for this source and refresh the listing.
+     * Passing an empty string clears the override (reverts to extension default).
+     */
+    fun saveCustomUrl(customUrl: String) {
+        val httpSource = source as? HttpSource ?: return
+        val host = httpSource.baseUrl.toHttpUrlOrNull()?.host ?: return
+        sourcePreferences.customUrlOverride(host).set(customUrl.trim())
+        setDialog(null)
+        // The CustomSourceUrlInterceptor picks up the new preference immediately,
+        // so the next "Retry" tap will use the mirror URL automatically.
+    }
+
+    // ── Dialog ───────────────────────────────────────────────────────────────────
+
     sealed interface Dialog {
         data object Filter : Dialog
+        data object SetMirrorUrl : Dialog
         data class RemoveManga(val manga: Manga) : Dialog
         data class AddDuplicateManga(val manga: Manga, val duplicates: List<MangaWithChapterCount>) : Dialog
         data class ChangeMangaCategory(
