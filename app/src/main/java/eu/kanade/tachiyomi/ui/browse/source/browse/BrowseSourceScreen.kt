@@ -116,9 +116,11 @@ data class BrowseSourceScreen(
         val onHelpClick = { uriHandler.openUri(LocalSource.HELP_URL) }
         val onWebViewClick = f@{
             val source = screenModel.source as? HttpSource ?: return@f
+            val customUrl = screenModel.getCustomUrl()
+            val url = if (customUrl.isNotBlank()) customUrl else source.baseUrl
             navigator.push(
                 WebViewScreen(
-                    url = source.baseUrl,
+                    url = url,
                     initialTitle = source.name,
                     sourceId = source.id,
                 ),
@@ -126,7 +128,9 @@ data class BrowseSourceScreen(
         }
 
         LaunchedEffect(screenModel.source) {
-            assistUrl = (screenModel.source as? HttpSource)?.baseUrl
+            val customUrl = (screenModel.source as? HttpSource)?.let { screenModel.getCustomUrl() }
+            assistUrl = customUrl?.takeIf { it.isNotBlank() }
+                ?: (screenModel.source as? HttpSource)?.baseUrl
         }
 
         Scaffold(
