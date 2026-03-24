@@ -3,7 +3,9 @@ package eu.kanade.tachiyomi.source
 import android.content.Context
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.extension.ExtensionManager
+import eu.kanade.tachiyomi.network.MirrorCandidateRegistry
 import eu.kanade.tachiyomi.source.online.HttpSource
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -28,6 +30,7 @@ class AndroidSourceManager(
     private val context: Context,
     private val extensionManager: ExtensionManager,
     private val sourceRepository: StubSourceRepository,
+    private val mirrorCandidateRegistry: MirrorCandidateRegistry,
 ) : SourceManager {
 
     private val _isInitialized = MutableStateFlow(false)
@@ -63,6 +66,12 @@ class AndroidSourceManager(
                             mutableMap[it.id] = it
                             registerStubSource(StubSource.from(it))
                         }
+                    }
+                    // Register mirror candidates so CustomSourceUrlInterceptor can
+                    // automatically recover from HTTP 403 without user intervention.
+                    mutableMap.values.filterIsInstance<HttpSource>().forEach { source ->
+                        val host = source.baseUrl.toHttpUrlOrNull()?.host ?: return@forEach
+                        mirrorCandidateRegistry.register(host, source.mirrorCandidates)
                     }
                     sourcesMapFlow.value = mutableMap
                     _isInitialized.value = true

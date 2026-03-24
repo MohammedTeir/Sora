@@ -101,33 +101,42 @@ class SharedListService(
         }
     }
 
-    suspend fun uploadList(title: String, manga: List<SharedMangaItem>): Result<String> {
+    fun uploadList(title: String, manga: List<SharedMangaItem>): Result<String> {
         val userId = authService.getUserId()
             ?: return Result.failure(Exception("Must be signed in to share a list"))
         val creatorName = authService.getUserDisplayName() ?: "Anonymous"
-        return try {
-            val data = hashMapOf(
-                "title" to title,
-                "creatorName" to creatorName,
-                "creatorId" to userId,
-                "manga" to manga.map {
-                    mapOf(
-                        "title" to it.title,
-                        "sourceId" to it.sourceId,
-                        "coverUrl" to it.coverUrl,
-                        "sourceUrl" to it.sourceUrl,
-                    )
-                },
-                "timestamp" to System.currentTimeMillis(),
-                "importCount" to 0L,
-            )
-            val ref = collection.add(data).await()
-            logcat(LogPriority.INFO) { "SharedListService: uploaded list '${title}' as ${ref.id}" }
-            Result.success(ref.id)
-        } catch (e: Exception) {
-            logcat(LogPriority.ERROR) { "SharedListService: uploadList failed: ${e.message}" }
-            Result.failure(e)
-        }
+
+        val data = hashMapOf(
+            "title" to title,
+            "creatorName" to creatorName,
+            "creatorId" to userId,
+            "manga" to manga.map {
+                mapOf(
+                    "title" to it.title,
+                    "sourceId" to it.sourceId,
+                    "coverUrl" to it.coverUrl,
+                    "sourceUrl" to it.sourceUrl,
+                )
+            },
+            "timestamp" to System.currentTimeMillis(),
+            "importCount" to 0L,
+        )
+
+        // Generate a client-side document ID so we can return it immediately without
+        // waiting for the server. Firestore's offline persistence queues the write
+        // locally and syncs it to the server as soon as connectivity is available —
+        // the data is never lost. Waiting for the server ACK (the old collection.add().await()
+        // pattern) caused the upload to hang indefinitely on slow or unreachable connections.
+        val docRef = collection.document()
+        docRef.set(data)
+            .addOnSuccessListener {
+                logcat(LogPriority.INFO) { "SharedListService: list '${title}' synced to server as ${docRef.id}" }
+            }
+            .addOnFailureListener { e ->
+                logcat(LogPriority.WARN) { "SharedListService: background write failed for '${title}': ${e.message}" }
+            }
+
+        return Result.success(docRef.id)
     }
 
     suspend fun incrementImportCount(listId: String) {

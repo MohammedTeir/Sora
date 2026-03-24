@@ -21,6 +21,7 @@ import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.track.TrackerManager
 import eu.kanade.tachiyomi.extension.ExtensionManager
 import eu.kanade.tachiyomi.network.JavaScriptEngine
+import eu.kanade.tachiyomi.network.MirrorCandidateRegistry
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.AndroidSourceManager
 import eu.kanade.translation.TranslationManager
@@ -119,16 +120,18 @@ class AppModule(val app: Application) : InjektModule {
         addSingletonFactory { ChapterCache(app, get()) }
         addSingletonFactory { CoverCache(app) }
 
+        addSingletonFactory { MirrorCandidateRegistry() }
+
         addSingletonFactory {
             NetworkHelper(
                 app,
                 get(),
-                listOf(eu.kanade.tachiyomi.network.interceptor.CustomSourceUrlInterceptor(get())),
+                listOf(eu.kanade.tachiyomi.network.interceptor.CustomSourceUrlInterceptor(get(), get())),
             )
         }
         addSingletonFactory { JavaScriptEngine(app) }
 
-        addSingletonFactory<SourceManager> { AndroidSourceManager(app, get(), get()) }
+        addSingletonFactory<SourceManager> { AndroidSourceManager(app, get(), get(), get()) }
         addSingletonFactory { ExtensionManager(app) }
 
         addSingletonFactory { DownloadProvider(app) }

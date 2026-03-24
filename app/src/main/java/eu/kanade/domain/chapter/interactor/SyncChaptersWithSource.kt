@@ -192,9 +192,13 @@ class SyncChaptersWithSource(
                 bookmark = chapter.chapterNumber in deletedBookmarkedChapterNumbers,
             )
 
-            // Try to to use the fetch date of the original entry to not pollute 'Updates' tab
-            deletedChapterNumberDateFetchMap[chapter.chapterNumber]?.let {
-                chapter = chapter.copy(dateFetch = it)
+            // Preserve the original fetch date only for chapters that were already read,
+            // so they don't re-appear in the Updates tab.
+            // Unread replacements get a fresh dateFetch so they DO appear in Updates.
+            if (chapter.read) {
+                deletedChapterNumberDateFetchMap[chapter.chapterNumber]?.let {
+                    chapter = chapter.copy(dateFetch = it)
+                }
             }
 
             changedOrDuplicateReadUrls.add(chapter.url)
@@ -223,6 +227,6 @@ class SyncChaptersWithSource(
 
         val excludedScanlators = getExcludedScanlators.await(manga.id).toHashSet()
 
-        return updatedToAdd.filterNot { it.url in changedOrDuplicateReadUrls || it.scanlator in excludedScanlators || it.read }
+        return updatedToAdd.filterNot { it.scanlator in excludedScanlators || it.read }
     }
 }
