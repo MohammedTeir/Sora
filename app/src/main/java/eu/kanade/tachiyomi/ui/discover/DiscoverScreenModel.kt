@@ -9,7 +9,6 @@ import eu.kanade.tachiyomi.data.discover.SharedMangaItem
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.yield
 import logcat.LogPriority
 import logcat.logcat
 import tachiyomi.domain.category.interactor.CreateCategoryWithName
@@ -41,6 +40,7 @@ class DiscoverScreenModel(
         val isUploadingList: Boolean = false,
         val isInitialLoad: Boolean = true,
         val isLoggedIn: Boolean = false,
+        val pendingListIds: Set<String> = emptySet(),
         val missingMangaTitles: List<String> = emptyList(),
         val importMessage: String? = null,
         val errorMessage: String? = null,
@@ -79,13 +79,27 @@ class DiscoverScreenModel(
                     if (loggedIn) sharedListService.getMyLists() else emptyList()
                 }
 
-                mutableState.update {
-                    it.copy(
-                        trendingLists   = trendingDeferred.await(),
-                        recentLists     = recentDeferred.await(),
-                        myLists         = myListsDeferred.await(),
+                val serverTrending = trendingDeferred.await()
+                val serverRecent   = recentDeferred.await()
+                val serverMyLists  = myListsDeferred.await()
+
+                mutableState.update { currentState ->
+                    // IDs the server now knows about
+                    val serverIds = (serverTrending + serverRecent + serverMyLists)
+                        .map { it.id }.toSet()
+                    // Pending IDs not yet confirmed by server
+                    val stillPending = currentState.pendingListIds - serverIds
+                    // Preserve optimistic entries whose writes haven't synced yet
+                    val pendingMyLists = currentState.myLists.filter { it.id in stillPending }
+                    val pendingRecentLists = currentState.recentLists.filter { it.id in stillPending }
+
+                    currentState.copy(
+                        trendingLists   = serverTrending,
+                        recentLists     = pendingRecentLists + serverRecent,
+                        myLists         = pendingMyLists + serverMyLists,
                         isFetchingLists = false,
                         isInitialLoad   = false,
+                        pendingListIds  = stillPending,
                     )
                 }
             } catch (e: Exception) {
@@ -187,9 +201,6 @@ class DiscoverScreenModel(
         }
         screenModelScope.launch {
             mutableState.update { it.copy(isUploadingList = true) }
-            // Yield so Compose can observe isUploadingList = true before the
-            // non-suspend uploadList() returns and sets it back to false.
-            yield()
 
             // Refactored to if/else so we can reference the returned docId (String)
             // for the optimistic SharedList — `.onSuccess { }` is not a suspend lambda
@@ -225,6 +236,9 @@ class DiscoverScreenModel(
                         // Prepend so the new list appears first
                         myLists         = listOf(optimisticList) + state.myLists,
                         recentLists     = listOf(optimisticList) + state.recentLists,
+                        // Track as pending so loadLists() preserves this entry
+                        // until the fire-and-forget write syncs to the server.
+                        pendingListIds  = state.pendingListIds + docId,
                     )
                 }
                 // No immediate loadLists() here — the fire-and-forget Firestore write
@@ -245,8 +259,8 @@ class DiscoverScreenModel(
 
     fun deleteMyList(listId: String) {
         screenModelScope.launch {
-            // Clear isUploadingList before calling loadLists() for the same reason
-            // as uploadList — so the isFetchingLists guard doesn't block the refresh.
+            // Remove from pending tracking so loadLists() won't preserve it.
+            mutableState.update { it.copy(pendingListIds = it.pendingListIds - listId) }
             sharedListService.deleteList(listId)
             loadLists()
         }
