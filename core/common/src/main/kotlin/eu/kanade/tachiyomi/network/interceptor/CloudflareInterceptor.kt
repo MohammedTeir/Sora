@@ -31,19 +31,27 @@ class CloudflareInterceptor(
     private val executor = ContextCompat.getMainExecutor(context)
 
     override fun shouldIntercept(response: Response): Boolean {
-        // Check if Cloudflare anti-bot is on
-        return if (response.code in ERROR_CODES && response.header("Server") in SERVER_CHECK) {
+        if (response.code !in ERROR_CODES) return false
+
+        // Cloudflare-specific challenge detection
+        if (response.header("Server") in SERVER_CHECK) {
             val document = Jsoup.parse(
                 response.peekBody(Long.MAX_VALUE).string(),
                 response.request.url.toString(),
             )
-
-            // solve with webview only on captcha, not on geo block
-            document.getElementById("challenge-error-title") != null ||
+            if (document.getElementById("challenge-error-title") != null ||
                 document.getElementById("challenge-error-text") != null
-        } else {
-            false
+            ) {
+                return true
+            }
         }
+
+        // Generic 403: try WebView fallback for non-Cloudflare anti-bot protection
+        return response.code == 403
+    }
+
+    private fun isCloudflareChallenge(response: Response): Boolean {
+        return response.header("Server") in SERVER_CHECK
     }
 
     override fun intercept(
@@ -51,12 +59,17 @@ class CloudflareInterceptor(
         request: Request,
         response: Response,
     ): Response {
+        val cloudflare = isCloudflareChallenge(response)
         try {
             response.close()
-            cookieManager.remove(request.url, COOKIE_NAMES, 0)
-            val oldCookie = cookieManager.get(request.url)
-                .firstOrNull { it.name == "cf_clearance" }
-            resolveWithWebView(request, oldCookie)
+            if (cloudflare) {
+                cookieManager.remove(request.url, COOKIE_NAMES, 0)
+                val oldCookie = cookieManager.get(request.url)
+                    .firstOrNull { it.name == "cf_clearance" }
+                resolveWithWebView(request, oldCookie)
+            } else {
+                resolveGenericWithWebView(request)
+            }
 
             return chain.proceed(request)
         }
@@ -64,6 +77,8 @@ class CloudflareInterceptor(
         // we don't crash the entire app
         catch (e: CloudflareBypassException) {
             throw IOException(context.stringResource(MR.strings.information_cloudflare_bypass_failure), e)
+        } catch (e: WebViewBypassException) {
+            throw IOException(context.stringResource(MR.strings.information_webview_bypass_failure), e)
         } catch (e: Exception) {
             throw IOException(e)
         }
@@ -149,6 +164,72 @@ class CloudflareInterceptor(
             throw CloudflareBypassException()
         }
     }
+
+    /**
+     * Generic WebView fallback for non-Cloudflare 403 responses.
+     * Loads the URL in a WebView to acquire any cookies the site sets
+     * (e.g. anti-bot tokens), then retries the OkHttp request with those cookies.
+     */
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun resolveGenericWithWebView(originalRequest: Request) {
+        val latch = CountDownLatch(1)
+
+        var webview: WebView? = null
+        var pageLoaded = false
+        var isWebViewOutdated = false
+
+        val origRequestUrl = originalRequest.url.toString()
+        val headers = parseHeaders(originalRequest.headers)
+
+        executor.execute {
+            webview = createWebView(originalRequest)
+
+            webview.webViewClient = object : WebViewClient() {
+                private var mainFrameError = false
+
+                override fun onPageFinished(view: WebView, url: String) {
+                    if (!mainFrameError) {
+                        // Page loaded successfully — cookies are now in CookieManager
+                        pageLoaded = true
+                    }
+                    latch.countDown()
+                }
+
+                override fun onReceivedHttpError(
+                    view: WebView?,
+                    request: WebResourceRequest?,
+                    errorResponse: WebResourceResponse?,
+                ) {
+                    if (request?.isForMainFrame == true) {
+                        // WebView also got an HTTP error — site is genuinely blocking
+                        mainFrameError = true
+                    }
+                }
+            }
+
+            webview.loadUrl(origRequestUrl, headers)
+        }
+
+        latch.awaitFor30Seconds()
+
+        executor.execute {
+            if (!pageLoaded) {
+                isWebViewOutdated = webview?.isOutdated() == true
+            }
+
+            webview?.run {
+                stopLoading()
+                destroy()
+            }
+        }
+
+        if (!pageLoaded) {
+            if (isWebViewOutdated) {
+                context.toast(MR.strings.information_webview_outdated, Toast.LENGTH_LONG)
+            }
+            throw WebViewBypassException()
+        }
+    }
 }
 
 private val ERROR_CODES = listOf(403, 503)
@@ -156,3 +237,4 @@ private val SERVER_CHECK = arrayOf("cloudflare-nginx", "cloudflare")
 private val COOKIE_NAMES = listOf("cf_clearance")
 
 private class CloudflareBypassException : Exception()
+private class WebViewBypassException : Exception()
