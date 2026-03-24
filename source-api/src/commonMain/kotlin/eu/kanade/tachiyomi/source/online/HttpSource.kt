@@ -39,6 +39,22 @@ abstract class HttpSource : CatalogueSource {
     abstract val baseUrl: String
 
     /**
+     * Ordered list of alternative base URLs to try automatically when the primary [baseUrl]
+     * returns HTTP 403 (geo-block or domain change). The first URL that returns a successful
+     * response is saved as the custom mirror and used for all subsequent requests without any
+     * user interaction. Leave empty (default) to disable auto-recovery.
+     *
+     * Example:
+     * ```kotlin
+     * override val mirrorCandidates = listOf(
+     *     "https://mirror1.example.com",
+     *     "https://mirror2.example.com",
+     * )
+     * ```
+     */
+    open val mirrorCandidates: List<String> get() = emptyList()
+
+    /**
      * Version id used to generate the source id. If the site completely changes and urls are
      * incompatible, you may increase this value and it'll be considered as a new source.
      */
