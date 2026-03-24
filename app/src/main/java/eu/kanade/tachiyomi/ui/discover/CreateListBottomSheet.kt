@@ -82,21 +82,27 @@ fun Screen.CreateListBottomSheet(
         libraryState.libraryData.favorites.map { it.libraryManga }
     }
 
-    // ── FIX 2: Auto-dismiss when upload completes successfully.
-    // Previously the sheet was dismissed immediately on button tap (before the
-    // upload coroutine finished), which triggered onResume → loadLists() while
-    // isUploadingList was still true. The resulting isFetchingLists=true made
-    // isLoading=true, so when the user reopened the sheet the button showed a
-    // spinner (discoverState.isLoading == true) and was disabled — appearing stuck.
+    // Auto-dismiss when the upload we initiated completes (success OR failure with
+    // fire-and-forget, which always returns success instantly).
     //
-    // Now we keep the sheet open while isUploadingList=true (the user sees the
-    // spinner in the button), and only dismiss once the upload + refresh both
-    // complete (isUploadingList=false AND importMessage is set, meaning success).
-    // On failure the sheet stays open so the user can retry or edit.
-    LaunchedEffect(discoverState.isUploadingList, discoverState.importMessage) {
-        val uploadJustFinished = !discoverState.isUploadingList && discoverState.importMessage != null
-        if (uploadJustFinished) {
-            scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+    // Previous approach used `importMessage != null` as the success signal, but that
+    // caused a race condition: if the user opened the sheet while a prior upload's
+    // success snackbar was still visible (importMessage already non-null), the
+    // LaunchedEffect would fire immediately on composition and dismiss the sheet
+    // before the user could do anything — appearing as "just loads and closes".
+    //
+    // The local `uploadInitiated` flag is `false` on every fresh sheet open, so
+    // stale shared state can never trigger a spurious dismiss.
+    var uploadInitiated by remember { mutableStateOf(false) }
+    LaunchedEffect(discoverState.isUploadingList) {
+        when {
+            discoverState.isUploadingList -> uploadInitiated = true
+            uploadInitiated -> {
+                // isUploadingList just transitioned true → false for an upload
+                // that this sheet instance started — time to dismiss.
+                uploadInitiated = false
+                scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+            }
         }
     }
 

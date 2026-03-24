@@ -29,7 +29,9 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -98,6 +100,19 @@ class BrowseSourceScreenModel(
 
         if (!getIncognitoState.await(source.id)) {
             sourcePreferences.lastUsedSource().set(source.id)
+        }
+
+        // When CustomSourceUrlInterceptor automatically saves a working mirror URL after a 403,
+        // refresh the current listing so the user never has to tap "Retry" manually.
+        val httpSource = source as? HttpSource
+        val originalHost = httpSource?.baseUrl?.toHttpUrlOrNull()?.host
+        if (originalHost != null) {
+            screenModelScope.launchIO {
+                sourcePreferences.customUrlOverride(originalHost).changes()
+                    .drop(1) // skip the value already in effect at subscription time
+                    .filter { it.isNotBlank() }
+                    .collect { setListing(state.value.listing) }
+            }
         }
     }
 
