@@ -46,6 +46,11 @@ class SourcePreferences(
 
     fun extensionRepos() = preferenceStore.getStringSet("extension_repos", emptySet())
 
+    fun hasSeededDefaultExtensionRepos() = preferenceStore.getBoolean(
+        Preference.appStateKey("has_seeded_default_extension_repos"),
+        false,
+    )
+
     fun extensionUpdatesCount() = preferenceStore.getInt("ext_updates_count", 0)
 
     fun trustedExtensions() = preferenceStore.getStringSet(

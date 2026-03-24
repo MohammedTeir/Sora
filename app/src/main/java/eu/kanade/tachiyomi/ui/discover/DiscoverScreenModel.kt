@@ -9,6 +9,7 @@ import eu.kanade.tachiyomi.data.discover.SharedMangaItem
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.yield
 import logcat.LogPriority
 import logcat.logcat
 import tachiyomi.domain.category.interactor.CreateCategoryWithName
@@ -186,6 +187,9 @@ class DiscoverScreenModel(
         }
         screenModelScope.launch {
             mutableState.update { it.copy(isUploadingList = true) }
+            // Yield so Compose can observe isUploadingList = true before the
+            // non-suspend uploadList() returns and sets it back to false.
+            yield()
 
             // Refactored to if/else so we can reference the returned docId (String)
             // for the optimistic SharedList — `.onSuccess { }` is not a suspend lambda
@@ -223,8 +227,10 @@ class DiscoverScreenModel(
                         recentLists     = listOf(optimisticList) + state.recentLists,
                     )
                 }
-                // Background refresh — replaces optimistic entry with real Firestore data.
-                loadLists()
+                // No immediate loadLists() here — the fire-and-forget Firestore write
+                // hasn't synced yet, so a query would return stale data and overwrite
+                // the optimistic entry. The lifecycle observer (onResume) will refresh
+                // once the write has propagated.
             } else {
                 val e = result.exceptionOrNull()
                 mutableState.update {
