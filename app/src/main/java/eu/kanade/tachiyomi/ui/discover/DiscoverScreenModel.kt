@@ -190,7 +190,7 @@ class DiscoverScreenModel(
             // Refactored to if/else so we can reference the returned docId (String)
             // for the optimistic SharedList — `.onSuccess { }` is not a suspend lambda
             // so we cannot call suspend functions (getUserId, etc.) inside it.
-            val result = sharedListService.uploadList(title, selectedManga)
+            val result = sharedListService.uploadList(title, selectedManga) // non-suspend; returns instantly
 
             if (result.isSuccess) {
                 val docId = result.getOrNull() ?: ""
