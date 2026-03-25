@@ -28,7 +28,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -80,30 +79,6 @@ fun Screen.CreateListBottomSheet(
 
     val allLibraryManga: List<LibraryManga> = remember(libraryState.libraryData.favorites) {
         libraryState.libraryData.favorites.map { it.libraryManga }
-    }
-
-    // Auto-dismiss when the upload we initiated completes (success OR failure with
-    // fire-and-forget, which always returns success instantly).
-    //
-    // Previous approach used `importMessage != null` as the success signal, but that
-    // caused a race condition: if the user opened the sheet while a prior upload's
-    // success snackbar was still visible (importMessage already non-null), the
-    // LaunchedEffect would fire immediately on composition and dismiss the sheet
-    // before the user could do anything — appearing as "just loads and closes".
-    //
-    // The local `uploadInitiated` flag is `false` on every fresh sheet open, so
-    // stale shared state can never trigger a spurious dismiss.
-    var uploadInitiated by remember { mutableStateOf(false) }
-    LaunchedEffect(discoverState.isUploadingList) {
-        when {
-            discoverState.isUploadingList -> uploadInitiated = true
-            uploadInitiated -> {
-                // isUploadingList just transitioned true → false for an upload
-                // that this sheet instance started — time to dismiss.
-                uploadInitiated = false
-                scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
-            }
-        }
     }
 
     ModalBottomSheet(
@@ -199,10 +174,12 @@ fun Screen.CreateListBottomSheet(
                                 sourceUrl = libManga.manga.url,
                             )
                         }
-                    // ── FIX 2 (cont.): No longer call sheetState.hide() here.
-                    // The LaunchedEffect above handles dismissal once the upload
-                    // and subsequent loadLists() have both completed.
                     screenModel.uploadList(listTitle.trim(), selectedItems)
+                    // Dismiss the sheet immediately — the upload is fire-and-forget
+                    // so there is nothing meaningful to wait for. The optimistic
+                    // state update and success snackbar happen on DiscoverScreenModel
+                    // which lives beyond this sheet.
+                    scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
