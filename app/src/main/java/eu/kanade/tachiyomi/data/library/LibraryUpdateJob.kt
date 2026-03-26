@@ -69,9 +69,9 @@ import uy.kohesive.injekt.api.get
 import java.io.File
 import java.time.Instant
 import java.time.ZonedDateTime
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
-import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.incrementAndFetch
@@ -238,26 +238,31 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
      * @return an observable delivering the progress of each update.
      */
     private suspend fun updateChapterList() {
-        val semaphore = Semaphore(5)
+        val globalSemaphore = Semaphore(5)
+        val sourceSemaphores = ConcurrentHashMap<Long, Semaphore>()
         val progressCount = AtomicInt(0)
         val currentlyUpdatingManga = CopyOnWriteArrayList<Manga>()
         val newUpdates = CopyOnWriteArrayList<Pair<Manga, Array<Chapter>>>()
         val failedUpdates = CopyOnWriteArrayList<Pair<Manga, String?>>()
-        val hasDownloads = AtomicBoolean(false)
         val fetchWindow = fetchInterval.getWindow(ZonedDateTime.now())
 
         coroutineScope {
-            mangaToUpdate.groupBy { it.manga.source }.values
-                .map { mangaInSource ->
+            mangaToUpdate
+                .map { libraryManga ->
                     async {
-                        semaphore.withPermit {
-                            mangaInSource.forEach { libraryManga ->
+                        // Global concurrency: max 5 manga updating at once
+                        globalSemaphore.withPermit {
+                            // Per-source concurrency: max 1 manga per source to avoid rate limiting
+                            val sourceSemaphore = sourceSemaphores.computeIfAbsent(libraryManga.manga.source) {
+                                Semaphore(1)
+                            }
+                            sourceSemaphore.withPermit {
                                 val manga = libraryManga.manga
                                 ensureActive()
 
                                 // Don't continue to update if manga is not in library
                                 if (getManga.await(manga.id)?.favorite != true) {
-                                    return@forEach
+                                    return@withPermit
                                 }
 
                                 withUpdateNotification(
@@ -274,7 +279,6 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
 
                                             if (chaptersToDownload.isNotEmpty()) {
                                                 downloadChapters(manga, chaptersToDownload)
-                                                hasDownloads.store(true)
                                             }
 
                                             libraryPreferences.newUpdatesCount().getAndSet { it + newChapters.size }
@@ -316,9 +320,6 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
             if (regularUpdates.isNotEmpty()) {
                 notifier.showUpdateNotifications(regularUpdates)
             }
-            if (hasDownloads.load()) {
-                downloadManager.startDownloads()
-            }
         }
 
         if (failedUpdates.isNotEmpty()) {
@@ -331,9 +332,8 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
     }
 
     private fun downloadChapters(manga: Manga, chapters: List<Chapter>) {
-        // We don't want to start downloading while the library is updating, because websites
-        // may don't like it and they could ban the user.
         downloadManager.downloadChapters(manga, chapters, false)
+        downloadManager.startDownloads()
     }
 
     /**
