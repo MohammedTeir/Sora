@@ -5,6 +5,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import eu.kanade.tachiyomi.data.auth.FirebaseAuthService
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeout
 import logcat.LogPriority
 import logcat.logcat
 import uy.kohesive.injekt.Injekt
@@ -101,7 +102,7 @@ class SharedListService(
         }
     }
 
-    fun uploadList(title: String, manga: List<SharedMangaItem>): Result<String> {
+    suspend fun uploadList(title: String, manga: List<SharedMangaItem>): Result<String> {
         val userId = authService.getUserId()
             ?: return Result.failure(Exception("Must be signed in to share a list"))
         val creatorName = authService.getUserDisplayName() ?: "Anonymous"
@@ -122,19 +123,17 @@ class SharedListService(
             "importCount" to 0L,
         )
 
-        // Generate a client-side document ID so we can return it immediately without
-        // waiting for the server. Firestore's offline persistence queues the write
-        // locally and syncs it to the server as soon as connectivity is available —
-        // the data is never lost. Waiting for the server ACK (the old collection.add().await()
-        // pattern) caused the upload to hang indefinitely on slow or unreachable connections.
         val docRef = collection.document()
-        docRef.set(data)
-            .addOnSuccessListener {
-                logcat(LogPriority.INFO) { "SharedListService: list '${title}' synced to server as ${docRef.id}" }
-            }
-            .addOnFailureListener { e ->
-                logcat(LogPriority.WARN) { "SharedListService: background write failed for '${title}': ${e.message}" }
-            }
+        try {
+            // Await the server ACK with a timeout so loadLists() will find the
+            // document on subsequent fetches. On good connections this completes
+            // in ~1-2 s. On slow/no connection the timeout fires and Firestore
+            // offline persistence still queues the write for later sync.
+            withTimeout(10_000) { docRef.set(data).await() }
+            logcat(LogPriority.INFO) { "SharedListService: list '${title}' synced to server as ${docRef.id}" }
+        } catch (e: Exception) {
+            logcat(LogPriority.WARN) { "SharedListService: upload await failed for '${title}': ${e.message}. Write queued locally." }
+        }
 
         return Result.success(docRef.id)
     }
