@@ -83,7 +83,7 @@ class DownloadManager(
      */
     fun resumeAllDownloads() {
         queueState.value.forEach { download ->
-            if (download.status == Download.State.PAUSED) {
+            if (download.status == Download.State.PAUSED || download.status == Download.State.ERROR) {
                 download.status = Download.State.QUEUE
             }
         }
