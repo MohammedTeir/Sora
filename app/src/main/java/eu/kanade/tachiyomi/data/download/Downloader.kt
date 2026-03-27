@@ -206,7 +206,9 @@ class Downloader(
                             // Allow up to parallelCount chapters per source for parallel chapter downloads
                             downloads.take(parallelCount)
                         }
-                        .take(parallelCount)
+                        // Global cap: allow up to parallelCount chapters per source across
+                        // up to 3 concurrent sources before hitting the ceiling.
+                        .take(parallelCount * 3)
                     emit(activeDownloads)
 
                     if (activeDownloads.isEmpty()) break
@@ -515,7 +517,7 @@ class Downloader(
         }
             // Retry 3 times, waiting 2, 4 and 8 seconds between attempts.
             .retryWhen { _, attempt ->
-                if (attempt < 3) {
+                if (attempt < 4) {
                     delay((2L shl attempt.toInt()) * 1000)
                     true
                 } else {

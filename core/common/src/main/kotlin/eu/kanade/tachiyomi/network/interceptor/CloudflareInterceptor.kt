@@ -40,7 +40,9 @@ class CloudflareInterceptor(
                 response.request.url.toString(),
             )
             if (document.getElementById("challenge-error-title") != null ||
-                document.getElementById("challenge-error-text") != null
+                document.getElementById("challenge-error-text") != null ||
+                document.selectFirst(".cf-turnstile") != null ||
+                document.body()?.hasClass("cf_challenge_running") == true
             ) {
                 return true
             }
@@ -63,6 +65,18 @@ class CloudflareInterceptor(
         try {
             response.close()
             if (cloudflare) {
+                // Pre-check: if cf_clearance already exists, try the request before
+                // opening a WebView — the cookie may still be valid.
+                val existingClearance = cookieManager.get(request.url)
+                    .firstOrNull { it.name == "cf_clearance" }
+                if (existingClearance != null) {
+                    val retryResponse = chain.proceed(request)
+                    if (retryResponse.code !in listOf(403, 503)) {
+                        return retryResponse
+                    }
+                    retryResponse.close()
+                    // Cookie was stale — fall through to WebView bypass.
+                }
                 cookieManager.remove(request.url, COOKIE_NAMES, 0)
                 val oldCookie = cookieManager.get(request.url)
                     .firstOrNull { it.name == "cf_clearance" }
@@ -105,9 +119,12 @@ class CloudflareInterceptor(
             webview.webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView, url: String) {
                     fun isCloudFlareBypassed(): Boolean {
-                        return cookieManager.get(origRequestUrl.toHttpUrl())
-                            .firstOrNull { it.name == "cf_clearance" }
-                            .let { it != null && it != oldCookie }
+                        val cookies = cookieManager.get(origRequestUrl.toHttpUrl())
+                        val clearedCookie = cookies.firstOrNull { it.name == "cf_clearance" }
+                        val bmCookie = cookies.firstOrNull { it.name == "__cf_bm" }
+                        // Bypass is successful if cf_clearance changed OR __cf_bm is newly present
+                        // (__cf_bm appears during Turnstile resolution before cf_clearance is issued)
+                        return (clearedCookie != null && clearedCookie != oldCookie) || (bmCookie != null)
                     }
 
                     if (isCloudFlareBypassed()) {
@@ -141,7 +158,7 @@ class CloudflareInterceptor(
             webview.loadUrl(origRequestUrl, headers)
         }
 
-        latch.awaitFor30Seconds()
+        latch.awaitFor45Seconds()
 
         executor.execute {
             if (!cloudflareBypassed) {
@@ -210,7 +227,7 @@ class CloudflareInterceptor(
             webview.loadUrl(origRequestUrl, headers)
         }
 
-        latch.awaitFor30Seconds()
+        latch.awaitFor45Seconds()
 
         executor.execute {
             if (!pageLoaded) {
@@ -234,7 +251,7 @@ class CloudflareInterceptor(
 
 private val ERROR_CODES = listOf(403, 503)
 private val SERVER_CHECK = arrayOf("cloudflare-nginx", "cloudflare")
-private val COOKIE_NAMES = listOf("cf_clearance")
+private val COOKIE_NAMES = listOf("cf_clearance", "__cf_bm")
 
 private class CloudflareBypassException : Exception()
 private class WebViewBypassException : Exception()
