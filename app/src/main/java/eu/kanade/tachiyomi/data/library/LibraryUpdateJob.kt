@@ -32,10 +32,12 @@ import eu.kanade.tachiyomi.util.system.isConnectedToWifi
 import eu.kanade.tachiyomi.util.system.isRunning
 import eu.kanade.tachiyomi.util.system.setForegroundSafely
 import eu.kanade.tachiyomi.util.system.workManager
+import eu.kanade.tachiyomi.network.HttpException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -271,8 +273,9 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
                                     manga,
                                 ) {
                                     try {
-                                        val newChapters = updateManga(manga, fetchWindow)
-                                            .sortedByDescending { it.sourceOrder }
+                                        val newChapters = retryOnTransientError {
+                                            updateManga(manga, fetchWindow)
+                                        }.sortedByDescending { it.sourceOrder }
 
                                         if (newChapters.isNotEmpty()) {
                                             val chaptersToDownload = filterChaptersForDownload.await(manga, newChapters)
@@ -300,6 +303,10 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
                                         failedUpdates.add(manga to errorMessage)
                                     }
                                 }
+                                // Delay between same-source updates to avoid rate limiting.
+                                // Sources often block rapid sequential requests; 10s spacing
+                                // keeps us well under typical rate-limit thresholds.
+                                delay(10_000)
                             }
                         }
                     }
@@ -345,10 +352,15 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
     private suspend fun updateManga(manga: Manga, fetchWindow: Pair<Long, Long>): List<Chapter> {
         val source = sourceManager.getOrStub(manga.source)
 
-        // Update manga metadata if needed
+        // Update manga metadata if needed — non-fatal so a metadata failure
+        // doesn't prevent chapter sync (which is what the user actually cares about)
         if (libraryPreferences.autoUpdateMetadata().get()) {
-            val networkManga = source.getMangaDetails(manga.toSManga())
-            updateManga.awaitUpdateFromSource(manga, networkManga, manualFetch = false, coverCache)
+            try {
+                val networkManga = source.getMangaDetails(manga.toSManga())
+                updateManga.awaitUpdateFromSource(manga, networkManga, manualFetch = false, coverCache)
+            } catch (e: Throwable) {
+                logcat(LogPriority.WARN, e) { "Metadata update failed for ${manga.title}, continuing with chapter sync" }
+            }
         }
 
         val chapters = source.getChapterList(manga.toSManga())
@@ -416,6 +428,33 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
             }
         } catch (_: Exception) {}
         return File("")
+    }
+
+    private suspend fun <T> retryOnTransientError(
+        maxAttempts: Int = 3,
+        initialDelayMs: Long = 2_000,
+        block: suspend () -> T,
+    ): T {
+        var lastException: Throwable? = null
+        repeat(maxAttempts) { attempt ->
+            try {
+                return block()
+            } catch (e: Throwable) {
+                if (!e.isRetryable() || attempt == maxAttempts - 1) throw e
+                lastException = e
+                logcat(LogPriority.WARN) { "Retryable error (attempt ${attempt + 1}/$maxAttempts): ${e.message}" }
+                delay(initialDelayMs * (attempt + 1))
+            }
+        }
+        throw lastException!!
+    }
+
+    private fun Throwable.isRetryable(): Boolean = when (this) {
+        is java.net.SocketTimeoutException -> true
+        is java.net.UnknownHostException -> true
+        is java.io.IOException -> true
+        is HttpException -> code in listOf(429, 500, 502, 503, 504)
+        else -> false
     }
 
     companion object {
