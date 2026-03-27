@@ -1,40 +1,40 @@
 package eu.kanade.tachiyomi.ui.download
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
+import android.os.Environment
+import android.os.StatFs
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.res.painterResource
+import eu.kanade.tachiyomi.R
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.outlined.CancelScheduleSend
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteSweep
-import androidx.compose.material.icons.outlined.DownloadForOffline
-import androidx.compose.material.icons.outlined.KeyboardDoubleArrowDown
-import androidx.compose.material.icons.outlined.KeyboardDoubleArrowUp
 import androidx.compose.material.icons.outlined.PauseCircle
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material3.DropdownMenu
@@ -42,54 +42,46 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.presentation.theme.SoraBlue
-import androidx.compose.ui.platform.LocalContext
-import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.rememberReorderableLazyListState
 import tachiyomi.domain.manga.model.asMangaCover
-import tachiyomi.presentation.core.components.material.Scaffold
-import tachiyomi.presentation.core.screens.EmptyScreen
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
 
-// ── Colour palette ─────────────────────────────────────────────────────────
 private val PauseOrange = Color(0xFFFF9800)
 private val ErrorRed = Color(0xFFE53935)
-// CompletedGreen removed — use MaterialTheme.colorScheme.tertiary at the call site instead.
-// The Sora colour scheme maps tertiary to the downloaded/success green (SoraGreen = 0xFF47A84A).
+private val BrandBlue = Color(0xff2977ff)
+private val BgColor = Color.Black
+private val TextMuted = Color(0xff94a3b8)
+private val TextWhite = Color(0xfff1f5f9)
 
 object DownloadQueueScreen : Screen() {
 
@@ -102,810 +94,454 @@ object DownloadQueueScreen : Screen() {
         val queuedDownloads by screenModel.queuedDownloads.collectAsState()
         val screenState by screenModel.state.collectAsState()
         val isRunning by screenModel.isDownloaderRunning.collectAsState()
-        val parallelLimit by screenModel.parallelLimit.collectAsState()
 
-        val hasContent = queuedDownloads.isNotEmpty() ||
-            screenState.completedDownloads.isNotEmpty()
+        var selectedTab by remember { mutableStateOf(0) } // 0: ACTIVE, 1: COMPLETED, 2: ERROR
 
-        val lazyListState = rememberLazyListState()
-        val coroutineScope = rememberCoroutineScope()
+        val errorDownloads = queuedDownloads.filter { it.status == Download.State.ERROR }
+        val activeQueue = queuedDownloads.filter { it.status != Download.State.ERROR }
 
         Scaffold(
             topBar = {
-                DownloadQueueHeader(
-                    isRunning = isRunning,
-                    hasQueue = queuedDownloads.isNotEmpty(),
-                    hasCompleted = screenState.completedDownloads.isNotEmpty(),
-                    parallelLimit = parallelLimit,
+                DownloadHeader(
                     onBack = navigator::pop,
+                    isRunning = isRunning,
                     onResumeAll = screenModel::resumeAll,
                     onPauseAll = screenModel::pauseAll,
                     onCancelAll = screenModel::cancelAll,
-                    onClearCompleted = screenModel::clearCompleted,
-                    onSetParallelLimit = screenModel::setParallelLimit,
+                    onClearCompleted = screenModel::clearCompleted
                 )
             },
-            floatingActionButton = {
-                AnimatedVisibility(
-                    visible = lazyListState.firstVisibleItemIndex > 0,
-                    enter = fadeIn(),
-                    exit = fadeOut(),
-                ) {
-                    FloatingActionButton(
-                        onClick = {
-                            coroutineScope.launch {
-                                lazyListState.animateScrollToItem(0)
-                            }
-                        },
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowUpward,
-                            contentDescription = "Scroll to top",
-                        )
-                    }
-                }
-            },
-            containerColor = MaterialTheme.colorScheme.background,
+            containerColor = BgColor,
+            bottomBar = {
+                // Fake bottom nav just to match design. Usually global nav handles this.
+                Spacer(modifier = Modifier.height(20.dp))
+            }
         ) { contentPadding ->
-            if (!hasContent) {
-                EmptyScreen(
-                    message = "Your download queue is currently empty.\nBeautiful manga adventures await you!",
-                    icon = Icons.Outlined.DownloadForOffline,
-                    modifier = Modifier.padding(contentPadding),
-                )
-                return@Scaffold
-            }
-
-            // ── Drag-and-drop reordering ──────────────────────────────────
-            //
-            // Bug fixes:
-            //
-            // 1. RUBBER-BAND (item snaps back):
-            //    Previously queueState was created with remember(queuedDownloads)
-            //    which reset the MutableStateList on every new emission from the
-            //    upstream flow. The reorder callback called screenModel.reorder()
-            //    on every drag frame which triggered updateQueue() → pause() +
-            //    internalClearQueue() + addAllToQueue(). That status mutation fired
-            //    statusFlow → statusTrigger → queuedDownloads emitted a new list →
-            //    remember(queuedDownloads) allocated a fresh MutableStateList from
-            //    the canonical order, wiping the in-progress drag position.
-            //
-            //    Fix: use rememberSaveable with no keys so the list is ONLY reset on
-            //    first composition or process death. The LaunchedEffect below syncs
-            //    upstream additions/removals into the local list without replacing it.
-            //    The reorder callback calls reorderOnDrop() which uses reorderInPlace()
-            //    — a status-neutral swap that does NOT trigger the pause/clear cycle.
-            //
-            // 2. OVERLAPPING CARDS (layout conflict during drag):
-            //    The dragged item needs to visually lift above its neighbours.
-            //    ReorderableItem exposes `isDragging`; we use Modifier.zIndex(1f)
-            //    on the dragged card so it renders on top of adjacent items.
-
-            val queueState = remember { queuedDownloads.toMutableStateList() }
-
-            // Tracks whether a drag gesture has started (used to detect drop).
-            var hasDragged by remember { mutableStateOf(false) }
-
-            val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-                // Only update the local visual list during drag.
-                // Backend commit is deferred to drop (see LaunchedEffect below) so that
-                // reorderInPlace → StateFlow emission → queuedDownloads re-emission cannot
-                // schedule the sync LaunchedEffect while the gesture is still in flight.
-                queueState.add(to.index, queueState.removeAt(from.index))
-            }
-
-            // Commit the final reordered list to the downloader store exactly once,
-            // on the frame when isAnyItemDragging transitions true → false (drop).
-            LaunchedEffect(reorderableState) {
-                snapshotFlow { reorderableState.isAnyItemDragging }
-                    .collect { dragging ->
-                        if (dragging) {
-                            hasDragged = true
-                        } else if (hasDragged) {
-                            hasDragged = false
-                            // One backend call on drop — uses reorderInPlace (no pause/restart)
-                            screenModel.reorderOnDrop(queueState.toList())
-                        }
-                    }
-            }
-
-            // Keep local list in sync with upstream (items added / cancelled externally)
-            // without replacing the entire list, which would abort an in-progress drag.
-            // Guard: skip entirely while a drag is live to avoid mutating queueState
-            // underneath the gesture (root cause of rubber-band snap and index crashes).
-            LaunchedEffect(queuedDownloads) {
-                if (reorderableState.isAnyItemDragging) return@LaunchedEffect
-                // Remove items no longer in the upstream queue
-                val upstreamIds = queuedDownloads.map { it.chapter.id }.toSet()
-                queueState.removeAll { it.chapter.id !in upstreamIds }
-                // Add items that appeared in the upstream queue but aren't local yet
-                queuedDownloads.forEach { dl ->
-                    if (queueState.none { it.chapter.id == dl.chapter.id }) {
-                        queueState.add(dl)
-                    }
-                }
-            }
-
-            LazyColumn(
-                state = lazyListState,
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(contentPadding),
-                contentPadding = PaddingValues(
-                    start = 16.dp,
-                    end = 16.dp,
-                    top = 8.dp,
-                    bottom = 40.dp,
-                ),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                    .padding(contentPadding)
             ) {
-                // ── Active / queued / paused downloads ───────────────────
-                if (queueState.isNotEmpty()) {
-                    item(key = "queue_header") {
-                        SectionHeader(title = "QUEUE", count = queueState.size)
-                    }
+                // Storage Section
+                StorageSection(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp))
 
-                    items(
-                        items = queueState,
-                        key = { it.chapter.id },
-                    ) { download ->
-                        ReorderableItem(reorderableState, download.chapter.id) { isDragging ->
-                            val containerColor by animateColorAsState(
-                                targetValue = if (isDragging) {
-                                    MaterialTheme.colorScheme.surfaceVariant
-                                } else {
-                                    MaterialTheme.colorScheme.surface
-                                },
-                                label = "drag_bg",
-                            )
-                            // Bug 2 fix: zIndex(1f) lifts the dragged card above its
-                            // neighbours so it renders on top instead of overlapping.
-                            DownloadQueueItem(
-                                download = download,
-                                isRunning = isRunning,
-                                dragModifier = Modifier.draggableHandle(),
-                                containerColor = containerColor,
-                                modifier = if (isDragging) Modifier.zIndex(1f) else Modifier,
-                                onResume = { screenModel.resumeDownload(download.chapter) },
-                                onPause = { screenModel.pauseDownload(download.chapter) },
-                                onCancel = { screenModel.cancelDownload(download.chapter) },
-                                onMoveToTop = { screenModel.moveToTop(download) },
-                                onMoveToBottom = { screenModel.moveToBottom(download) },
-                                onMoveSeriesToTop = { screenModel.moveSeriesToTop(download.manga.id) },
-                                onMoveSeriesToBottom = { screenModel.moveSeriesToBottom(download.manga.id) },
-                                onCancelSeries = { screenModel.cancelSeries(download.manga.id) },
-                            )
-                        }
-                    }
+                // Tabs
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                ) {
+                    TabItem("ACTIVE", selectedTab == 0) { selectedTab = 0 }
+                    TabItem("COMPLETED", selectedTab == 1) { selectedTab = 1 }
+                    TabItem("ERROR", selectedTab == 2) { selectedTab = 2 }
                 }
 
-                // ── Recently completed ───────────────────────────────────
-                val completed = screenState.completedDownloads
-                if (completed.isNotEmpty()) {
-                    item(key = "completed_header") {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        SectionHeader(title = "RECENTLY COMPLETED", count = completed.size)
-                    }
-
-                    items(
-                        items = completed,
-                        key = { "done_${it.chapter.id}" },
-                    ) { download ->
-                        CompletedDownloadItem(
-                            download = download,
-                            onRead = { screenModel.openChapter(context, download) },
-                        )
-                    }
-
-                    item(key = "clear_btn") {
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            TextButton(onClick = screenModel::clearCompleted) {
-                                Icon(
-                                    imageVector = Icons.Outlined.DeleteSweep,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Clear Completed",
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
-                                )
+                // List
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
+                    item { Spacer(modifier = Modifier.height(8.dp)) }
+                    
+                    when (selectedTab) {
+                        0 -> {
+                            val grouped = activeQueue.groupBy { it.manga.id }
+                            grouped.values.forEach { group ->
+                                item { SeriesGroup(group = group, screenModel = screenModel) }
+                            }
+                        }
+                        1 -> {
+                            items(screenState.completedDownloads) { dl ->
+                                CompletedItem(download = dl) { screenModel.openChapter(context, dl) }
+                            }
+                        }
+                        2 -> {
+                            val grouped = errorDownloads.groupBy { it.manga.id }
+                            grouped.values.forEach { group ->
+                                item { SeriesGroup(group = group, screenModel = screenModel) }
                             }
                         }
                     }
+
+                    item { Spacer(modifier = Modifier.height(128.dp)) }
                 }
             }
         }
     }
 }
 
-// ── Top header with global controls ────────────────────────────────────────
-
-private val LimitOptions = listOf(1, 2, 3, 5, 10)
-
 @Composable
-private fun DownloadQueueHeader(
-    isRunning: Boolean,
-    hasQueue: Boolean,
-    hasCompleted: Boolean,
-    parallelLimit: Int,
-    onBack: () -> Unit,
-    onResumeAll: () -> Unit,
-    onPauseAll: () -> Unit,
-    onCancelAll: () -> Unit,
-    onClearCompleted: () -> Unit,
-    onSetParallelLimit: (Int) -> Unit,
-) {
-    var showOverflow by remember { mutableStateOf(false) }
-
+fun TabItem(label: String, selected: Boolean, onClick: () -> Unit) {
     Column(
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            // Back + title
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable(onClick = onBack),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-                Spacer(modifier = Modifier.width(14.dp))
-                Text(
-                    text = "Download Queue",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-
-            // Overflow menu
-            Box {
-                IconButton(onClick = { showOverflow = true }) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "More options",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                DropdownMenu(
-                    expanded = showOverflow,
-                    onDismissRequest = { showOverflow = false },
-                ) {
-                    if (hasQueue) {
-                        if (!isRunning) {
-                            DropdownMenuItem(
-                                text = { Text("Resume All") },
-                                leadingIcon = {
-                                    Icon(Icons.Outlined.PlayCircle, null, tint = SoraBlue)
-                                },
-                                onClick = { onResumeAll(); showOverflow = false },
-                            )
-                        } else {
-                            DropdownMenuItem(
-                                text = { Text("Pause All") },
-                                leadingIcon = {
-                                    Icon(Icons.Outlined.PauseCircle, null, tint = PauseOrange)
-                                },
-                                onClick = { onPauseAll(); showOverflow = false },
-                            )
-                        }
-                        DropdownMenuItem(
-                            text = { Text("Cancel All", color = ErrorRed) },
-                            leadingIcon = {
-                                Icon(Icons.Outlined.CancelScheduleSend, null, tint = ErrorRed)
-                            },
-                            onClick = { onCancelAll(); showOverflow = false },
-                        )
-                    }
-                    if (hasCompleted) {
-                        if (hasQueue) HorizontalDivider()
-                        DropdownMenuItem(
-                            text = { Text("Clear Completed") },
-                            leadingIcon = { Icon(Icons.Outlined.DeleteSweep, null) },
-                            onClick = { onClearCompleted(); showOverflow = false },
-                        )
-                    }
-                }
-            }
-        }
-
-        // Global action chips
-        if (hasQueue) {
-            Spacer(modifier = Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (!isRunning) {
-                    ActionChip(
-                        label = "Resume All",
-                        color = SoraBlue,
-                        icon = {
-                            Icon(
-                                Icons.Default.PlayArrow,
-                                null,
-                                Modifier.size(14.dp),
-                                tint = Color.White,
-                            )
-                        },
-                        onClick = onResumeAll,
-                    )
-                } else {
-                    ActionChip(
-                        label = "Pause All",
-                        color = PauseOrange,
-                        icon = {
-                            Icon(
-                                Icons.Default.Pause,
-                                null,
-                                Modifier.size(14.dp),
-                                tint = Color.White,
-                            )
-                        },
-                        onClick = onPauseAll,
-                    )
-                }
-                ActionChip(
-                    label = "Cancel All",
-                    color = ErrorRed,
-                    icon = {
-                        Icon(Icons.Default.Close, null, Modifier.size(14.dp), tint = Color.White)
-                    },
-                    onClick = onCancelAll,
-                )
-            }
-
-            // Download-limit chips
-            Spacer(modifier = Modifier.height(10.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = "At a time:",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                LimitOptions.forEach { value ->
-                    val selected = value == parallelLimit
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(
-                                if (selected) SoraBlue else MaterialTheme.colorScheme.surfaceVariant,
-                            )
-                            .clickable { onSetParallelLimit(value) }
-                            .padding(horizontal = 12.dp, vertical = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = value.toString(),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ActionChip(
-    label: String,
-    color: Color,
-    icon: @Composable () -> Unit,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(color.copy(alpha = 0.15f))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
-    ) {
-        icon()
-        Text(text = label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = color)
-    }
-}
-
-// ── Section header ─────────────────────────────────────────────────────────
-
-@Composable
-private fun SectionHeader(title: String, count: Int) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(vertical = 6.dp, horizontal = 8.dp)
     ) {
         Text(
-            text = title,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 1.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = count.toString(),
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            text = label,
+            color = if (selected) BrandBlue else Color(0xff64748b),
+            textAlign = TextAlign.Center,
+            style = TextStyle(
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-1).sp
+            )
         )
     }
 }
 
-// ── Queue item ─────────────────────────────────────────────────────────────
-
 @Composable
-private fun DownloadQueueItem(
-    download: Download,
-    isRunning: Boolean,
-    dragModifier: Modifier,
-    containerColor: Color,
-    modifier: Modifier = Modifier,
-    onResume: () -> Unit,
-    onPause: () -> Unit,
-    onCancel: () -> Unit,
-    onMoveToTop: () -> Unit,
-    onMoveToBottom: () -> Unit,
-    onMoveSeriesToTop: () -> Unit,
-    onMoveSeriesToBottom: () -> Unit,
-    onCancelSeries: () -> Unit,
-) {
-    val status by download.statusFlow.collectAsState()
-    val progress by download.progressFlow.collectAsState(initial = download.progress)
-    val progressFloat by animateFloatAsState(targetValue = progress / 100f, label = "dl_progress")
+fun StorageSection(modifier: Modifier = Modifier) {
+    val stat = StatFs(Environment.getDataDirectory().path)
+    val totalBytes = stat.totalBytes
+    val freeBytes = stat.availableBytes
+    val usedBytes = totalBytes - freeBytes
 
-    var showMenu by remember { mutableStateOf(false) }
-
-    val statusColor = when (status) {
-        Download.State.DOWNLOADING -> SoraBlue
-        Download.State.QUEUE       -> MaterialTheme.colorScheme.primary
-        Download.State.PAUSED      -> PauseOrange
-        Download.State.ERROR       -> ErrorRed
-        else                       -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    val statusLabel = when (status) {
-        Download.State.DOWNLOADING -> "DOWNLOADING"
-        Download.State.QUEUE       -> "QUEUED"
-        Download.State.PAUSED      -> "PAUSED"
-        Download.State.ERROR       -> "ERROR"
-        else                       -> "WAITING"
-    }
+    val totalGB = totalBytes / (1024L * 1024L * 1024L)
+    val freeGB = freeBytes / (1024f * 1024f * 1024f)
 
     Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(containerColor)
-            .padding(12.dp),
+            .clip(RoundedCornerShape(24.dp))
+            .background(BrandBlue.copy(alpha = 0.05f))
+            .border(
+                BorderStroke(1.dp, BrandBlue.copy(alpha = 0.2f)),
+                RoundedCornerShape(24.dp)
+            )
+            .padding(24.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            // Drag handle
-            Icon(
-                imageVector = Icons.Default.DragHandle,
-                contentDescription = "Drag to reorder",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                modifier = dragModifier.size(22.dp),
+        Text(
+            text = "DEVICE STORAGE",
+            color = TextMuted,
+            style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+        )
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                text = "${"%.1f".format(totalGB - freeGB)} GB ",
+                color = TextWhite,
+                style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Black)
             )
-            Spacer(modifier = Modifier.width(10.dp))
-
-            // Manga cover
-            eu.kanade.presentation.manga.components.MangaCover.Book(
-                data = download.manga.asMangaCover(),
-                modifier = Modifier
-                    .size(width = 42.dp, height = 58.dp)
-                    .clip(RoundedCornerShape(8.dp)),
-                contentDescription = download.manga.title,
+            Text(
+                text = "/ $totalGB GB",
+                color = Color(0xff64748b),
+                style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Medium)
             )
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Title + chapter name + status badge
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = download.manga.title,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = download.chapter.name,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(statusColor.copy(alpha = 0.15f))
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
-                ) {
-                    Text(
-                        text = statusLabel,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = statusColor,
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(6.dp))
-
-            // Per-item action buttons
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                when (status) {
-                    Download.State.DOWNLOADING -> {
-                        // Currently downloading → show Pause
-                        ItemIconButton(onClick = onPause) {
-                            Icon(
-                                Icons.Default.Pause,
-                                "Pause",
-                                Modifier.size(20.dp),
-                                tint = PauseOrange,
-                            )
-                        }
-                    }
-                    Download.State.PAUSED -> {
-                        // Paused individually → show Resume
-                        ItemIconButton(onClick = onResume) {
-                            Icon(
-                                Icons.Default.PlayArrow,
-                                "Resume",
-                                Modifier.size(20.dp),
-                                tint = SoraBlue,
-                            )
-                        }
-                    }
-                    Download.State.ERROR -> {
-                        // Error → show Retry (resume resets it to QUEUE)
-                        ItemIconButton(onClick = onResume) {
-                            Icon(
-                                Icons.Default.PlayArrow,
-                                "Retry",
-                                Modifier.size(20.dp),
-                                tint = ErrorRed,
-                            )
-                        }
-                    }
-                    Download.State.QUEUE -> {
-                        // In queue waiting → show Pause to remove from active queue
-                        ItemIconButton(onClick = onPause) {
-                            Icon(
-                                Icons.Default.Pause,
-                                "Pause",
-                                Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                    else -> {
-                        // Any other state → placeholder spacer so layout stays stable
-                        Spacer(modifier = Modifier.size(36.dp))
-                    }
-                }
-
-                ItemIconButton(onClick = onCancel) {
-                    Icon(
-                        Icons.Default.Close,
-                        "Cancel",
-                        Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                Box {
-                    ItemIconButton(onClick = { showMenu = true }) {
-                        Icon(
-                            Icons.Default.MoreVert,
-                            "More options",
-                            Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    DownloadItemMenu(
-                        expanded = showMenu,
-                        onDismiss = { showMenu = false },
-                        onMoveToTop = { onMoveToTop(); showMenu = false },
-                        onMoveToBottom = { onMoveToBottom(); showMenu = false },
-                        onMoveSeriesToTop = { onMoveSeriesToTop(); showMenu = false },
-                        onMoveSeriesToBottom = { onMoveSeriesToBottom(); showMenu = false },
-                        onCancelThis = { onCancel(); showMenu = false },
-                        onCancelSeries = { onCancelSeries(); showMenu = false },
-                    )
-                }
-            }
         }
-
-        // Progress row
-        Spacer(modifier = Modifier.height(10.dp))
-        Row(
+        Text(
+            text = "${"%.1f".format(freeGB)} GB FREE",
+            color = BrandBlue,
             modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.End,
+            style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Black)
+        )
+    }
+}
+
+@Composable
+fun SeriesGroup(group: List<Download>, screenModel: DownloadQueueScreenModel) {
+    if (group.isEmpty()) return
+    val first = group.first()
+    val manga = first.manga
+    
+    Column(
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        // Group Header
+        Row(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
         ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                HorizontalDivider(
+                    modifier = Modifier.width(21.dp).height(1.dp).padding(end = 8.dp),
+                    color = BrandBlue.copy(alpha = 0.4f)
+                )
+                Text(
+                    text = "SERIES:\n${manga.title.uppercase()}",
+                    color = TextMuted,
+                    style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.4.sp),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth(0.6f)
+                )
+            }
             Text(
-                text = "${(progressFloat * 100).toInt()}%",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = statusColor,
-            )
-        val pagesText = when {
-            status == Download.State.ERROR  -> "Error — tap retry"
-            status == Download.State.PAUSED -> "Paused"
-            status == Download.State.QUEUE  -> "Queued…"
-            download.pages != null          -> "${download.downloadedImages} / ${download.pages!!.size} pages"
-            else                            -> "Waiting…"
-        }
-            Text(
-                text = pagesText,
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = "${group.size} Items\nRemaining",
+                color = BrandBlue,
+                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold)
             )
         }
-        Spacer(modifier = Modifier.height(6.dp))
-        LinearProgressIndicator(
-            progress = { progressFloat },
+
+        // Main Container
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(5.dp)
-                .clip(RoundedCornerShape(5.dp)),
-            color = statusColor,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant,
-            strokeCap = StrokeCap.Round,
-        )
+                .clip(RoundedCornerShape(24.dp))
+                .background(BrandBlue.copy(alpha = 0.05f))
+                .border(BorderStroke(1.dp, BrandBlue.copy(alpha = 0.2f)), RoundedCornerShape(24.dp))
+        ) {
+            // Big Item (The current downloading / next item)
+            BigDownloadItem(download = first, onCancel = { screenModel.cancelDownload(first.chapter) })
+
+            // Smaller Queued Items
+            if (group.size > 1) {
+                Column(modifier = Modifier.padding(bottom = 16.dp)) {
+                    for (i in 1 until group.size) {
+                        SmallDownloadItem(download = group[i], onCancel = { screenModel.cancelDownload(group[i].chapter) })
+                    }
+                }
+            }
+        }
     }
 }
 
-// ── 3-dot item menu ────────────────────────────────────────────────────────
-
 @Composable
-private fun DownloadItemMenu(
-    expanded: Boolean,
-    onDismiss: () -> Unit,
-    onMoveToTop: () -> Unit,
-    onMoveToBottom: () -> Unit,
-    onMoveSeriesToTop: () -> Unit,
-    onMoveSeriesToBottom: () -> Unit,
-    onCancelThis: () -> Unit,
-    onCancelSeries: () -> Unit,
-) {
-    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
-        DropdownMenuItem(
-            text = { Text("Move to Top") },
-            leadingIcon = { Icon(Icons.Outlined.KeyboardDoubleArrowUp, null, Modifier.size(18.dp)) },
-            onClick = onMoveToTop,
-        )
-        DropdownMenuItem(
-            text = { Text("Move to Bottom") },
-            leadingIcon = {
-                Icon(Icons.Outlined.KeyboardDoubleArrowDown, null, Modifier.size(18.dp))
-            },
-            onClick = onMoveToBottom,
-        )
-        HorizontalDivider()
-        DropdownMenuItem(
-            text = { Text("Move Series to Top") },
-            leadingIcon = { Icon(Icons.Outlined.KeyboardDoubleArrowUp, null, Modifier.size(18.dp)) },
-            onClick = onMoveSeriesToTop,
-        )
-        DropdownMenuItem(
-            text = { Text("Move Series to Bottom") },
-            leadingIcon = {
-                Icon(Icons.Outlined.KeyboardDoubleArrowDown, null, Modifier.size(18.dp))
-            },
-            onClick = onMoveSeriesToBottom,
-        )
-        HorizontalDivider()
-        DropdownMenuItem(
-            text = { Text("Cancel This Chapter", color = ErrorRed) },
-            leadingIcon = { Icon(Icons.Default.Close, null, Modifier.size(18.dp), tint = ErrorRed) },
-            onClick = onCancelThis,
-        )
-        DropdownMenuItem(
-            text = { Text("Cancel All from Series", color = ErrorRed) },
-            leadingIcon = {
-                Icon(Icons.Outlined.CancelScheduleSend, null, Modifier.size(18.dp), tint = ErrorRed)
-            },
-            onClick = onCancelSeries,
-        )
+fun BigDownloadItem(download: Download, onCancel: () -> Unit) {
+    val status by download.statusFlow.collectAsState()
+    val progress by download.progressFlow.collectAsState(initial = download.progress)
+    
+    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(180.dp)
+                .clip(RoundedCornerShape(12.dp))
+        ) {
+            eu.kanade.presentation.manga.components.MangaCover.Book(
+                data = download.manga.asMangaCover(),
+                modifier = Modifier.fillMaxSize(),
+                contentDescription = "",
+            )
+            // Gradient Overlay
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.linearGradient(
+                            0f to Color.Black.copy(alpha=0.8f),
+                            0.5f to Color.Black.copy(alpha=0.4f),
+                            1f to Color.Black.copy(alpha=0.9f),
+                            start = Offset(0f, Float.POSITIVE_INFINITY),
+                            end = Offset(0f, 0f)
+                        )
+                    )
+            )
+            
+            Column(
+                verticalArrangement = Arrangement.Bottom,
+                modifier = Modifier.fillMaxSize().padding(16.dp)
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = download.chapter.name,
+                            color = TextWhite,
+                            style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Black),
+                            maxLines = 2, overflow = TextOverflow.Ellipsis
+                        )
+                        val statusLabel = when(status) {
+                            Download.State.DOWNLOADING -> "DOWNLOADING"
+                            Download.State.ERROR -> "ERROR"
+                            Download.State.PAUSED -> "PAUSED"
+                            else -> "QUEUED"
+                        }
+                        Text(
+                            text = statusLabel,
+                            color = TextMuted,
+                            style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        )
+                    }
+                    // Action button
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(BrandBlue)
+                            .clickable { onCancel() }
+                    ) {
+                        Icon(Icons.Outlined.Close, null, tint = Color.White)
+                    }
+                }
+
+                if (status == Download.State.DOWNLOADING) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "$progress%\nDONE",
+                            color = BrandBlue,
+                            style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+                        )
+                        Text(
+                            text = "\nDOWNLOADING",
+                            color = BrandBlue,
+                            style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp),
+                            textAlign = TextAlign.End
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    // Progress Bar
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(9999.dp))
+                            .background(Color.White.copy(alpha = 0.1f))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(progress / 100f)
+                                .fillMaxHeight()
+                                .background(BrandBlue)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
-// ── Completed item ─────────────────────────────────────────────────────────
-
 @Composable
-private fun CompletedDownloadItem(
-    download: Download,
-    // Bug 2 fix: this callback was missing — the row had no click handler so
-    // there was no way to open the chapter from the download queue screen.
-    onRead: () -> Unit,
-) {
+fun SmallDownloadItem(download: Download, onCancel: () -> Unit) {
+    val status by download.statusFlow.collectAsState()
+    
     Row(
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .clickable(onClick = onRead)          // tap the row to open the chapter
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(BrandBlue.copy(alpha = 0.05f))
+            .border(BorderStroke(1.dp, BrandBlue.copy(alpha = 0.1f)), RoundedCornerShape(16.dp))
+            .padding(16.dp)
     ) {
-        eu.kanade.presentation.manga.components.MangaCover.Book(
-            data = download.manga.asMangaCover(),
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = download.chapter.name,
+                color = TextWhite,
+                style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold),
+                maxLines = 1, overflow = TextOverflow.Ellipsis
+            )
+            val lbl = if(status == Download.State.ERROR) "ERROR" else "QUEUED"
+            Text(
+                text = lbl,
+                color = Color(0xff64748b),
+                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Black)
+            )
+        }
+        Icon(
+            Icons.Outlined.Close,
+            contentDescription = "Cancel",
+            tint = Color(0xff475569),
             modifier = Modifier
-                .size(width = 36.dp, height = 50.dp)
-                .clip(RoundedCornerShape(6.dp)),
-            contentDescription = download.manga.title,
+                .clickable { onCancel() }
+                .padding(8.dp)
         )
-        Spacer(modifier = Modifier.width(12.dp))
+    }
+}
+
+@Composable
+fun CompletedItem(download: Download, onRead: () -> Unit) {
+    Row(
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(BrandBlue.copy(alpha = 0.05f))
+            .border(BorderStroke(1.dp, BrandBlue.copy(alpha = 0.1f)), RoundedCornerShape(16.dp))
+            .clickable { onRead() }
+            .padding(16.dp)
+    ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = download.manga.title,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                color = TextWhite,
+                style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold),
+                maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = download.chapter.name,
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            // Hint so the user knows the row is tappable
-            Text(
-                text = "Tap to read",
-                fontSize = 11.sp,
-                color = SoraBlue.copy(alpha = 0.8f),
+                color = Color(0xff64748b),
+                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Black),
+                maxLines = 1, overflow = TextOverflow.Ellipsis
             )
         }
-        Spacer(modifier = Modifier.width(8.dp))
-        Icon(
-            imageVector = Icons.Default.CheckCircle,
-            contentDescription = "Completed",
-            tint = MaterialTheme.colorScheme.tertiary,
-            modifier = Modifier.size(22.dp),
+        Text(
+            text = "COMPLETED",
+            color = BrandBlue,
+            style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Black)
         )
     }
 }
 
-// ── Helper ─────────────────────────────────────────────────────────────────
-
 @Composable
-private fun ItemIconButton(onClick: () -> Unit, content: @Composable () -> Unit) {
-    Box(
+fun DownloadHeader(
+    onBack: () -> Unit,
+    isRunning: Boolean,
+    onResumeAll: () -> Unit,
+    onPauseAll: () -> Unit,
+    onCancelAll: () -> Unit,
+    onClearCompleted: () -> Unit
+) {
+    var showOverflow by remember { mutableStateOf(false) }
+
+    Row(
         modifier = Modifier
-            .size(36.dp)
-            .clip(CircleShape)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) { content() }
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = 24.dp, vertical = 24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_custom_back),
+                    contentDescription = "Back",
+                    tint = Color.Unspecified
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = "DOWNLOADS",
+                color = BrandBlue,
+                style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = (-1).sp)
+            )
+        }
+
+        Box {
+            IconButton(onClick = { showOverflow = true }) {
+                Icon(painterResource(R.drawable.ic_custom_settings), contentDescription = "More", tint = Color.Unspecified)
+            }
+            DropdownMenu(
+                expanded = showOverflow,
+                onDismissRequest = { showOverflow = false }
+            ) {
+                if (!isRunning) {
+                    DropdownMenuItem(text = { Text("Resume All") }, onClick = { onResumeAll(); showOverflow = false }, leadingIcon = { Icon(painterResource(R.drawable.ic_custom_resume), null, tint = Color.Unspecified, modifier = Modifier.size(24.dp)) })
+                } else {
+                    DropdownMenuItem(text = { Text("Pause All") }, onClick = { onPauseAll(); showOverflow = false }, leadingIcon = { Icon(painterResource(R.drawable.ic_custom_pause), null, tint = Color.Unspecified, modifier = Modifier.size(24.dp)) })
+                }
+                DropdownMenuItem(text = { Text("Cancel All", color = ErrorRed) }, onClick = { onCancelAll(); showOverflow = false }, leadingIcon = { Icon(Icons.Outlined.Close, null, tint = ErrorRed) })
+                DropdownMenuItem(text = { Text("Clear Completed") }, onClick = { onClearCompleted(); showOverflow = false }, leadingIcon = { Icon(Icons.Outlined.DeleteSweep, null) })
+            }
+        }
+    }
 }
