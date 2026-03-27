@@ -12,18 +12,22 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import eu.kanade.tachiyomi.R
+import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.util.system.NetworkState
 import eu.kanade.tachiyomi.util.system.activeNetworkState
 import eu.kanade.tachiyomi.util.system.networkStateFlow
 import eu.kanade.tachiyomi.util.system.notificationBuilder
 import eu.kanade.tachiyomi.util.system.setForegroundSafely
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combineTransform
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.takeWhile
 import tachiyomi.domain.download.service.DownloadPreferences
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -67,6 +71,7 @@ class DownloadJob(context: Context, workerParams: WorkerParameters) : CoroutineW
         setForegroundSafely()
 
         coroutineScope {
+            // Monitor network state changes
             combineTransform(
                 applicationContext.networkStateFlow(),
                 downloadPreferences.downloadOnlyOverWifi().changes(),
@@ -74,11 +79,20 @@ class DownloadJob(context: Context, workerParams: WorkerParameters) : CoroutineW
             )
                 .onEach { networkCheck = it }
                 .launchIn(this)
-        }
 
-        // Keep the worker running when needed
-        while (active) {
-            active = !isStopped && downloadManager.isRunning && networkCheck
+            // Stay alive while the downloader has active/queued work
+            downloadManager.queueState
+                .map { queue ->
+                    queue.any {
+                        it.status.value <= Download.State.DOWNLOADING.value
+                    }
+                }
+                .distinctUntilChanged()
+                .takeWhile { hasActive -> hasActive }
+                .collect { }
+
+            // Done — cancel the network monitoring coroutine
+            coroutineContext.cancelChildren()
         }
 
         return Result.success()

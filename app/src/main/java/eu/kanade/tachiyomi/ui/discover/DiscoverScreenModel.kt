@@ -7,6 +7,7 @@ import eu.kanade.tachiyomi.data.discover.SharedList
 import eu.kanade.tachiyomi.data.discover.SharedListService
 import eu.kanade.tachiyomi.data.discover.SharedMangaItem
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import logcat.LogPriority
@@ -49,9 +50,9 @@ class DiscoverScreenModel(
         val isLoading: Boolean get() = isFetchingLists || isUploadingList
     }
 
-    // Loading is driven by the lifecycle observer in DiscoverScreen.kt
-    // (onResume → loadLists()).  Removing the init-based call prevents
-    // two concurrent fetches on first composition.
+    init {
+        loadLists()
+    }
 
     fun loadLists() {
         // Guard: only block if a *list-fetch* is already running.
@@ -241,10 +242,13 @@ class DiscoverScreenModel(
                         pendingListIds  = state.pendingListIds + docId,
                     )
                 }
-                // No immediate loadLists() here — the fire-and-forget Firestore write
-                // hasn't synced yet, so a query would return stale data and overwrite
-                // the optimistic entry. The lifecycle observer (onResume) will refresh
-                // once the write has propagated.
+                // Refresh after a short delay so the Firestore server query
+                // picks up the newly written document and replaces the optimistic
+                // entry with the real one.
+                screenModelScope.launch {
+                    delay(3_000)
+                    loadLists()
+                }
             } else {
                 val e = result.exceptionOrNull()
                 mutableState.update {

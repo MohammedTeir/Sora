@@ -94,6 +94,7 @@ object DownloadQueueScreen : Screen() {
         val queuedDownloads by screenModel.queuedDownloads.collectAsState()
         val screenState by screenModel.state.collectAsState()
         val isRunning by screenModel.isDownloaderRunning.collectAsState()
+        val parallelLimit by screenModel.parallelLimit.collectAsState()
 
         var selectedTab by remember { mutableStateOf(0) } // 0: ACTIVE, 1: COMPLETED, 2: ERROR
 
@@ -124,6 +125,13 @@ object DownloadQueueScreen : Screen() {
             ) {
                 // Storage Section
                 StorageSection(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp))
+
+                // Parallel Downloads Control
+                ParallelDownloadControl(
+                    value = parallelLimit,
+                    onValueChange = { screenModel.setParallelLimit(it) },
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                )
 
                 // Tabs
                 Row(
@@ -241,6 +249,77 @@ fun StorageSection(modifier: Modifier = Modifier) {
             textAlign = TextAlign.End,
             style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Black)
         )
+    }
+}
+
+@Composable
+fun ParallelDownloadControl(
+    value: Int,
+    onValueChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(BrandBlue.copy(alpha = 0.05f))
+            .border(
+                BorderStroke(1.dp, BrandBlue.copy(alpha = 0.2f)),
+                RoundedCornerShape(16.dp),
+            )
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = "PARALLEL DOWNLOADS",
+            color = TextMuted,
+            style = TextStyle(
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.2.sp,
+            ),
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (value > 1) BrandBlue.copy(alpha = 0.15f) else Color.Transparent)
+                    .clickable(enabled = value > 1) { onValueChange(value - 1) },
+            ) {
+                Text(
+                    text = "−",
+                    color = if (value > 1) BrandBlue else TextMuted.copy(alpha = 0.3f),
+                    style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Black),
+                )
+            }
+            Text(
+                text = "$value",
+                color = TextWhite,
+                style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Black),
+                modifier = Modifier.width(32.dp),
+                textAlign = TextAlign.Center,
+            )
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (value < 10) BrandBlue.copy(alpha = 0.15f) else Color.Transparent)
+                    .clickable(enabled = value < 10) { onValueChange(value + 1) },
+            ) {
+                Text(
+                    text = "+",
+                    color = if (value < 10) BrandBlue else TextMuted.copy(alpha = 0.3f),
+                    style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Black),
+                )
+            }
+        }
     }
 }
 
