@@ -11,6 +11,7 @@ import eu.kanade.presentation.more.onboarding.OnboardingScreen
 import eu.kanade.presentation.more.settings.screen.SearchableSettings
 import eu.kanade.presentation.more.settings.screen.SettingsDataScreen
 import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.ui.auth.LoginScreen
 import eu.kanade.tachiyomi.ui.setting.SettingsScreen
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
@@ -28,7 +29,7 @@ class OnboardingScreen : Screen() {
 
         val finishOnboarding: () -> Unit = {
             basePreferences.shownOnboardingFlow().set(true)
-            navigator.pop()
+            navigator.replace(LoginScreen(fromStartup = true))
         }
 
         val restoreSettingKey = stringResource(SettingsDataScreen.restorePreferenceKeyString)

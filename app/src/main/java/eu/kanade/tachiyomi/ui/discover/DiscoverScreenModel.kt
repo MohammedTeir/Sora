@@ -68,6 +68,12 @@ class DiscoverScreenModel(
             // success block, so a Firestore error on cold-start would leave
             // isLoggedIn = false for the rest of the session.
             val loggedIn = authService.isLoggedIn()
+            // Refresh the Firebase ID token so Firestore calls use a valid
+            // credential. Without this, queries fail silently after token expiry
+            // (e.g. app reopened after hours) and getMyLists() returns empty.
+            if (loggedIn) {
+                authService.refreshToken()
+            }
             mutableState.update { it.copy(isFetchingLists = true, isLoggedIn = loggedIn) }
 
             try {

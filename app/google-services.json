@@ -51,6 +51,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "759876400139-0dq2koaiho7718j1sntbtm4h9ug90lom.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.sora",
+            "certificate_hash": "64a590f894bfbb2611801021b9c7d6bad35ae2b5"
+          }
+        },
+        {
           "client_id": "759876400139-s81g710vrr15vc9a2vj5tsniuuq610ks.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

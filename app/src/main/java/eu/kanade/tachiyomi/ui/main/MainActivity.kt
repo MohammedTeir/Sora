@@ -74,6 +74,8 @@ import eu.kanade.tachiyomi.ui.base.activity.BaseActivity
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
 import eu.kanade.tachiyomi.ui.deeplink.DeepLinkScreen
+import eu.kanade.tachiyomi.data.auth.FirebaseAuthService
+import eu.kanade.tachiyomi.ui.auth.LoginScreen
 import eu.kanade.tachiyomi.ui.home.HomeScreen
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.more.NewUpdateScreen
@@ -115,6 +117,7 @@ class MainActivity : BaseActivity() {
     private val chapterCache: ChapterCache by injectLazy()
 
     private val getIncognitoState: GetIncognitoState by injectLazy()
+    private val authService: FirebaseAuthService by injectLazy()
 
     private var navigator: Navigator? = null
 
@@ -340,7 +343,11 @@ class MainActivity : BaseActivity() {
 
         LaunchedEffect(Unit) {
             if (!preferences.shownOnboardingFlow().get() && navigator.lastItem !is OnboardingScreen) {
+                // First launch: show onboarding (which chains to auth on completion)
                 navigator.push(OnboardingScreen())
+            } else if (preferences.shownOnboardingFlow().get() && !authService.isLoggedIn() && navigator.lastItem is HomeScreen) {
+                // Returning user, not authenticated: show auth gate
+                navigator.push(LoginScreen(fromStartup = true))
             }
         }
     }

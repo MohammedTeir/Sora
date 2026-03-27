@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.data.discover
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.Source
 import eu.kanade.tachiyomi.data.auth.FirebaseAuthService
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
@@ -42,6 +43,9 @@ data class SharedList(
     }
 }
 
+private fun com.google.firebase.firestore.QuerySnapshot.toSharedLists(): List<SharedList> =
+    documents.mapNotNull { doc -> doc.toObject(SharedList::class.java)?.copy(id = doc.id) }
+
 class SharedListService(
     private val authService: FirebaseAuthService = Injekt.get(),
 ) {
@@ -49,56 +53,55 @@ class SharedListService(
     private val collection = firestore.collection("shared_lists")
 
     suspend fun getTrendingLists(limit: Int = 20): List<SharedList> {
+        val query = collection
+            .orderBy("importCount", Query.Direction.DESCENDING)
+            .limit(limit.toLong())
         return try {
-            val snapshot = collection
-                .orderBy("importCount", Query.Direction.DESCENDING)
-                .limit(limit.toLong())
-                .get()
-                .await()
-            snapshot.documents.mapNotNull { doc ->
-                doc.toObject(SharedList::class.java)?.copy(id = doc.id)
-            }
+            query.get().await().toSharedLists()
         } catch (e: Exception) {
-            logcat(LogPriority.ERROR) { "SharedListService: getTrendingLists failed: ${e.message}" }
-            emptyList()
+            logcat(LogPriority.ERROR) { "SharedListService: getTrendingLists server failed: ${e.message}, trying cache" }
+            try {
+                query.get(Source.CACHE).await().toSharedLists()
+            } catch (_: Exception) {
+                emptyList()
+            }
         }
     }
 
     suspend fun getRecentLists(limit: Int = 20): List<SharedList> {
+        val query = collection
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .limit(limit.toLong())
         return try {
-            val snapshot = collection
-                .orderBy("timestamp", Query.Direction.DESCENDING)
-                .limit(limit.toLong())
-                .get()
-                .await()
-            snapshot.documents.mapNotNull { doc ->
-                doc.toObject(SharedList::class.java)?.copy(id = doc.id)
-            }
+            query.get().await().toSharedLists()
         } catch (e: Exception) {
-            logcat(LogPriority.ERROR) { "SharedListService: getRecentLists failed: ${e.message}" }
-            emptyList()
+            logcat(LogPriority.ERROR) { "SharedListService: getRecentLists server failed: ${e.message}, trying cache" }
+            try {
+                query.get(Source.CACHE).await().toSharedLists()
+            } catch (_: Exception) {
+                emptyList()
+            }
         }
     }
 
     suspend fun getMyLists(): List<SharedList> {
-        val userId = authService.getUserId() ?: return emptyList()
+        val userId = authService.getUserId() ?: run {
+            logcat(LogPriority.WARN) { "SharedListService: getMyLists skipped — not logged in" }
+            return emptyList()
+        }
+        // whereEqualTo("creatorId") + orderBy("timestamp") requires a composite
+        // index in the Firebase console. Query with the single-field filter only
+        // (auto-indexed) and sort the small result set client-side.
+        val query = collection.whereEqualTo("creatorId", userId)
         return try {
-            // whereEqualTo("creatorId") + orderBy("timestamp") requires a composite
-            // index in the Firebase console. Without it Firestore throws
-            // FAILED_PRECONDITION which is silently swallowed → always returns empty.
-            // Fix: query with the single-field filter only (auto-indexed) and sort
-            // the small result set client-side — users rarely have more than a few
-            // dozen lists, so this is not a performance concern.
-            val snapshot = collection
-                .whereEqualTo("creatorId", userId)
-                .get()
-                .await()
-            snapshot.documents
-                .mapNotNull { doc -> doc.toObject(SharedList::class.java)?.copy(id = doc.id) }
-                .sortedByDescending { it.timestamp }
+            query.get().await().toSharedLists().sortedByDescending { it.timestamp }
         } catch (e: Exception) {
-            logcat(LogPriority.ERROR) { "SharedListService: getMyLists failed: ${e.message}" }
-            emptyList()
+            logcat(LogPriority.ERROR) { "SharedListService: getMyLists server failed: ${e.message}, trying cache" }
+            try {
+                query.get(Source.CACHE).await().toSharedLists().sortedByDescending { it.timestamp }
+            } catch (_: Exception) {
+                emptyList()
+            }
         }
     }
 
