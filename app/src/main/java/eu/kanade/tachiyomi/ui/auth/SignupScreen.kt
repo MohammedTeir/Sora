@@ -63,7 +63,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.util.Screen
 
-class SignupScreen : Screen() {
+class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
@@ -108,8 +108,10 @@ class SignupScreen : Screen() {
                 TopAppBar(
                     title = { Text("Create Account") },
                     navigationIcon = {
-                        IconButton(onClick = { navigator.pop() }) {
-                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                        if (!fromStartup) {
+                            IconButton(onClick = { navigator.pop() }) {
+                                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                            }
                         }
                     },
                 )
@@ -277,7 +279,7 @@ class SignupScreen : Screen() {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text("Already have an account?", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    TextButton(onClick = { navigator.replace(LoginScreen()) }) {
+                    TextButton(onClick = { navigator.replace(LoginScreen(fromStartup = fromStartup)) }) {
                         Text("Sign In")
                     }
                 }
