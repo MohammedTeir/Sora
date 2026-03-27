@@ -76,8 +76,8 @@ abstract class WebViewInterceptor(
             .mapValues { it.value.getOrNull(0).orEmpty() }
     }
 
-    fun CountDownLatch.awaitFor30Seconds() {
-        await(30, TimeUnit.SECONDS)
+    fun CountDownLatch.awaitFor45Seconds() {
+        await(45, TimeUnit.SECONDS)
     }
 
     fun createWebView(request: Request): WebView {

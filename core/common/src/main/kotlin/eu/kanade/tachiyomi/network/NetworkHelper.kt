@@ -6,6 +6,7 @@ import eu.kanade.tachiyomi.network.interceptor.IgnoreGzipInterceptor
 import eu.kanade.tachiyomi.network.interceptor.UncaughtExceptionInterceptor
 import eu.kanade.tachiyomi.network.interceptor.UserAgentInterceptor
 import okhttp3.Cache
+import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 import okhttp3.brotli.BrotliInterceptor
 import okhttp3.logging.HttpLoggingInterceptor
@@ -29,7 +30,14 @@ class NetworkHelper(
             .cache(
                 Cache(
                     directory = File(context.cacheDir, "network_cache"),
-                    maxSize = 5L * 1024 * 1024, // 5 MiB
+                    maxSize = 20L * 1024 * 1024, // 20 MiB
+                ),
+            )
+            .connectionPool(
+                ConnectionPool(
+                    maxIdleConnections = 10,
+                    keepAliveDuration = 2,
+                    timeUnit = TimeUnit.MINUTES,
                 ),
             )
             .addInterceptor(UncaughtExceptionInterceptor())
