@@ -93,6 +93,7 @@ import tachiyomi.core.common.util.lang.launchNonCancellable
 import tachiyomi.core.common.util.lang.withUIContext
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.backup.service.BackupPreferences
+import tachiyomi.domain.download.service.DownloadPreferences
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.storage.service.StoragePreferences
 import tachiyomi.i18n.MR
@@ -195,8 +196,9 @@ object SettingsDataScreen : SearchableSettings {
         val backupPreferences = remember { Injekt.get<BackupPreferences>() }
         val getFavorites = remember { Injekt.get<GetFavorites>() }
         val chapterCache = remember { Injekt.get<ChapterCache>() }
-        
-        val autoClearCache by libraryPreferences.autoClearChapterCache().collectAsState()
+        val downloadPreferences = remember { Injekt.get<DownloadPreferences>() }
+
+        val removeAfterRead by downloadPreferences.removeAfterMarkedAsRead().collectAsState()
         val storageDirPref = storagePreferences.baseStorageDirectory()
         val storageDir by storageDirPref.collectAsState()
         val pickStorageLocation = storageLocationPicker(storageDirPref)
@@ -409,9 +411,9 @@ object SettingsDataScreen : SearchableSettings {
                     ToggleItem(
                         iconVector = Icons.Outlined.DeleteOutline,
                         title = "Auto-delete",
-                        subtitle = "Remove finished chapters",
-                        isChecked = autoClearCache,
-                        onCheckedChange = { libraryPreferences.autoClearChapterCache().set(it) }
+                        subtitle = "Delete downloaded chapters when marked as read",
+                        isChecked = removeAfterRead,
+                        onCheckedChange = { downloadPreferences.removeAfterMarkedAsRead().set(it) }
                     )
                 }
 

@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.ui.discover
 
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import eu.kanade.domain.auth.AuthPreferences
 import eu.kanade.tachiyomi.data.auth.FirebaseAuthService
 import eu.kanade.tachiyomi.data.discover.SharedList
 import eu.kanade.tachiyomi.data.discover.SharedListService
@@ -22,6 +23,7 @@ import uy.kohesive.injekt.api.get
 class DiscoverScreenModel(
     private val sharedListService: SharedListService = Injekt.get(),
     private val authService: FirebaseAuthService = Injekt.get(),
+    private val authPreferences: AuthPreferences = Injekt.get(),
     private val getLibraryManga: GetLibraryManga = Injekt.get(),
     private val getCategories: GetCategories = Injekt.get(),
     private val createCategoryWithName: CreateCategoryWithName = Injekt.get(),
@@ -67,11 +69,15 @@ class DiscoverScreenModel(
             // calls fail. Previously isLoggedIn was only updated inside the try
             // success block, so a Firestore error on cold-start would leave
             // isLoggedIn = false for the rest of the session.
-            val loggedIn = authService.isLoggedIn()
+            // Check both Firebase Auth (real-time) and AuthPreferences (persisted).
+            // After app restart, Firebase Auth may not have reinitialized yet,
+            // so currentUser is transiently null. The persisted preference
+            // bridges that gap so we still fetch myLists from cache.
+            val loggedIn = authService.isLoggedIn() || authPreferences.isLoggedIn().get()
             // Refresh the Firebase ID token so Firestore calls use a valid
             // credential. Without this, queries fail silently after token expiry
             // (e.g. app reopened after hours) and getMyLists() returns empty.
-            if (loggedIn) {
+            if (authService.isLoggedIn()) {
                 authService.refreshToken()
             }
             mutableState.update { it.copy(isFetchingLists = true, isLoggedIn = loggedIn) }

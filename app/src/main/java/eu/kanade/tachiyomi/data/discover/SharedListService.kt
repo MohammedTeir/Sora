@@ -4,6 +4,7 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.Source
+import eu.kanade.domain.auth.AuthPreferences
 import eu.kanade.tachiyomi.data.auth.FirebaseAuthService
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
@@ -48,6 +49,7 @@ private fun com.google.firebase.firestore.QuerySnapshot.toSharedLists(): List<Sh
 
 class SharedListService(
     private val authService: FirebaseAuthService = Injekt.get(),
+    private val authPreferences: AuthPreferences = Injekt.get(),
 ) {
     private val firestore = FirebaseFirestore.getInstance()
     private val collection = firestore.collection("shared_lists")
@@ -85,10 +87,16 @@ class SharedListService(
     }
 
     suspend fun getMyLists(): List<SharedList> {
-        val userId = authService.getUserId() ?: run {
-            logcat(LogPriority.WARN) { "SharedListService: getMyLists skipped — not logged in" }
-            return emptyList()
-        }
+        // Try Firebase Auth first; fall back to the persisted userId from
+        // AuthPreferences. After an app restart Firebase Auth may not have
+        // reinitialized yet, so currentUser is transiently null even though
+        // the user is still logged in.
+        val userId = authService.getUserId()
+            ?: authPreferences.userId().get().takeIf { it.isNotEmpty() }
+            ?: run {
+                logcat(LogPriority.WARN) { "SharedListService: getMyLists skipped — not logged in" }
+                return emptyList()
+            }
         // whereEqualTo("creatorId") + orderBy("timestamp") requires a composite
         // index in the Firebase console. Query with the single-field filter only
         // (auto-indexed) and sort the small result set client-side.
