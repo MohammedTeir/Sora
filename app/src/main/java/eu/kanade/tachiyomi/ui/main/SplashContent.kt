@@ -6,6 +6,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,8 +24,8 @@ import eu.kanade.tachiyomi.R
 
 @Composable
 fun SplashContent(onFinished: () -> Unit) {
-    val logoColor = Color(0xFF2977FF)
-    val bgColor = Color(0xFF050508)
+    val logoColor = MaterialTheme.colorScheme.primary
+    val bgColor = MaterialTheme.colorScheme.background
 
     // Animation States
     val flameProgress = remember { Animatable(0f) }
@@ -91,7 +92,7 @@ fun SplashContent(onFinished: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black),
+            .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         // Phone Shape Background

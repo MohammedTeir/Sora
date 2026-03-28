@@ -128,12 +128,12 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
 
         Scaffold(
             snackbarHost = { SnackbarHost(snackbarHostState) },
-            containerColor = Color.Black
+            containerColor = MaterialTheme.colorScheme.background
         ) { contentPadding ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(color = Color.Black)
+                    .background(color = MaterialTheme.colorScheme.background)
             ) {
                 // Background blurred circles
                 Box(
@@ -143,7 +143,7 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                         .requiredSize(size = 384.dp)
                         .clip(shape = RoundedCornerShape(9999.dp))
                         .blur(radius = 120.dp)
-                        .background(color = Color(0xff2977ff).copy(alpha = 0.1f))
+                        .background(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
                 )
                 Box(
                     modifier = Modifier
@@ -152,7 +152,7 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                         .requiredSize(size = 500.dp)
                         .clip(shape = RoundedCornerShape(9999.dp))
                         .blur(radius = 150.dp)
-                        .background(color = Color(0xffec691a).copy(alpha = 0.05f))
+                        .background(color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.05f))
                 )
 
                 // Main Content Scrollable Column
@@ -189,15 +189,15 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                 ) {
                                     Text(
                                         text = "SORA",
-                                        color = Color(0xff2977ff),
+                                        color = MaterialTheme.colorScheme.primary,
                                         textAlign = TextAlign.Center,
                                         lineHeight = 1.em,
                                         style = TextStyle(
                                             fontSize = 80.sp,
-                                            fontWeight = FontWeight.Thin,
+                                            fontWeight = FontWeight.Light,
                                             letterSpacing = (-4).sp,
                                             shadow = Shadow(
-                                                color = Color(0xff2977ff).copy(alpha = 0.5f),
+                                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
                                                 offset = Offset(0f, 0f),
                                                 blurRadius = 20f
                                             )
@@ -213,12 +213,12 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                 ) {
                                     Text(
                                         text = "EDITORIAL NOIR / ACCESS PORTAL",
-                                        color = Color(0xff94a3b8),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         textAlign = TextAlign.Center,
                                         lineHeight = 1.33.em,
                                         style = TextStyle(
                                             fontSize = 12.sp,
-                                            fontWeight = FontWeight.Thin,
+                                            fontWeight = FontWeight.Medium,
                                             letterSpacing = 2.4.sp
                                         ),
                                         modifier = Modifier.wrapContentHeight(align = Alignment.CenterVertically)
@@ -237,9 +237,9 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(shape = RoundedCornerShape(24.dp))
-                                    .background(color = Color(0xff2977ff).copy(alpha = 0.03f))
+                                    .background(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
                                     .border(
-                                        border = BorderStroke(1.dp, Color(0xff2977ff).copy(alpha = 0.2f)),
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
                                         shape = RoundedCornerShape(24.dp)
                                     )
                                     .padding(all = 32.dp)
@@ -260,11 +260,11 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                         ) {
                                             Text(
                                                 text = "IDENTITY",
-                                                color = Color(0xff64748b),
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 lineHeight = 1.5.em,
                                                 style = TextStyle(
                                                     fontSize = 10.sp,
-                                                    fontWeight = FontWeight.Thin,
+                                                    fontWeight = FontWeight.Medium,
                                                     letterSpacing = 1.sp
                                                 ),
                                                 modifier = Modifier.wrapContentHeight(align = Alignment.CenterVertically)
@@ -278,9 +278,9 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                                 modifier = Modifier
                                                     .fillMaxWidth()
                                                     .clip(shape = RoundedCornerShape(12.dp))
-                                                    .background(color = Color(0xff0d0d0d))
+                                                    .background(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                                                     .border(
-                                                        border = BorderStroke(1.dp, Color(0xff1e293b)),
+                                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                                         shape = RoundedCornerShape(12.dp)
                                                     )
                                                     .padding(16.dp)
@@ -290,24 +290,24 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                                     onValueChange = { email = it },
                                                     modifier = Modifier.fillMaxWidth().padding(end = 24.dp),
                                                     textStyle = TextStyle(
-                                                        color = Color(0xfff1f5f9),
+                                                        color = MaterialTheme.colorScheme.onSurface,
                                                         fontSize = 16.sp,
-                                                        fontWeight = FontWeight.Thin
+                                                        fontWeight = FontWeight.Normal
                                                     ),
                                                     singleLine = true,
                                                     keyboardOptions = KeyboardOptions(
                                                         keyboardType = KeyboardType.Email,
                                                         imeAction = ImeAction.Next,
                                                     ),
-                                                    cursorBrush = SolidColor(Color(0xff475569)),
+                                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurfaceVariant),
                                                     decorationBox = { innerTextField ->
                                                         if (email.isEmpty()) {
                                                             Text(
                                                                 text = "Email Address",
-                                                                color = Color(0xff475569),
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                                 style = TextStyle(
                                                                     fontSize = 16.sp,
-                                                                    fontWeight = FontWeight.Thin
+                                                                    fontWeight = FontWeight.Normal
                                                                 )
                                                             )
                                                         }
@@ -339,21 +339,21 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                         ) {
                                             Text(
                                                 text = "SECURITY KEY",
-                                                color = Color(0xff64748b),
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 lineHeight = 1.5.em,
                                                 style = TextStyle(
                                                     fontSize = 10.sp,
-                                                    fontWeight = FontWeight.Thin,
+                                                    fontWeight = FontWeight.Medium,
                                                     letterSpacing = 1.sp
                                                 )
                                             )
                                             Text(
                                                 text = "FORGOT?",
-                                                color = Color(0xff2977ff),
+                                                color = MaterialTheme.colorScheme.primary,
                                                 lineHeight = 1.5.em,
                                                 style = TextStyle(
                                                     fontSize = 10.sp,
-                                                    fontWeight = FontWeight.Thin,
+                                                    fontWeight = FontWeight.Medium,
                                                     letterSpacing = 1.sp
                                                 ),
                                                 modifier = Modifier.clickable { navigator.push(ResetPasswordStep1Screen()) }
@@ -367,9 +367,9 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                                 modifier = Modifier
                                                     .fillMaxWidth()
                                                     .clip(shape = RoundedCornerShape(12.dp))
-                                                    .background(color = Color(0xff0d0d0d))
+                                                    .background(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                                                     .border(
-                                                        border = BorderStroke(1.dp, Color(0xff1e293b)),
+                                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                                         shape = RoundedCornerShape(12.dp)
                                                     )
                                                     .padding(16.dp)
@@ -380,9 +380,9 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                                     modifier = Modifier.fillMaxWidth().padding(end = 24.dp),
                                                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                                                     textStyle = TextStyle(
-                                                        color = Color(0xfff1f5f9),
+                                                        color = MaterialTheme.colorScheme.onSurface,
                                                         fontSize = 16.sp,
-                                                        fontWeight = FontWeight.Thin
+                                                        fontWeight = FontWeight.Normal
                                                     ),
                                                     singleLine = true,
                                                     keyboardOptions = KeyboardOptions(
@@ -395,15 +395,15 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                                             screenModel.login(email, password, context)
                                                         },
                                                     ),
-                                                    cursorBrush = SolidColor(Color(0xff475569)),
+                                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurfaceVariant),
                                                     decorationBox = { innerTextField ->
                                                         if (password.isEmpty()) {
                                                             Text(
                                                                 text = "Password",
-                                                                color = Color(0xff475569),
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                                 style = TextStyle(
                                                                     fontSize = 16.sp,
-                                                                    fontWeight = FontWeight.Thin
+                                                                    fontWeight = FontWeight.Normal
                                                                 )
                                                             )
                                                         }
@@ -431,7 +431,7 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clip(shape = RoundedCornerShape(24.dp))
-                                            .background(color = if (state.isLoading) Color.Gray else Color(0xff2977ff))
+                                            .background(color = if (state.isLoading) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primary)
                                             .clickable(enabled = !state.isLoading) {
                                                 keyboardController?.hide()
                                                 screenModel.login(email, password, context)
@@ -446,17 +446,17 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                             CircularProgressIndicator(
                                                 modifier = Modifier.size(20.dp),
                                                 strokeWidth = 2.dp,
-                                                color = Color.White
+                                                color = MaterialTheme.colorScheme.onPrimary
                                             )
                                         } else {
                                             Text(
                                                 text = "SIGN IN",
-                                                color = Color.White,
+                                                color = MaterialTheme.colorScheme.onPrimary,
                                                 textAlign = TextAlign.Center,
                                                 lineHeight = 1.43.em,
                                                 style = TextStyle(
                                                     fontSize = 14.sp,
-                                                    fontWeight = FontWeight.Thin,
+                                                    fontWeight = FontWeight.Medium,
                                                     letterSpacing = 1.4.sp
                                                 )
                                             )
@@ -470,25 +470,25 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                 ) {
                                     HorizontalDivider(
                                         modifier = Modifier.weight(1f),
-                                        color = Color(0xff1e293b)
+                                        color = MaterialTheme.colorScheme.outlineVariant
                                     )
                                     Column(
                                         modifier = Modifier.padding(horizontal = 16.dp)
                                     ) {
                                         Text(
                                             text = "OR CONTINUE WITH",
-                                            color = Color(0xff475569),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             lineHeight = 1.5.em,
                                             style = TextStyle(
                                                 fontSize = 10.sp,
-                                                fontWeight = FontWeight.Thin,
+                                                fontWeight = FontWeight.Medium,
                                                 letterSpacing = 3.sp
                                             )
                                         )
                                     }
                                     HorizontalDivider(
                                         modifier = Modifier.weight(1f),
-                                        color = Color(0xff1e293b)
+                                        color = MaterialTheme.colorScheme.outlineVariant
                                     )
                                 }
 
@@ -499,7 +499,7 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                         .fillMaxWidth()
                                         .clip(shape = RoundedCornerShape(12.dp))
                                         .border(
-                                            border = BorderStroke(1.dp, Color(0xff1e293b)),
+                                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                             shape = RoundedCornerShape(12.dp)
                                         )
                                         .clickable(enabled = !state.isLoading) {
@@ -515,12 +515,12 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                     )
                                     Text(
                                         text = "GOOGLE",
-                                        color = Color(0xfff1f5f9),
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         textAlign = TextAlign.Center,
                                         lineHeight = 1.33.em,
                                         style = TextStyle(
                                             fontSize = 12.sp,
-                                            fontWeight = FontWeight.Thin,
+                                            fontWeight = FontWeight.Medium,
                                             letterSpacing = 1.2.sp
                                         )
                                     )
@@ -537,23 +537,23 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                 ) {
                                     Text(
                                         text = "NEW TO THE COLLECTIVE? ",
-                                        color = Color(0xff64748b),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         textAlign = TextAlign.Center,
                                         lineHeight = 1.5.em,
                                         style = TextStyle(
                                             fontSize = 10.sp,
-                                            fontWeight = FontWeight.Thin,
+                                            fontWeight = FontWeight.Medium,
                                             letterSpacing = 1.sp
                                         )
                                     )
                                     Text(
                                         text = "CREATE ACCOUNT",
-                                        color = Color(0xff2977ff),
+                                        color = MaterialTheme.colorScheme.primary,
                                         textAlign = TextAlign.Center,
                                         lineHeight = 1.5.em,
                                         style = TextStyle(
                                             fontSize = 10.sp,
-                                            fontWeight = FontWeight.Thin,
+                                            fontWeight = FontWeight.Medium,
                                             letterSpacing = 1.sp
                                         ),
                                         modifier = Modifier.clickable {
@@ -569,12 +569,12 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                     ) {
                                         Text(
                                             text = "CONTINUE AS GUEST",
-                                            color = Color(0xff475569),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             textAlign = TextAlign.Center,
                                             lineHeight = 1.5.em,
                                             style = TextStyle(
                                                 fontSize = 10.sp,
-                                                fontWeight = FontWeight.Thin,
+                                                fontWeight = FontWeight.Medium,
                                                 letterSpacing = 1.sp
                                             ),
                                             modifier = Modifier.clickable {
@@ -590,31 +590,31 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                 ) {
                                     Text(
                                         text = "PRIVACY",
-                                        color = Color(0xff475569),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         textAlign = TextAlign.Center,
                                         style = TextStyle(
                                             fontSize = 10.sp,
-                                            fontWeight = FontWeight.Thin,
+                                            fontWeight = FontWeight.Medium,
                                             letterSpacing = 1.sp
                                         )
                                     )
                                     Text(
                                         text = "TERMS",
-                                        color = Color(0xff475569),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         textAlign = TextAlign.Center,
                                         style = TextStyle(
                                             fontSize = 10.sp,
-                                            fontWeight = FontWeight.Thin,
+                                            fontWeight = FontWeight.Medium,
                                             letterSpacing = 1.sp
                                         )
                                     )
                                     Text(
                                         text = "SUPPORT",
-                                        color = Color(0xff475569),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         textAlign = TextAlign.Center,
                                         style = TextStyle(
                                             fontSize = 10.sp,
-                                            fontWeight = FontWeight.Thin,
+                                            fontWeight = FontWeight.Medium,
                                             letterSpacing = 1.sp
                                         )
                                     )
@@ -636,7 +636,7 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                         Icon(
                             Icons.AutoMirrored.Outlined.ArrowBack, 
                             contentDescription = "Back",
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 }

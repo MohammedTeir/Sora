@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -74,7 +75,7 @@ data class ResetPasswordStep2Screen(val email: String) : Screen {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(color = Color.Black)
+                .background(color = MaterialTheme.colorScheme.background)
         ) {
             // Background blur shape
             Box(
@@ -83,7 +84,7 @@ data class ResetPasswordStep2Screen(val email: String) : Screen {
                     .size(500.dp)
                     .clip(RoundedCornerShape(9999.dp))
                     .blur(120.dp)
-                    .background(Color(0xff2977ff).copy(alpha = 0.1f))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
             )
 
             Column(
@@ -126,9 +127,9 @@ data class ResetPasswordStep2Screen(val email: String) : Screen {
                                                 .size(96.dp)
                                                 .clip(RoundedCornerShape(16.dp))
                                                 .rotate(-3f)
-                                                .background(Color(0xff2977ff).copy(alpha = 0.03f))
+                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.03f))
                                                 .border(
-                                                    BorderStroke(1.dp, Color(0xff2977ff).copy(alpha = 0.2f)),
+                                                    BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
                                                     RoundedCornerShape(16.dp)
                                                 )
                                                 .shadow(40.dp, RoundedCornerShape(16.dp))
@@ -136,7 +137,7 @@ data class ResetPasswordStep2Screen(val email: String) : Screen {
                                             Image(
                                                 painter = painterResource(id = R.drawable.icon_email), // Updated to correct SVG
                                                 contentDescription = "Email Icon",
-                                                colorFilter = ColorFilter.tint(Color(0xff2977ff)),
+                                                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
                                                 modifier = Modifier.shadow(15.dp)
                                             )
                                         }
@@ -151,27 +152,27 @@ data class ResetPasswordStep2Screen(val email: String) : Screen {
                                             .size(32.dp)
                                             .clip(RoundedCornerShape(8.dp))
                                             .rotate(12f)
-                                            .background(Color(0xff2977ff).copy(alpha = 0.03f))
+                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.03f))
                                             .border(
-                                                BorderStroke(1.dp, Color(0xff2977ff).copy(alpha = 0.4f)),
+                                                BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
                                                 RoundedCornerShape(8.dp)
                                             )
                                     ) {
                                         Image(
                                             painter = painterResource(id = R.drawable.icon_open_email), // Fallback or extra graphic
                                             contentDescription = "Small Mail Graphic",
-                                            colorFilter = ColorFilter.tint(Color(0xff2977ff))
+                                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary)
                                         )
                                     }
                                     Box(
                                         modifier = Modifier
                                             .fillMaxSize()
-                                            .border(BorderStroke(1.dp, Color(0xff2977ff).copy(alpha = 0.3f)), RoundedCornerShape(9999.dp))
+                                            .border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)), RoundedCornerShape(9999.dp))
                                     )
                                     Box(
                                         modifier = Modifier
                                             .fillMaxSize()
-                                            .border(BorderStroke(1.dp, Color(0xff2977ff).copy(alpha = 0.1f)), RoundedCornerShape(9999.dp))
+                                            .border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)), RoundedCornerShape(9999.dp))
                                     )
                                 }
                             }
@@ -188,26 +189,26 @@ data class ResetPasswordStep2Screen(val email: String) : Screen {
                                 ) {
                                     Text(
                                         text = "Check Your\nEmail",
-                                        color = Color(0xfff1f5f9),
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         textAlign = TextAlign.Center,
                                         lineHeight = 1.em,
                                         style = TextStyle(
                                             fontSize = 48.sp,
-                                            fontWeight = FontWeight.Thin,
+                                            fontWeight = FontWeight.Light,
                                             letterSpacing = (-2.4).sp
                                         )
                                     )
                                     Text(
                                         text = "We've sent a password reset\nlink to your email address.",
-                                        color = Color(0xff94a3b8),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         textAlign = TextAlign.Center,
                                         lineHeight = 1.56.em,
                                         style = TextStyle(
                                             fontSize = 18.sp,
-                                            fontWeight = FontWeight.Thin
+                                            fontWeight = FontWeight.Normal
                                         )
                                     )
-                                }
+}
 
                                 // Interactive Actions Box
                                 Column(
@@ -215,9 +216,9 @@ data class ResetPasswordStep2Screen(val email: String) : Screen {
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(32.dp))
-                                        .background(Color(0xff2977ff).copy(alpha = 0.03f))
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.03f))
                                         .border(
-                                            BorderStroke(1.dp, Color(0xff2977ff).copy(alpha = 0.1f)),
+                                            BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
                                             RoundedCornerShape(32.dp)
                                         )
                                         .padding(32.dp)
@@ -230,7 +231,7 @@ data class ResetPasswordStep2Screen(val email: String) : Screen {
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clip(RoundedCornerShape(12.dp))
-                                            .background(Color(0xff2977ff))
+                                            .background(MaterialTheme.colorScheme.primary)
                                             .clickable {
                                                 val intent = Intent(Intent.ACTION_MAIN).apply {
                                                     addCategory(Intent.CATEGORY_APP_EMAIL)
@@ -243,18 +244,18 @@ data class ResetPasswordStep2Screen(val email: String) : Screen {
                                     ) {
                                         Text(
                                             text = "Open Email App",
-                                            color = Color.White,
+                                            color = MaterialTheme.colorScheme.onPrimary,
                                             textAlign = TextAlign.Center,
                                             lineHeight = 1.56.em,
                                             style = TextStyle(
                                                 fontSize = 18.sp,
-                                                fontWeight = FontWeight.Thin
+                                                fontWeight = FontWeight.Medium
                                             )
                                         )
                                         Image(
                                             painter = painterResource(id = R.drawable.icon_open_email),
                                             contentDescription = "Open Email App",
-                                            colorFilter = ColorFilter.tint(Color.White)
+                                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onPrimary)
                                         )
                                     }
 
@@ -265,9 +266,9 @@ data class ResetPasswordStep2Screen(val email: String) : Screen {
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clip(RoundedCornerShape(12.dp))
-                                            .background(Color(0xff2977ff).copy(alpha = 0.03f))
+                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.03f))
                                             .border(
-                                                BorderStroke(1.dp, Color(0xff2977ff).copy(alpha = 0.2f)),
+                                                BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
                                                 RoundedCornerShape(12.dp)
                                             )
                                             .clickable(enabled = !state.isLoading) {
@@ -277,12 +278,12 @@ data class ResetPasswordStep2Screen(val email: String) : Screen {
                                     ) {
                                         Text(
                                             text = if (state.isLoading) "Sending..." else "Resend Link",
-                                            color = Color(0xfff1f5f9),
+                                            color = MaterialTheme.colorScheme.onSurface,
                                             textAlign = TextAlign.Center,
                                             lineHeight = 1.56.em,
                                             style = TextStyle(
                                                 fontSize = 18.sp,
-                                                fontWeight = FontWeight.Thin
+                                                fontWeight = FontWeight.Medium
                                             )
                                         )
                                     }
@@ -305,16 +306,16 @@ data class ResetPasswordStep2Screen(val email: String) : Screen {
                                         Image(
                                             painter = painterResource(id = R.drawable.icon_back_to_login),
                                             contentDescription = "Back",
-                                            colorFilter = ColorFilter.tint(Color(0xff94a3b8))
+                                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant)
                                         )
                                         Text(
                                             text = "RETURN TO LOGIN",
-                                            color = Color(0xff94a3b8),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             textAlign = TextAlign.Center,
                                             lineHeight = 1.33.em,
                                             style = TextStyle(
                                                 fontSize = 12.sp,
-                                                fontWeight = FontWeight.Thin,
+                                                fontWeight = FontWeight.Medium,
                                                 letterSpacing = 1.2.sp
                                             )
                                         )
@@ -340,28 +341,28 @@ data class ResetPasswordStep2Screen(val email: String) : Screen {
                             modifier = Modifier
                                 .size(8.dp)
                                 .clip(RoundedCornerShape(9999.dp))
-                                .background(Color(0xff2977ff).copy(alpha = 0.1f))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
                         )
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
                                 .clip(RoundedCornerShape(9999.dp))
-                                .background(Color(0xff2977ff).copy(alpha = 0.4f))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
                         )
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
                                 .clip(RoundedCornerShape(9999.dp))
-                                .background(Color(0xff2977ff).copy(alpha = 0.1f))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
                         )
                     }
                     Text(
                         text = "SORA ARCHITECTURE © 2024",
-                        color = Color(0xff64748b),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 1.5.em,
                         style = TextStyle(
                             fontSize = 10.sp,
-                            fontWeight = FontWeight.Thin,
+                            fontWeight = FontWeight.Medium,
                             letterSpacing = 3.sp
                         )
                     )
@@ -381,11 +382,11 @@ data class ResetPasswordStep2Screen(val email: String) : Screen {
                 )
                 Text(
                     text = "SORA RESET",
-                    color = Color(0xff3b82f6),
+                    color = MaterialTheme.colorScheme.primary,
                     lineHeight = 1.33.em,
                     style = TextStyle(
                         fontSize = 24.sp,
-                        fontWeight = FontWeight.Thin,
+                        fontWeight = FontWeight.Light,
                         letterSpacing = (-1.2).sp
                     )
                 )

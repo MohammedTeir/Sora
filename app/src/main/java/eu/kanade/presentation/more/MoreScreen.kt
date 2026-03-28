@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,8 +24,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.Label
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.AttachMoney
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.CloudQueue
@@ -54,11 +51,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import eu.kanade.tachiyomi.R
@@ -94,6 +88,8 @@ fun MoreScreen(
     onClickProfile: () -> Unit = {},
     onClickSignOut: () -> Unit = {},
     onClickCloudSync: () -> Unit = {},
+    libraryCount: Int = 0,
+    chaptersRead: Int = 0,
 ) {
     val uriHandler = LocalUriHandler.current
 
@@ -106,55 +102,54 @@ fun MoreScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
 
-            // ─── Header & Profile ───────────────────────────────────────────
-            val nameToDisplay = if (isLoggedIn) {
-                userDisplayName.ifBlank { userEmail.substringBefore("@") }.uppercase()
-            } else {
-                "GUEST"
-            }
-            
-            Column(
+            // ─── Header ─────────────────────────────────────────────────────
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Top App Bar like
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "SORA PROFILE",
-                        color = AccentBlue,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Thin,
-                        letterSpacing = (-0.8).sp
+                Text(
+                    text = "SORA",
+                    color = AccentBlue,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-1).sp
+                )
+                IconButton(onClick = onClickSettings) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.icon_setting),
+                        contentDescription = "Settings",
+                        tint = AccentBlue
                     )
-                    IconButton(onClick = onClickSettings) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.icon_setting),
-                            contentDescription = "Settings",
-                            tint = AccentBlue
-                        )
-                    }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Avatar
-                Box(contentAlignment = Alignment.BottomCenter) {
+            // ─── ACCOUNT ─────────────────────────────────────────────────────
+            SectionHeader(title = "ACCOUNT")
+            SectionGroup {
+                val nameToDisplay = if (isLoggedIn) {
+                    userDisplayName.ifBlank { userEmail.substringBefore("@") }
+                } else {
+                    "Guest User"
+                }
+                
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onClickProfile)
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // Avatar
                     Box(
                         modifier = Modifier
-                            .size(160.dp)
+                            .size(52.dp)
                             .clip(CircleShape)
-                            .background(
-                                brush = Brush.linearGradient(
-                                    colors = listOf(AccentBlue, AccentBlue)
-                                )
-                            )
-                            .padding(4.dp)
+                            .background(AccentBlue.copy(alpha = 0.1f))
+                            .border(1.dp, AccentBlue.copy(alpha = 0.2f), CircleShape)
+                            .padding(2.dp)
                     ) {
                         Image(
                             painter = painterResource(id = R.drawable.profileavatar),
@@ -163,141 +158,54 @@ fun MoreScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clip(CircleShape)
-                                .border(
-                                    border = BorderStroke(4.dp, Color.Black),
-                                    shape = CircleShape
-                                )
                         )
                     }
 
-                    // Elite Reader Badge
-                    Box(
-                        modifier = Modifier
-                            .offset(y = 8.dp)
-                            .clip(CircleShape)
-                            .background(AccentBlue)
-                            .border(
-                                border = BorderStroke(1.dp, AccentBlue.copy(alpha = 0.3f)),
-                                shape = CircleShape
-                            )
-                            .padding(horizontal = 16.dp, vertical = 4.dp)
-                    ) {
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "ELITE\nREADER",
-                            color = Color.White,
-                            textAlign = TextAlign.Center,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Thin,
-                            letterSpacing = 1.sp,
-                            lineHeight = 15.sp
+                            text = nameToDisplay,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
+                        if (isLoggedIn && userEmail.isNotEmpty()) {
+                            Text(
+                                text = userEmail,
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else if (!isLoggedIn) {
+                            Text(
+                                text = "Sign in to sync your library",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+
+                        if (isLoggedIn) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                StatLabel(label = "LIBRARY", value = libraryCount.toString())
+                                StatLabel(label = "READ", value = chaptersRead.toString())
+                            }
+                        }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Name
-                Text(
-                    text = nameToDisplay,
-                    color = Color.White,
-                    textAlign = TextAlign.Center,
-                    fontSize = 40.sp,
-                    fontWeight = FontWeight.Thin,
-                    letterSpacing = (-2.0).sp,
-                    lineHeight = 44.sp,
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Rank
-                Text(
-                    text = "GLOBAL RANK: #421",
-                    color = AccentBlue,
-                    textAlign = TextAlign.Center,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Thin,
-                    letterSpacing = 2.8.sp
-                )
-
-                Spacer(modifier = Modifier.height(40.dp))
-
-                // Stats Column
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    ProfileStatCard("TOTAL CHAPTERS", "12,842")
-                    ProfileStatCard("READING STREAK", "154 DAYS")
-                    ProfileStatCard("IN LIBRARY", "892 VOL")
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Genre Affinity
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(AccentBlue.copy(alpha = 0.03f))
-                        .border(
-                            1.dp,
-                            AccentBlue.copy(alpha = 0.1f),
-                            RoundedCornerShape(12.dp)
-                        )
-                        .padding(32.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
-                ) {
-                    Text(
-                        text = "GENRE AFFINITY",
-                        color = Color(0xFFF1F5F9),
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Thin,
-                        letterSpacing = (-0.5).sp
-                    )
-
-                    GenreBar("SHONEN", "42", Color(0xFF2977FF), 0.8f)
-                    GenreBar("SEINEN", "28", Color(0xFF34D399), 0.5f)
-                    GenreBar("MYSTERY", "15", Color(0xFF2977FF), 0.3f)
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Reading Flow
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.End
-                ) {
-                    Text(
-                        text = "READING FLOW",
-                        color = Color(0xFFF1F5F9),
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Thin,
-                        letterSpacing = (-0.5).sp,
-                        textAlign = TextAlign.Right,
-                        modifier = Modifier.padding(bottom = 16.dp, end = 8.dp)
-                    )
-
-                    ReadingFlowItem(
-                        titlePrefix = "FINISHED CHAPTER 112 OF ",
-                        titleHighlighted = "ONE PIECE",
-                        timeStr = "2 HOURS AGO"
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    ReadingFlowItem(
-                        titlePrefix = "NEW FAVORITE: ",
-                        titleHighlighted = "SOLO LEVELING",
-                        timeStr = "YESTERDAY"
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    ReadingFlowItem(
-                        titlePrefix = "COMPLETED VOLUME 4 OF ",
-                        titleHighlighted = "BERSERK",
-                        timeStr = "3 DAYS AGO"
+                    Icon(
+                        imageVector = Icons.Outlined.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.size(20.dp),
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             // ─── DOWNLOADS & CONTENT ─────────────────────────────────────────
             SectionHeader(title = "DOWNLOADS & CONTENT")
@@ -565,166 +473,25 @@ private fun MenuItem(
     }
 }
 
+// Section header and groups handled above.
+
 @Composable
-private fun ProfileStatCard(title: String, value: String) {
-    Column(
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(115.dp) // Proportional to original
-            .clip(RoundedCornerShape(12.dp))
-            .background(AccentBlue.copy(alpha = 0.03f))
-            .border(
-                1.dp,
-                AccentBlue.copy(alpha = 0.2f),
-                RoundedCornerShape(12.dp)
-            )
-            .padding(24.dp)
-    ) {
-        Text(
-            text = title,
-            color = Color(0xFF94A3B8),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Thin,
-            letterSpacing = 1.2.sp
-        )
-        Spacer(modifier = Modifier.height(8.dp))
+private fun StatLabel(label: String, value: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = value,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
             color = AccentBlue,
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Thin,
-            letterSpacing = (-1.5).sp
         )
-    }
-}
-
-@Composable
-private fun GenreBar(title: String, badge: String, barColor: Color, fraction: Float) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = title,
-                color = Color(0xFFF1F5F9),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Thin,
-                letterSpacing = 1.2.sp
-            )
-            Text(
-                text = badge,
-                color = barColor,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF1E293B))
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(fraction)
-                    .fillMaxHeight()
-                    .clip(CircleShape)
-                    .background(barColor)
-            )
-        }
-    }
-}
-
-@Composable
-private fun ReadingFlowItem(titlePrefix: String, titleHighlighted: String, timeStr: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top
-    ) {
-        // Vertical Timeline Line & Checkbox representation
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(top = 8.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(Color.Black)
-                    .border(2.dp, Color.White, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .width(2.dp)
-                    .height(60.dp) // Fixed line height mapping
-                    .background(AccentBlue)
-            )
-        }
-        
-        Spacer(modifier = Modifier.width(16.dp))
-        
-        // Card Content
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(12.dp))
-                .background(AccentBlue.copy(alpha = 0.03f))
-                .border(1.dp, AccentBlue.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-                .padding(20.dp)
-        ) {
-            Text(
-                text = buildAnnotatedString {
-                    withStyle(
-                        style = SpanStyle(
-                            color = Color.White,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Thin
-                        )
-                    ) {
-                        append(titlePrefix)
-                    }
-                    withStyle(
-                        style = SpanStyle(
-                            color = AccentBlue,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Thin
-                        )
-                    ) {
-                        append(titleHighlighted)
-                    }
-                }
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Outlined.AccessTime,
-                    contentDescription = null,
-                    tint = Color(0xFF64748B),
-                    modifier = Modifier.size(14.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = timeStr,
-                    color = Color(0xFF64748B),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Thin,
-                    letterSpacing = 1.sp
-                )
-            }
-        }
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = label,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            letterSpacing = 0.5.sp
+        )
     }
 }
 

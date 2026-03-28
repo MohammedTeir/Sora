@@ -42,8 +42,12 @@ import tachiyomi.presentation.core.i18n.stringResource
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.TimeUnit
+import tachiyomi.domain.history.repository.HistoryRepository
+import tachiyomi.domain.manga.interactor.GetLibraryManga
 
 data object MoreTab : Tab {
 
@@ -99,6 +103,8 @@ data object MoreTab : Tab {
                 screenModel.signOut(context)
             },
             onClickCloudSync = { navigator.push(SyncSettingsScreen()) },
+            libraryCount = authState.libraryCount,
+            chaptersRead = authState.chaptersRead,
         )
     }
 }
@@ -109,6 +115,8 @@ private class MoreScreenModel(
     private val authPrefs: AuthPreferences = Injekt.get(),
     private val syncPrefs: SyncPreferences = Injekt.get(),
     private val authService: FirebaseAuthService = Injekt.get(),
+    private val getLibraryManga: GetLibraryManga = Injekt.get(),
+    private val historyRepository: HistoryRepository = Injekt.get(),
 ) : ScreenModel {
 
     var downloadedOnly by preferences.downloadedOnly().asState(screenModelScope)
@@ -117,7 +125,15 @@ private class MoreScreenModel(
     private var _downloadQueueState: MutableStateFlow<DownloadQueueState> = MutableStateFlow(DownloadQueueState.Stopped)
     val downloadQueueState: StateFlow<DownloadQueueState> = _downloadQueueState.asStateFlow()
 
-    private val _authState = MutableStateFlow(buildAuthState())
+    private val _authState = MutableStateFlow(
+        AuthState(
+            isLoggedIn = authPrefs.isLoggedIn().get(),
+            userDisplayName = authPrefs.userDisplayName().get(),
+            userEmail = authPrefs.userEmail().get(),
+            lastSyncDisplay = "",
+            isSyncing = syncPrefs.isSyncing().get(),
+        )
+    )
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
     init {
@@ -140,8 +156,13 @@ private class MoreScreenModel(
         // Observe auth preference changes to refresh state
         screenModelScope.launchIO {
             authPrefs.isLoggedIn().changes().collect {
-                _authState.value = buildAuthState()
+                _authState.value = fetchAuthState()
             }
+        }
+
+        // Refresh stats
+        screenModelScope.launchIO {
+            _authState.value = fetchAuthState()
         }
     }
 
@@ -154,19 +175,26 @@ private class MoreScreenModel(
             authPrefs.userDisplayName().set("")
             authPrefs.lastSyncTime().set(0L)
             SyncWorker.cancelAllSync(context)
-            _authState.value = buildAuthState()
+            _authState.value = fetchAuthState()
         }
     }
 
-    private fun buildAuthState(): AuthState {
+    private suspend fun fetchAuthState(): AuthState {
         val isLoggedIn = authPrefs.isLoggedIn().get()
         val lastSyncTime = authPrefs.lastSyncTime().get()
+        
+        val libraryManga = getLibraryManga.await()
+        val libraryCount = libraryManga.size
+        val chaptersRead = libraryManga.sumOf { it.readCount }.toInt()
+        
         return AuthState(
             isLoggedIn = isLoggedIn,
             userDisplayName = authPrefs.userDisplayName().get(),
             userEmail = authPrefs.userEmail().get(),
             lastSyncDisplay = formatLastSync(lastSyncTime),
             isSyncing = syncPrefs.isSyncing().get(),
+            libraryCount = libraryCount,
+            chaptersRead = chaptersRead,
         )
     }
 
@@ -186,6 +214,8 @@ private class MoreScreenModel(
         val userEmail: String,
         val lastSyncDisplay: String,
         val isSyncing: Boolean,
+        val libraryCount: Int = 0,
+        val chaptersRead: Int = 0,
     )
 }
 

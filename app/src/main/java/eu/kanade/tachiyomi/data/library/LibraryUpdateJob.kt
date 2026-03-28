@@ -32,13 +32,13 @@ import eu.kanade.tachiyomi.util.system.isConnectedToWifi
 import eu.kanade.tachiyomi.util.system.isRunning
 import eu.kanade.tachiyomi.util.system.setForegroundSafely
 import eu.kanade.tachiyomi.util.system.workManager
-import eu.kanade.tachiyomi.network.HttpException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import logcat.LogPriority
@@ -216,12 +216,20 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
                     else -> true
                 }
             }
-            .sortedBy { it.manga.title }
+            .sortedWith(
+                // Priority: pinned first, then recently read, then alphabetical
+                compareByDescending<LibraryManga> {
+                    it.manga.id.toString() in libraryPreferences.pinnedMangaIds().get()
+                }.thenByDescending {
+                    it.manga.lastModifiedAt
+                }.thenBy {
+                    it.manga.title
+                }
+            )
 
         notifier.showQueueSizeWarningNotificationIfNeeded(mangaToUpdate)
 
         if (skippedUpdates.isNotEmpty()) {
-            // TODO: surface skipped reasons to user?
             logcat {
                 skippedUpdates
                     .groupBy { it.second }
@@ -232,69 +240,103 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
     }
 
     /**
-     * Method that updates manga in [mangaToUpdate]. It's called in a background thread, so it's safe
-     * to do heavy operations or network calls here.
-     * For each manga it calls [updateManga] and updates the notification showing the current
-     * progress.
+     * High-performance chapter update pipeline.
      *
-     * @return an observable delivering the progress of each update.
+     * Architecture:
+     * - Channel-based producer/consumer: manga are fed through a channel
+     * - Per-source concurrency: up to 3 manga per source simultaneously
+     * - Global concurrency: up to 10 manga updating at once
+     * - Fast-fail: if a source fails 3 times consecutively, skip remaining manga from it
+     * - No artificial delays: relies on source-level rate limiters (RateLimitInterceptor)
+     * - Metadata fetch skipped during bulk update for speed
      */
     private suspend fun updateChapterList() {
-        val globalSemaphore = Semaphore(5)
-        val sourceSemaphores = ConcurrentHashMap<Long, Semaphore>()
         val progressCount = AtomicInt(0)
         val currentlyUpdatingManga = CopyOnWriteArrayList<Manga>()
         val newUpdates = CopyOnWriteArrayList<Pair<Manga, Array<Chapter>>>()
         val failedUpdates = CopyOnWriteArrayList<Pair<Manga, String?>>()
         val fetchWindow = fetchInterval.getWindow(ZonedDateTime.now())
 
+        // Track consecutive failures per source for fast-fail
+        val sourceFailCounts = ConcurrentHashMap<Long, AtomicInt>()
+
+        // Concurrency controls
+        val globalSemaphore = Semaphore(MAX_GLOBAL_CONCURRENT)
+        val sourceSemaphores = ConcurrentHashMap<Long, Semaphore>()
+
         coroutineScope {
-            mangaToUpdate
-                .map { libraryManga ->
-                    async {
-                        // Global concurrency: max 5 manga updating at once
+            // Feed manga into a channel for controlled consumption
+            val channel = Channel<LibraryManga>(Channel.BUFFERED)
+
+            // Producer: sends all manga to the channel
+            launch {
+                for (manga in mangaToUpdate) {
+                    channel.send(manga)
+                }
+                channel.close()
+            }
+
+            // Consumer: launches workers that pull from the channel
+            val workers = List(MAX_GLOBAL_CONCURRENT) {
+                async {
+                    for (libraryManga in channel) {
                         globalSemaphore.withPermit {
-                            // Per-source concurrency: max 1 manga per source to avoid rate limiting
-                            val sourceSemaphore = sourceSemaphores.computeIfAbsent(libraryManga.manga.source) {
-                                Semaphore(1)
+                            val manga = libraryManga.manga
+                            val sourceId = manga.source
+                            ensureActive()
+
+                            // Fast-fail: skip if this source has failed too many times
+                            val failCount = sourceFailCounts[sourceId]
+                            if (failCount != null && failCount.load() >= SOURCE_FAST_FAIL_THRESHOLD) {
+                                failedUpdates.add(manga to "Source temporarily unavailable")
+                                progressCount.incrementAndFetch()
+                                continue
                             }
+
+                            // Don't continue to update if manga is not in library
+                            if (getManga.await(manga.id)?.favorite != true) {
+                                progressCount.incrementAndFetch()
+                                continue
+                            }
+
+                            // Per-source concurrency limit
+                            val sourceSemaphore = sourceSemaphores.computeIfAbsent(sourceId) {
+                                Semaphore(MAX_PER_SOURCE_CONCURRENT)
+                            }
+
                             sourceSemaphore.withPermit {
-                                val manga = libraryManga.manga
-                                ensureActive()
-
-                                // Don't continue to update if manga is not in library
-                                if (getManga.await(manga.id)?.favorite != true) {
-                                    return@withPermit
-                                }
-
                                 withUpdateNotification(
                                     currentlyUpdatingManga,
                                     progressCount,
                                     manga,
                                 ) {
                                     try {
-                                        val newChapters = retryOnTransientError {
-                                            updateManga(manga, fetchWindow)
-                                        }.sortedByDescending { it.sourceOrder }
+                                        val newChapters = updateManga(manga, fetchWindow)
+                                            .sortedByDescending { it.sourceOrder }
+
+                                        // Reset fail count on success
+                                        sourceFailCounts[sourceId]?.store(0)
 
                                         if (newChapters.isNotEmpty()) {
                                             val chaptersToDownload = filterChaptersForDownload.await(manga, newChapters)
-
                                             if (chaptersToDownload.isNotEmpty()) {
                                                 downloadChapters(manga, chaptersToDownload)
                                             }
 
                                             libraryPreferences.newUpdatesCount().getAndSet { it + newChapters.size }
-
-                                            // Convert to the manga that contains new chapters
                                             newUpdates.add(manga to newChapters.toTypedArray())
                                         }
                                     } catch (e: Throwable) {
+                                        if (e is CancellationException) throw e
+
+                                        // Track consecutive failures for fast-fail
+                                        sourceFailCounts.computeIfAbsent(sourceId) { AtomicInt(0) }
+                                            .incrementAndFetch()
+
                                         val errorMessage = when (e) {
                                             is NoChaptersException -> context.stringResource(
                                                 MR.strings.no_chapters_error,
                                             )
-                                            // failedUpdates will already have the source, don't need to copy it into the message
                                             is SourceNotInstalledException -> context.stringResource(
                                                 MR.strings.loader_not_implemented_error,
                                             )
@@ -303,13 +345,13 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
                                         failedUpdates.add(manga to errorMessage)
                                     }
                                 }
-                                // Small delay between same-source requests to avoid rate limiting.
-                                delay(5_000)
                             }
                         }
                     }
                 }
-                .awaitAll()
+            }
+
+            workers.awaitAll()
         }
 
         notifier.cancelProgressNotification()
@@ -342,29 +384,15 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
     }
 
     /**
-     * Updates the chapters for the given manga and adds them to the database.
-     *
-     * @param manga the manga to update.
-     * @return a pair of the inserted and removed chapters.
+     * Updates the chapters for the given manga.
+     * Skips metadata fetch during bulk updates for speed — only fetches chapter list.
      */
     private suspend fun updateManga(manga: Manga, fetchWindow: Pair<Long, Long>): List<Chapter> {
         val source = sourceManager.getOrStub(manga.source)
 
-        // Update manga metadata if needed — non-fatal so a metadata failure
-        // doesn't prevent chapter sync (which is what the user actually cares about)
-        if (libraryPreferences.autoUpdateMetadata().get()) {
-            try {
-                val networkManga = source.getMangaDetails(manga.toSManga())
-                updateManga.awaitUpdateFromSource(manga, networkManga, manualFetch = false, coverCache)
-            } catch (e: Throwable) {
-                logcat(LogPriority.WARN, e) { "Metadata update failed for ${manga.title}, continuing with chapter sync" }
-            }
-        }
-
         val chapters = source.getChapterList(manga.toSManga())
 
-        // Get manga from database to account for if it was removed during the update and
-        // to get latest data so it doesn't get overwritten later on
+        // Get manga from database to account for if it was removed during the update
         val dbManga = getManga.await(manga.id)?.takeIf { it.favorite } ?: return emptyList()
 
         return syncChaptersWithSource.await(chapters, dbManga, source, false, fetchWindow)
@@ -407,10 +435,6 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
                 val file = context.createFileInCacheDir("mihon_update_errors.txt")
                 file.bufferedWriter().use { out ->
                     out.write(context.stringResource(MR.strings.library_errors_help, ERROR_LOG_HELP_URL) + "\n\n")
-                    // Error file format:
-                    // ! Error
-                    //   # Source
-                    //     - Manga
                     errors.groupBy({ it.second }, { it.first }).forEach { (error, mangas) ->
                         out.write("\n! ${error}\n")
                         mangas.groupBy { it.source }.forEach { (srcId, mangas) ->
@@ -428,33 +452,6 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
         return File("")
     }
 
-    private suspend fun <T> retryOnTransientError(
-        maxAttempts: Int = 3,
-        initialDelayMs: Long = 2_000,
-        block: suspend () -> T,
-    ): T {
-        var lastException: Throwable? = null
-        repeat(maxAttempts) { attempt ->
-            try {
-                return block()
-            } catch (e: Throwable) {
-                if (!e.isRetryable() || attempt == maxAttempts - 1) throw e
-                lastException = e
-                logcat(LogPriority.WARN) { "Retryable error (attempt ${attempt + 1}/$maxAttempts): ${e.message}" }
-                delay(initialDelayMs * (attempt + 1))
-            }
-        }
-        throw lastException!!
-    }
-
-    private fun Throwable.isRetryable(): Boolean = when (this) {
-        is java.net.SocketTimeoutException -> true
-        is java.net.UnknownHostException -> true
-        is java.io.IOException -> true
-        is HttpException -> code in listOf(429, 500, 502, 503, 504)
-        else -> false
-    }
-
     companion object {
         private const val TAG = "LibraryUpdate"
         private const val WORK_NAME_AUTO = "LibraryUpdate-auto"
@@ -463,6 +460,11 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
         private const val ERROR_LOG_HELP_URL = "https://mihon.app/docs/guides/troubleshooting/"
 
         private const val MANGA_PER_SOURCE_QUEUE_WARNING_THRESHOLD = 60
+
+        // Performance tuning constants
+        private const val MAX_GLOBAL_CONCURRENT = 10       // 10 manga updating simultaneously
+        private const val MAX_PER_SOURCE_CONCURRENT = 3    // 3 manga per source at once
+        private const val SOURCE_FAST_FAIL_THRESHOLD = 3   // Skip source after 3 consecutive failures
 
         /**
          * Key for category to update.
@@ -493,7 +495,6 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
                 }
                     .build()
                 val constraints = Constraints.Builder()
-                    // 'networkRequest' only applies to Android 9+, otherwise 'networkType' is used
                     .setRequiredNetworkRequest(networkRequest, networkType)
                     .setRequiresCharging(DEVICE_CHARGING in restrictions)
                     .setRequiresBatteryNotLow(true)
@@ -527,7 +528,6 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
         ): Boolean {
             val wm = context.workManager
             if (wm.isRunning(TAG)) {
-                // Already running either as a scheduled or manual job
                 return false
             }
 
@@ -550,7 +550,6 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
                 .addStates(listOf(WorkInfo.State.RUNNING))
                 .build()
             wm.getWorkInfos(workQuery).get()
-                // Should only return one work but just in case
                 .forEach {
                     wm.cancelWorkById(it.id)
 

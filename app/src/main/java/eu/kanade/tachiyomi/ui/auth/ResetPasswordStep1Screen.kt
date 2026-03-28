@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -98,7 +99,7 @@ class ResetPasswordStep1Screen : Screen {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(color = Color.Black)
+                .background(color = MaterialTheme.colorScheme.background)
         ) {
             Box(
                 modifier = Modifier
@@ -124,7 +125,7 @@ class ResetPasswordStep1Screen : Screen {
                                 .width(320.dp)
                                 .clip(RoundedCornerShape(9999.dp))
                                 .blur(120.dp)
-                                .background(Color(0xff2977ff).copy(alpha = 0.1f))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
                         )
                         Box(
                             modifier = Modifier
@@ -134,7 +135,7 @@ class ResetPasswordStep1Screen : Screen {
                                 .width(256.dp)
                                 .clip(RoundedCornerShape(9999.dp))
                                 .blur(100.dp)
-                                .background(Color(0xffec691a).copy(alpha = 0.05f))
+                                .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.05f))
                         )
 
                         // Mascot area (scaled down/rotated)
@@ -152,8 +153,8 @@ class ResetPasswordStep1Screen : Screen {
                                     modifier = Modifier
                                         .size(192.dp)
                                         .clip(RoundedCornerShape(16.dp))
-                                        .background(Color(0xff2977ff).copy(alpha = 0.03f))
-                                        .border(BorderStroke(1.dp, Color(0xff2977ff).copy(alpha = 0.2f)), RoundedCornerShape(16.dp))
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.03f))
+                                        .border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)), RoundedCornerShape(16.dp))
                                         .shadow(50.dp, RoundedCornerShape(16.dp))
                                 ) {
                                     Image(
@@ -169,7 +170,7 @@ class ResetPasswordStep1Screen : Screen {
                                     .fillMaxSize()
                                     .clip(RoundedCornerShape(9999.dp))
                                     .blur(40.dp)
-                                    .background(Color(0xff2977ff).copy(alpha = 0.2f))
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
                             )
                             Column(
                                 modifier = Modifier
@@ -177,17 +178,17 @@ class ResetPasswordStep1Screen : Screen {
                                     .offset(x = 22.dp, y = 13.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .rotate(8f)
-                                    .background(Color(0xff2977ff))
+                                    .background(MaterialTheme.colorScheme.primary)
                                     .padding(horizontal = 16.dp, vertical = 4.dp)
                                     .shadow(15.dp, RoundedCornerShape(8.dp))
                             ) {
                                 Text(
                                     text = "SORA ASSIST",
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onPrimary,
                                     lineHeight = 1.33.em,
                                     style = TextStyle(
                                         fontSize = 12.sp,
-                                        fontWeight = FontWeight.Thin,
+                                        fontWeight = FontWeight.Medium,
                                         letterSpacing = (-0.6).sp
                                     ),
                                     modifier = Modifier
@@ -208,12 +209,12 @@ class ResetPasswordStep1Screen : Screen {
                         ) {
                             Text(
                                 text = "FORGOT\nPASSWORD?",
-                                color = Color(0xfff1f5f9),
+                                color = MaterialTheme.colorScheme.onSurface,
                                 textAlign = TextAlign.Center,
                                 lineHeight = 1.em,
                                 style = TextStyle(
                                     fontSize = 48.sp,
-                                    fontWeight = FontWeight.Thin,
+                                    fontWeight = FontWeight.Light,
                                     letterSpacing = (-2.4).sp
                                 ),
                                 modifier = Modifier.wrapContentHeight()
@@ -221,12 +222,12 @@ class ResetPasswordStep1Screen : Screen {
                             Spacer(Modifier.height(12.dp))
                             Text(
                                 text = "Enter your email to receive a\npassword reset link.",
-                                color = Color(0xff94a3b8),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
                                 lineHeight = 1.63.em,
                                 style = TextStyle(
                                     fontSize = 18.sp,
-                                    fontWeight = FontWeight.Thin
+                                    fontWeight = FontWeight.Normal
                                 ),
                                 modifier = Modifier.wrapContentHeight()
                             )
@@ -254,8 +255,8 @@ class ResetPasswordStep1Screen : Screen {
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clip(RoundedCornerShape(12.dp))
-                                            .background(Color(0xff222222).copy(alpha = 0.3f))
-                                            .border(BorderStroke(1.dp, Color(0xff3b82f6).copy(alpha = 0.2f)), RoundedCornerShape(12.dp))
+                                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                            .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), RoundedCornerShape(12.dp))
                                             .padding(start = 48.dp, end = 16.dp, top = 23.dp, bottom = 24.dp)
                                             .shadow(20.dp, RoundedCornerShape(12.dp))
                                     ) {
@@ -264,11 +265,11 @@ class ResetPasswordStep1Screen : Screen {
                                             onValueChange = { email = it },
                                             textStyle = TextStyle(
                                                 fontSize = 18.sp,
-                                                fontWeight = FontWeight.Thin,
-                                                color = Color.White
+                                                fontWeight = FontWeight.Normal,
+                                                color = MaterialTheme.colorScheme.onSurface
                                             ),
                                             singleLine = true,
-                                            cursorBrush = SolidColor(Color.White),
+                                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .wrapContentHeight(align = Alignment.CenterVertically),
@@ -276,10 +277,10 @@ class ResetPasswordStep1Screen : Screen {
                                                 if (email.isEmpty()) {
                                                     Text(
                                                         text = "your@email.com",
-                                                        color = Color(0xff475569),
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                         style = TextStyle(
                                                             fontSize = 18.sp,
-                                                            fontWeight = FontWeight.Thin
+                                                            fontWeight = FontWeight.Normal
                                                         )
                                                     )
                                                 }
@@ -297,7 +298,7 @@ class ResetPasswordStep1Screen : Screen {
                                         Image(
                                             painter = painterResource(id = R.drawable.email_svg),
                                             contentDescription = "Email",
-                                            colorFilter = ColorFilter.tint(Color(0xff3b82f6)),
+                                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
                                             modifier = Modifier.size(24.dp)
                                         )
                                     }
@@ -310,7 +311,7 @@ class ResetPasswordStep1Screen : Screen {
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(Color(0xff2977ff))
+                                        .background(MaterialTheme.colorScheme.primary)
                                         .clickable(enabled = !state.isLoading) {
                                             keyboardController?.hide()
                                             screenModel.sendPasswordResetEmail(email)
@@ -320,12 +321,12 @@ class ResetPasswordStep1Screen : Screen {
                                 ) {
                                     Text(
                                         text = if (state.isLoading) "Sending..." else "Send Reset Link",
-                                        color = Color.White,
+                                        color = MaterialTheme.colorScheme.onPrimary,
                                         textAlign = TextAlign.Center,
                                         lineHeight = 1.56.em,
                                         style = TextStyle(
                                             fontSize = 18.sp,
-                                            fontWeight = FontWeight.Thin
+                                            fontWeight = FontWeight.Medium
                                         ),
                                         modifier = Modifier.wrapContentHeight()
                                     )
@@ -333,7 +334,7 @@ class ResetPasswordStep1Screen : Screen {
                                         Image(
                                             painter = painterResource(id = R.drawable.arrow_send_email),
                                             contentDescription = "Send",
-                                            colorFilter = ColorFilter.tint(Color.White),
+                                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onPrimary),
                                             modifier = Modifier.size(19.dp, 16.dp)
                                         )
                                     }
@@ -357,16 +358,16 @@ class ResetPasswordStep1Screen : Screen {
                                 Image(
                                     painter = painterResource(id = R.drawable.icon_back_to_login),
                                     contentDescription = "Back",
-                                    colorFilter = ColorFilter.tint(Color(0xff94a3b8)),
+                                    colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
                                     modifier = Modifier.size(11.dp)
                                 )
                                 Text(
                                     text = "BACK TO SIGN IN",
-                                    color = Color(0xff94a3b8),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     lineHeight = 1.33.em,
                                     style = TextStyle(
                                         fontSize = 12.sp,
-                                        fontWeight = FontWeight.Thin,
+                                        fontWeight = FontWeight.Medium,
                                         letterSpacing = 1.2.sp
                                     ),
                                     modifier = Modifier.wrapContentHeight()
@@ -387,18 +388,18 @@ class ResetPasswordStep1Screen : Screen {
                         Image(
                             painter = painterResource(id = R.drawable.arrow_back_home),
                             contentDescription = "Back",
-                            colorFilter = ColorFilter.tint(Color(0xff3b82f6)),
+                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
                             modifier = Modifier
                                 .size(16.dp)
                                 .clickable { navigator.pop() }
                         )
                         Text(
                             text = "SORA RESET",
-                            color = Color(0xff3b82f6),
+                            color = MaterialTheme.colorScheme.primary,
                             lineHeight = 1.33.em,
                             style = TextStyle(
                                 fontSize = 24.sp,
-                                fontWeight = FontWeight.Thin,
+                                fontWeight = FontWeight.Light,
                                 letterSpacing = (-1.2).sp
                             ),
                             modifier = Modifier.wrapContentHeight()
