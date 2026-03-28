@@ -1,14 +1,20 @@
 package eu.kanade.presentation.more
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,6 +25,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.Label
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.AttachMoney
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.CloudQueue
@@ -34,6 +42,7 @@ import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -42,15 +51,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.more.DownloadQueueState
 import tachiyomi.core.common.Constants
 import tachiyomi.presentation.core.components.material.Scaffold
-
-import androidx.compose.material3.MaterialTheme
 
 // ──────────────── Design Tokens ────────────────
 private val AccentBlue    = Color(0xFF2F80FF)
@@ -120,7 +134,7 @@ fun MoreScreen(
                     )
                     IconButton(onClick = onClickSettings) {
                         Icon(
-                            painter = androidx.compose.ui.res.painterResource(id = eu.kanade.tachiyomi.R.drawable.icon_setting),
+                            painter = painterResource(id = R.drawable.icon_setting),
                             contentDescription = "Settings",
                             tint = AccentBlue
                         )
@@ -142,15 +156,15 @@ fun MoreScreen(
                             )
                             .padding(4.dp)
                     ) {
-                        androidx.compose.foundation.Image(
-                            painter = androidx.compose.ui.res.painterResource(id = eu.kanade.tachiyomi.R.drawable.profileavatar),
+                        Image(
+                            painter = painterResource(id = R.drawable.profileavatar),
                             contentDescription = "Profile Avatar",
-                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            contentScale = ContentScale.Crop,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clip(CircleShape)
-                                .androidx.compose.foundation.border(
-                                    border = androidx.compose.foundation.BorderStroke(4.dp, Color.Black),
+                                .border(
+                                    border = BorderStroke(4.dp, Color.Black),
                                     shape = CircleShape
                                 )
                         )
@@ -162,8 +176,8 @@ fun MoreScreen(
                             .offset(y = 8.dp)
                             .clip(CircleShape)
                             .background(AccentBlue)
-                            .androidx.compose.foundation.border(
-                                border = androidx.compose.foundation.BorderStroke(1.dp, AccentBlue.copy(alpha = 0.3f)),
+                            .border(
+                                border = BorderStroke(1.dp, AccentBlue.copy(alpha = 0.3f)),
                                 shape = CircleShape
                             )
                             .padding(horizontal = 16.dp, vertical = 4.dp)
@@ -171,7 +185,7 @@ fun MoreScreen(
                         Text(
                             text = "ELITE\nREADER",
                             color = Color.White,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            textAlign = TextAlign.Center,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Thin,
                             letterSpacing = 1.sp,
