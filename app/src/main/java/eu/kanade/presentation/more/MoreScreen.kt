@@ -92,125 +92,193 @@ fun MoreScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
 
-            // ─── Header ──────────────────────────────────────────────────────
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text = "Sora",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 26.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Notifications,
-                        contentDescription = "Notifications",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
+            // ─── Header & Profile ───────────────────────────────────────────
+            val nameToDisplay = if (isLoggedIn) {
+                userDisplayName.ifBlank { userEmail.substringBefore("@") }.uppercase()
+            } else {
+                "GUEST"
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // ─── Profile Card ─────────────────────────────────────────────────
-            Box(
+            
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(20.dp))
-                    .clickable { onClickProfile() },
+                    .padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Top App Bar like
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Avatar
+                    Text(
+                        text = "SORA PROFILE",
+                        color = AccentBlue,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Thin,
+                        letterSpacing = (-0.8).sp
+                    )
+                    IconButton(onClick = onClickSettings) {
+                        Icon(
+                            painter = androidx.compose.ui.res.painterResource(id = eu.kanade.tachiyomi.R.drawable.icon_setting),
+                            contentDescription = "Settings",
+                            tint = AccentBlue
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Avatar
+                Box(contentAlignment = Alignment.BottomCenter) {
                     Box(
                         modifier = Modifier
-                            .size(64.dp)
+                            .size(160.dp)
+                            .clip(CircleShape)
                             .background(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(AccentBlue.copy(alpha = 0.4f), MaterialTheme.colorScheme.surfaceContainerHigh),
-                                ),
-                                shape = CircleShape,
+                                brush = Brush.linearGradient(
+                                    colors = listOf(AccentBlue, AccentBlue)
+                                )
                             )
-                            .clip(CircleShape),
-                        contentAlignment = Alignment.Center,
+                            .padding(4.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Person,
-                            contentDescription = null,
-                            tint = AccentBlue,
-                            modifier = Modifier.size(34.dp),
+                        androidx.compose.foundation.Image(
+                            painter = androidx.compose.ui.res.painterResource(id = eu.kanade.tachiyomi.R.drawable.profileavatar),
+                            contentDescription = "Profile Avatar",
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                                .androidx.compose.foundation.border(
+                                    border = androidx.compose.foundation.BorderStroke(4.dp, Color.Black),
+                                    shape = CircleShape
+                                )
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(14.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        if (isLoggedIn) {
-                            Text(
-                                text = userDisplayName.ifBlank { userEmail },
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 18.sp,
-                                color = MaterialTheme.colorScheme.onSurface,
+                    // Elite Reader Badge
+                    Box(
+                        modifier = Modifier
+                            .offset(y = 8.dp)
+                            .clip(CircleShape)
+                            .background(AccentBlue)
+                            .androidx.compose.foundation.border(
+                                border = androidx.compose.foundation.BorderStroke(1.dp, AccentBlue.copy(alpha = 0.3f)),
+                                shape = CircleShape
                             )
-                            if (userDisplayName.isNotBlank()) {
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = userEmail,
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = if (isSyncing) "Syncing…" else lastSyncDisplay.ifBlank { "Tap to sync" },
-                                fontSize = 13.sp,
-                                color = if (isSyncing) AccentBlue else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        } else {
-                            Text(
-                                text = "Guest Mode",
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 18.sp,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Star,
-                                    contentDescription = null,
-                                    tint = AccentBlue,
-                                    modifier = Modifier.size(14.dp),
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Sign in to sync your library",
-                                    fontSize = 14.sp,
-                                    color = AccentBlue,
-                                )
-                            }
-                        }
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "ELITE\nREADER",
+                            color = Color.White,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Thin,
+                            letterSpacing = 1.sp,
+                            lineHeight = 15.sp
+                        )
                     }
+                }
 
-                    Icon(
-                        imageVector = Icons.Outlined.ChevronRight,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Name
+                Text(
+                    text = nameToDisplay,
+                    color = Color.White,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    fontSize = 40.sp,
+                    fontWeight = FontWeight.Thin,
+                    letterSpacing = (-2.0).sp,
+                    lineHeight = 44.sp,
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Rank
+                Text(
+                    text = "GLOBAL RANK: #421",
+                    color = AccentBlue,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Thin,
+                    letterSpacing = 2.8.sp
+                )
+
+                Spacer(modifier = Modifier.height(40.dp))
+
+                // Stats Column
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    ProfileStatCard("TOTAL CHAPTERS", "12,842")
+                    ProfileStatCard("READING STREAK", "154 DAYS")
+                    ProfileStatCard("IN LIBRARY", "892 VOL")
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Genre Affinity
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(AccentBlue.copy(alpha = 0.03f))
+                        .androidx.compose.foundation.border(
+                            1.dp,
+                            AccentBlue.copy(alpha = 0.1f),
+                            RoundedCornerShape(12.dp)
+                        )
+                        .padding(32.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
+                    Text(
+                        text = "GENRE AFFINITY",
+                        color = Color(0xFFF1F5F9),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Thin,
+                        letterSpacing = (-0.5).sp
+                    )
+
+                    GenreBar("SHONEN", "42", Color(0xFF2977FF), 0.8f)
+                    GenreBar("SEINEN", "28", Color(0xFF34D399), 0.5f)
+                    GenreBar("MYSTERY", "15", Color(0xFF2977FF), 0.3f)
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Reading Flow
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.End
+                ) {
+                    Text(
+                        text = "READING FLOW",
+                        color = Color(0xFFF1F5F9),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Thin,
+                        letterSpacing = (-0.5).sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Right,
+                        modifier = Modifier.padding(bottom = 16.dp, end = 8.dp)
+                    )
+
+                    ReadingFlowItem(
+                        titlePrefix = "FINISHED CHAPTER 112 OF ",
+                        titleHighlighted = "ONE PIECE",
+                        timeStr = "2 HOURS AGO"
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ReadingFlowItem(
+                        titlePrefix = "NEW FAVORITE: ",
+                        titleHighlighted = "SOLO LEVELING",
+                        timeStr = "YESTERDAY"
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ReadingFlowItem(
+                        titlePrefix = "COMPLETED VOLUME 4 OF ",
+                        titleHighlighted = "BERSERK",
+                        timeStr = "3 DAYS AGO"
                     )
                 }
             }
@@ -482,3 +550,167 @@ private fun MenuItem(
         )
     }
 }
+
+@Composable
+private fun ProfileStatCard(title: String, value: String) {
+    Column(
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(115.dp) // Proportional to original
+            .clip(RoundedCornerShape(12.dp))
+            .background(AccentBlue.copy(alpha = 0.03f))
+            .androidx.compose.foundation.border(
+                1.dp,
+                AccentBlue.copy(alpha = 0.2f),
+                RoundedCornerShape(12.dp)
+            )
+            .padding(24.dp)
+    ) {
+        Text(
+            text = title,
+            color = Color(0xFF94A3B8),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Thin,
+            letterSpacing = 1.2.sp
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = value,
+            color = AccentBlue,
+            fontSize = 30.sp,
+            fontWeight = FontWeight.Thin,
+            letterSpacing = (-1.5).sp
+        )
+    }
+}
+
+@Composable
+private fun GenreBar(title: String, badge: String, barColor: Color, fraction: Float) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                color = Color(0xFFF1F5F9),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Thin,
+                letterSpacing = 1.2.sp
+            )
+            Text(
+                text = badge,
+                color = barColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF1E293B))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(fraction)
+                    .fillMaxHeight()
+                    .clip(CircleShape)
+                    .background(barColor)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReadingFlowItem(titlePrefix: String, titleHighlighted: String, timeStr: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        // Vertical Timeline Line & Checkbox representation
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(top = 8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black)
+                    .androidx.compose.foundation.border(2.dp, Color.White, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = androidx.compose.material.icons.Icons.Default.Check,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .width(2.dp)
+                    .height(60.dp) // Fixed line height mapping
+                    .background(AccentBlue)
+            )
+        }
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        // Card Content
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(12.dp))
+                .background(AccentBlue.copy(alpha = 0.03f))
+                .androidx.compose.foundation.border(1.dp, AccentBlue.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                .padding(20.dp)
+        ) {
+            Text(
+                text = androidx.compose.ui.text.buildAnnotatedString {
+                    androidx.compose.ui.text.withStyle(
+                        style = androidx.compose.ui.text.SpanStyle(
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Thin
+                        )
+                    ) {
+                        append(titlePrefix)
+                    }
+                    androidx.compose.ui.text.withStyle(
+                        style = androidx.compose.ui.text.SpanStyle(
+                            color = AccentBlue,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Thin
+                        )
+                    ) {
+                        append(titleHighlighted)
+                    }
+                }
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = androidx.compose.material.icons.Icons.Outlined.AccessTime,
+                    contentDescription = null,
+                    tint = Color(0xFF64748B),
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = timeStr,
+                    color = Color(0xFF64748B),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Thin,
+                    letterSpacing = 1.sp
+                )
+            }
+        }
+    }
+}
+

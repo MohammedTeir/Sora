@@ -35,6 +35,8 @@ class AuthScreenModel(
     sealed interface Event {
         data object LoginSuccess : Event
         data object SignUpSuccess : Event
+        data class PasswordResetEmailSent(val email: String) : Event
+        data object PasswordResetSuccess : Event
         data object Dismissed : Event
     }
 
@@ -102,6 +104,70 @@ class AuthScreenModel(
         }
     }
 
+    fun sendPasswordResetEmail(email: String) {
+        if (email.isBlank()) {
+            mutableState.update { it.copy(errorMessage = "Email cannot be empty") }
+            return
+        }
+
+        screenModelScope.launch {
+            mutableState.update { it.copy(isLoading = true, errorMessage = null) }
+            authService.sendPasswordResetEmail(email.trim())
+                .onSuccess {
+                    mutableState.update { it.copy(isLoading = false) }
+                    _events.send(Event.PasswordResetEmailSent(email.trim()))
+                }
+                .onFailure { e ->
+                    logcat(LogPriority.WARN) { "AuthScreenModel: reset password failed: ${e.message}" }
+                    mutableState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = friendlyAuthError(e),
+                        )
+                    }
+                }
+        }
+    }
+
+    fun confirmPasswordReset(code: String, newPassword: String, confirmPassword: String) {
+        when {
+            newPassword.isBlank() || confirmPassword.isBlank() -> {
+                mutableState.update { it.copy(errorMessage = "All fields are required") }
+                return
+            }
+            newPassword != confirmPassword -> {
+                mutableState.update { it.copy(errorMessage = "Passwords do not match") }
+                return
+            }
+            newPassword.length < 8 -> {
+                mutableState.update { it.copy(errorMessage = "Password must be at least 8 characters") }
+                return
+            }
+            !newPassword.any { !it.isLetterOrDigit() } -> {
+                mutableState.update { it.copy(errorMessage = "Password must contain a special symbol") }
+                return
+            }
+        }
+
+        screenModelScope.launch {
+            mutableState.update { it.copy(isLoading = true, errorMessage = null) }
+            authService.confirmPasswordReset(code, newPassword)
+                .onSuccess {
+                    mutableState.update { it.copy(isLoading = false) }
+                    _events.send(Event.PasswordResetSuccess)
+                }
+                .onFailure { e ->
+                    logcat(LogPriority.WARN) { "AuthScreenModel: confirm password reset failed: ${e.message}" }
+                    mutableState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = friendlyAuthError(e),
+                        )
+                    }
+                }
+        }
+    }
+
     fun signInWithGoogle(context: android.content.Context) {
         screenModelScope.launch {
             mutableState.update { it.copy(isLoading = true, errorMessage = null) }
@@ -146,6 +212,8 @@ class AuthScreenModel(
         return when {
             "CONFIGURATION_NOT_FOUND" in msg -> "Sign-in is not configured on the server. Please contact support."
             "SIGN_IN_CANCELLED" in msg || "activity is cancelled" in msg.lowercase() || "GetCredentialCancellationException" in e.javaClass.name -> "Google sign-in was cancelled."
+            "EXPIRED_OOB_CODE" in msg -> "The password reset link has expired."
+            "INVALID_OOB_CODE" in msg -> "The password reset link is invalid or has already been used."
             "EMAIL_NOT_FOUND" in msg || "INVALID_EMAIL" in msg -> "Invalid email address."
             "WEAK_PASSWORD" in msg -> "Password is too weak. Use at least 6 characters."
             "EMAIL_EXISTS" in msg || "email address is already in use" in msg -> "An account with this email already exists."

@@ -91,23 +91,29 @@ class SharedListService(
         // AuthPreferences. After an app restart Firebase Auth may not have
         // reinitialized yet, so currentUser is transiently null even though
         // the user is still logged in.
-        val userId = authService.getUserId()
-            ?: authPreferences.userId().get().takeIf { it.isNotEmpty() }
-            ?: run {
-                logcat(LogPriority.WARN) { "SharedListService: getMyLists skipped — not logged in" }
-                return emptyList()
-            }
+        val firebaseUid = authService.getUserId()
+        val prefsUid = authPreferences.userId().get().takeIf { it.isNotEmpty() }
+        val userId = firebaseUid ?: prefsUid ?: run {
+            logcat(LogPriority.WARN) { "SharedListService: getMyLists skipped — not logged in (firebase=null, prefs=empty)" }
+            return emptyList()
+        }
+        logcat(LogPriority.INFO) { "SharedListService: getMyLists querying with userId=$userId (firebase=${firebaseUid != null}, prefs=${prefsUid != null})" }
         // whereEqualTo("creatorId") + orderBy("timestamp") requires a composite
         // index in the Firebase console. Query with the single-field filter only
         // (auto-indexed) and sort the small result set client-side.
         val query = collection.whereEqualTo("creatorId", userId)
         return try {
-            query.get().await().toSharedLists().sortedByDescending { it.timestamp }
+            val results = query.get().await().toSharedLists().sortedByDescending { it.timestamp }
+            logcat(LogPriority.INFO) { "SharedListService: getMyLists server returned ${results.size} lists" }
+            results
         } catch (e: Exception) {
             logcat(LogPriority.ERROR) { "SharedListService: getMyLists server failed: ${e.message}, trying cache" }
             try {
-                query.get(Source.CACHE).await().toSharedLists().sortedByDescending { it.timestamp }
+                val cached = query.get(Source.CACHE).await().toSharedLists().sortedByDescending { it.timestamp }
+                logcat(LogPriority.INFO) { "SharedListService: getMyLists cache returned ${cached.size} lists" }
+                cached
             } catch (_: Exception) {
+                logcat(LogPriority.ERROR) { "SharedListService: getMyLists cache also failed" }
                 emptyList()
             }
         }

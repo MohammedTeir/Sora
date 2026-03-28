@@ -74,6 +74,7 @@ import eu.kanade.tachiyomi.ui.base.activity.BaseActivity
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
 import eu.kanade.tachiyomi.ui.deeplink.DeepLinkScreen
+import eu.kanade.domain.auth.AuthPreferences
 import eu.kanade.tachiyomi.data.auth.FirebaseAuthService
 import eu.kanade.tachiyomi.ui.auth.LoginScreen
 import eu.kanade.tachiyomi.ui.home.HomeScreen
@@ -118,6 +119,7 @@ class MainActivity : BaseActivity() {
 
     private val getIncognitoState: GetIncognitoState by injectLazy()
     private val authService: FirebaseAuthService by injectLazy()
+    private val authPreferences: AuthPreferences by injectLazy()
 
     private var navigator: Navigator? = null
 
@@ -345,8 +347,14 @@ class MainActivity : BaseActivity() {
             if (!preferences.shownOnboardingFlow().get() && navigator.lastItem !is OnboardingScreen) {
                 // First launch: show onboarding (which chains to auth on completion)
                 navigator.push(OnboardingScreen())
-            } else if (preferences.shownOnboardingFlow().get() && !authService.isLoggedIn() && navigator.lastItem is HomeScreen) {
+            } else if (preferences.shownOnboardingFlow().get()
+                && !authService.isLoggedIn()
+                && !authPreferences.isLoggedIn().get()
+                && navigator.lastItem is HomeScreen
+            ) {
                 // Returning user, not authenticated: show auth gate
+                // Checks both Firebase Auth (real-time) and AuthPreferences (persisted)
+                // to avoid forcing re-login when Firebase Auth is still reinitializing.
                 navigator.push(LoginScreen(fromStartup = true))
             }
         }

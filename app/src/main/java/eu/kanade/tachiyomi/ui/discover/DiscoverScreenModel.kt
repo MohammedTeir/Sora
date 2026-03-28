@@ -73,7 +73,16 @@ class DiscoverScreenModel(
             // After app restart, Firebase Auth may not have reinitialized yet,
             // so currentUser is transiently null. The persisted preference
             // bridges that gap so we still fetch myLists from cache.
-            val loggedIn = authService.isLoggedIn() || authPreferences.isLoggedIn().get()
+            var loggedIn = authService.isLoggedIn() || authPreferences.isLoggedIn().get()
+            // If AuthPreferences says logged in but Firebase Auth isn't ready yet,
+            // wait briefly for Firebase to restore the session from its own persistence.
+            if (!authService.isLoggedIn() && authPreferences.isLoggedIn().get()) {
+                logcat(LogPriority.INFO) { "DiscoverScreenModel: waiting for Firebase Auth to reinitialize..." }
+                delay(2_000)
+                // Re-check after waiting
+                loggedIn = authService.isLoggedIn() || authPreferences.isLoggedIn().get()
+                logcat(LogPriority.INFO) { "DiscoverScreenModel: after wait — Firebase=${authService.isLoggedIn()}, prefs=${authPreferences.isLoggedIn().get()}" }
+            }
             // Refresh the Firebase ID token so Firestore calls use a valid
             // credential. Without this, queries fail silently after token expiry
             // (e.g. app reopened after hours) and getMyLists() returns empty.

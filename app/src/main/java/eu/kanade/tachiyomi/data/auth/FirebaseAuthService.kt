@@ -45,6 +45,28 @@ class FirebaseAuthService {
         }
     }
 
+    suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
+        return try {
+            auth.sendPasswordResetEmail(email).await()
+            logcat(LogPriority.INFO) { "FirebaseAuthService: password reset email sent to $email" }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            logcat(LogPriority.ERROR) { "FirebaseAuthService: password reset failed: ${e.message}" }
+            Result.failure(e)
+        }
+    }
+
+    suspend fun confirmPasswordReset(code: String, newPassword: String): Result<Unit> {
+        return try {
+            auth.confirmPasswordReset(code, newPassword).await()
+            logcat(LogPriority.INFO) { "FirebaseAuthService: password reset confirmed" }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            logcat(LogPriority.ERROR) { "FirebaseAuthService: confirm password reset failed: ${e.message}" }
+            Result.failure(e)
+        }
+    }
+
     suspend fun signInWithGoogle(idToken: String): Result<String> {
         return try {
             val credential = GoogleAuthProvider.getCredential(idToken, null)
