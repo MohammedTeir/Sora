@@ -200,7 +200,7 @@ fun MoreScreen(
                 Text(
                     text = nameToDisplay,
                     color = Color.White,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    textAlign = TextAlign.Center,
                     fontSize = 40.sp,
                     fontWeight = FontWeight.Thin,
                     letterSpacing = (-2.0).sp,
@@ -213,7 +213,7 @@ fun MoreScreen(
                 Text(
                     text = "GLOBAL RANK: #421",
                     color = AccentBlue,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    textAlign = TextAlign.Center,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Thin,
                     letterSpacing = 2.8.sp
@@ -239,7 +239,7 @@ fun MoreScreen(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
                         .background(AccentBlue.copy(alpha = 0.03f))
-                        .androidx.compose.foundation.border(
+                        .border(
                             1.dp,
                             AccentBlue.copy(alpha = 0.1f),
                             RoundedCornerShape(12.dp)
@@ -273,7 +273,7 @@ fun MoreScreen(
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Thin,
                         letterSpacing = (-0.5).sp,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Right,
+                        textAlign = TextAlign.Right,
                         modifier = Modifier.padding(bottom = 16.dp, end = 8.dp)
                     )
 
@@ -454,7 +454,7 @@ fun MoreScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 32.dp),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                textAlign = TextAlign.Center,
             )
         }
     }
@@ -575,7 +575,7 @@ private fun ProfileStatCard(title: String, value: String) {
             .height(115.dp) // Proportional to original
             .clip(RoundedCornerShape(12.dp))
             .background(AccentBlue.copy(alpha = 0.03f))
-            .androidx.compose.foundation.border(
+            .border(
                 1.dp,
                 AccentBlue.copy(alpha = 0.2f),
                 RoundedCornerShape(12.dp)
@@ -656,11 +656,11 @@ private fun ReadingFlowItem(titlePrefix: String, titleHighlighted: String, timeS
                     .size(24.dp)
                     .clip(CircleShape)
                     .background(Color.Black)
-                    .androidx.compose.foundation.border(2.dp, Color.White, CircleShape),
+                    .border(2.dp, Color.White, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = androidx.compose.material.icons.Icons.Default.Check,
+                    imageVector = Icons.Default.Check,
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(16.dp)
@@ -682,13 +682,13 @@ private fun ReadingFlowItem(titlePrefix: String, titleHighlighted: String, timeS
                 .weight(1f)
                 .clip(RoundedCornerShape(12.dp))
                 .background(AccentBlue.copy(alpha = 0.03f))
-                .androidx.compose.foundation.border(1.dp, AccentBlue.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                .border(1.dp, AccentBlue.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
                 .padding(20.dp)
         ) {
             Text(
-                text = androidx.compose.ui.text.buildAnnotatedString {
-                    androidx.compose.ui.text.withStyle(
-                        style = androidx.compose.ui.text.SpanStyle(
+                text = buildAnnotatedString {
+                    withStyle(
+                        style = SpanStyle(
                             color = Color.White,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Thin
@@ -696,8 +696,8 @@ private fun ReadingFlowItem(titlePrefix: String, titleHighlighted: String, timeS
                     ) {
                         append(titlePrefix)
                     }
-                    androidx.compose.ui.text.withStyle(
-                        style = androidx.compose.ui.text.SpanStyle(
+                    withStyle(
+                        style = SpanStyle(
                             color = AccentBlue,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Thin
@@ -710,7 +710,7 @@ private fun ReadingFlowItem(titlePrefix: String, titleHighlighted: String, timeS
             Spacer(modifier = Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = androidx.compose.material.icons.Icons.Outlined.AccessTime,
+                    imageVector = Icons.Outlined.AccessTime,
                     contentDescription = null,
                     tint = Color(0xFF64748B),
                     modifier = Modifier.size(14.dp)
