@@ -116,12 +116,12 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
 
         Scaffold(
             snackbarHost = { SnackbarHost(snackbarHostState) },
-            containerColor = Color.Black
+            containerColor = MaterialTheme.colorScheme.background
         ) { contentPadding ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black)
+                    .background(MaterialTheme.colorScheme.background)
             ) {
                 // Background blurs
                 Box(
@@ -132,7 +132,7 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                         .requiredHeight(height = 364.dp)
                         .clip(shape = RoundedCornerShape(9999.dp))
                         .blur(radius = 120.dp)
-                        .background(color = Color(0xff2977ff).copy(alpha = 0.2f))
+                        .background(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
                 )
                 Box(
                     modifier = Modifier
@@ -142,7 +142,7 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                         .requiredHeight(height = 455.dp)
                         .clip(shape = RoundedCornerShape(9999.dp))
                         .blur(radius = 150.dp)
-                        .background(color = Color(0xff2977ff).copy(alpha = 0.1f))
+                        .background(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
                 )
 
                 Column(
@@ -179,8 +179,8 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                                     modifier = Modifier
                                                         .requiredSize(size = 128.dp)
                                                         .clip(shape = RoundedCornerShape(9999.dp))
-                                                        .background(color = Color(0xff0d0d0d))
-                                                        .border(border = BorderStroke(2.dp, Color(0xff2977ff).copy(alpha = 0.3f)), shape = RoundedCornerShape(9999.dp))
+                                                        .background(color = MaterialTheme.colorScheme.surfaceVariant)
+                                                        .border(border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)), shape = RoundedCornerShape(9999.dp))
                                                         .padding(all = 4.dp)
                                                         .shadow(elevation = 20.dp, shape = RoundedCornerShape(9999.dp))
                                                 ) {
@@ -200,12 +200,12 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                                     .align(alignment = Alignment.BottomEnd)
                                                     .offset(x = 8.dp, y = 8.dp)
                                                     .clip(shape = RoundedCornerShape(8.dp))
-                                                    .background(color = Color(0xff2977ff))
+                                                    .background(color = if (state.isLoading) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primary)
                                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                                             ) {
                                                 Text(
                                                     text = "NEW USER",
-                                                    color = Color.White,
+                                                    color = MaterialTheme.colorScheme.onPrimary,
                                                     textAlign = TextAlign.Center,
                                                     lineHeight = 1.5.em,
                                                     style = TextStyle(
@@ -224,10 +224,10 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                     Text(
                                         textAlign = TextAlign.Center,
                                         text = buildAnnotatedString {
-                                            withStyle(style = SpanStyle(color = Color(0xfff1f5f9), fontSize = 30.sp, fontWeight = FontWeight.Black)) { append("SORA ") }
-                                            withStyle(style = SpanStyle(color = Color(0xff2977ff), fontSize = 30.sp, fontWeight = FontWeight.Black)) { append("//") }
-                                            withStyle(style = SpanStyle(color = Color(0xfff1f5f9), fontSize = 30.sp, fontWeight = FontWeight.Black)) { append(" ") }
-                                            withStyle(style = SpanStyle(color = Color(0xff94a3b8), fontSize = 30.sp, fontWeight = FontWeight.Black)) { append("CREATE\nACCOUNT") }
+                                            withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 30.sp, fontWeight = FontWeight.Black)) { append("SORA ") }
+                                            withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, fontSize = 30.sp, fontWeight = FontWeight.Black)) { append("//") }
+                                            withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 30.sp, fontWeight = FontWeight.Black)) { append(" ") }
+                                            withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 30.sp, fontWeight = FontWeight.Black)) { append("CREATE\nACCOUNT") }
                                         },
                                         modifier = Modifier
                                             .requiredWidth(width = 224.dp)
@@ -251,12 +251,12 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                         .fillMaxWidth()
                                         .requiredHeight(height = 56.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(Color.White)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                                 ) {
                                     BasicTextField(
                                         value = fullName,
                                         onValueChange = { fullName = it },
-                                        textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
+                                        textStyle = TextStyle(fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface),
                                         singleLine = true,
                                         enabled = !state.isLoading,
                                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -268,7 +268,7 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                             if (fullName.isEmpty()) {
                                                 Text(
                                                     text = "Full Name",
-                                                    color = Color(0xff64748b),
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                     style = TextStyle(fontSize = 16.sp)
                                                 )
                                             }
@@ -285,7 +285,7 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                         Icon(
                                             imageVector = Icons.Outlined.Person,
                                             contentDescription = "Person",
-                                            tint = Color(0xff2977ff),
+                                            tint = MaterialTheme.colorScheme.primary,
                                             modifier = Modifier.size(24.dp)
                                         )
                                     }
@@ -297,12 +297,12 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                         .fillMaxWidth()
                                         .requiredHeight(height = 56.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(Color.White)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                                 ) {
                                     BasicTextField(
                                         value = email,
                                         onValueChange = { email = it },
-                                        textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
+                                        textStyle = TextStyle(fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface),
                                         singleLine = true,
                                         enabled = !state.isLoading,
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
@@ -314,7 +314,7 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                             if (email.isEmpty()) {
                                                 Text(
                                                     text = "Email Address",
-                                                    color = Color(0xff64748b),
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                     style = TextStyle(fontSize = 16.sp)
                                                 )
                                             }
@@ -331,7 +331,7 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                         Image(
                                             painter = painterResource(id = R.drawable.email_svg),
                                             contentDescription = "Email",
-                                            colorFilter = ColorFilter.tint(Color(0xff2977ff)),
+                                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
                                             modifier = Modifier.size(24.dp)
                                         )
                                     }
@@ -343,12 +343,12 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                         .fillMaxWidth()
                                         .requiredHeight(height = 56.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(Color.White)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                                 ) {
                                     BasicTextField(
                                         value = password,
                                         onValueChange = { password = it },
-                                        textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
+                                        textStyle = TextStyle(fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface),
                                         singleLine = true,
                                         enabled = !state.isLoading,
                                         visualTransformation = PasswordVisualTransformation(),
@@ -361,7 +361,7 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                             if (password.isEmpty()) {
                                                 Text(
                                                     text = "Password",
-                                                    color = Color(0xff64748b),
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                     style = TextStyle(fontSize = 16.sp)
                                                 )
                                             }
@@ -378,7 +378,7 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                         Image(
                                             painter = painterResource(id = R.drawable.lock_svg),
                                             contentDescription = "Lock",
-                                            colorFilter = ColorFilter.tint(Color(0xff2977ff)),
+                                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
                                             modifier = Modifier.size(24.dp)
                                         )
                                     }
@@ -390,12 +390,12 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                         .fillMaxWidth()
                                         .requiredHeight(height = 56.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(Color.White)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                                 ) {
                                     BasicTextField(
                                         value = confirmPassword,
                                         onValueChange = { confirmPassword = it },
-                                        textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
+                                        textStyle = TextStyle(fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface),
                                         singleLine = true,
                                         enabled = !state.isLoading,
                                         visualTransformation = PasswordVisualTransformation(),
@@ -411,7 +411,7 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                             if (confirmPassword.isEmpty()) {
                                                 Text(
                                                     text = "Confirm password",
-                                                    color = Color(0xff64748b),
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                     style = TextStyle(fontSize = 16.sp)
                                                 )
                                             }
@@ -428,7 +428,7 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                         Image(
                                             painter = painterResource(id = R.drawable.lock_svg),
                                             contentDescription = "Lock Confirm",
-                                            colorFilter = ColorFilter.tint(Color(0xff2977ff)),
+                                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
                                             modifier = Modifier.size(24.dp)
                                         )
                                     }
@@ -443,7 +443,7 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                     .fillMaxWidth()
                                     .requiredHeight(height = 56.dp)
                                     .clip(shape = RoundedCornerShape(16.dp))
-                                    .background(color = Color(0xff2977ff))
+                                    .background(color = MaterialTheme.colorScheme.primary)
                                     .clickable(enabled = !state.isLoading) {
                                         keyboardController?.hide()
                                         screenModel.signUp(email, password, confirmPassword, context)
@@ -452,13 +452,13 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                 if (state.isLoading) {
                                     CircularProgressIndicator(
                                         modifier = Modifier.size(24.dp),
-                                        color = Color.White,
+                                        color = MaterialTheme.colorScheme.onPrimary,
                                         strokeWidth = 2.dp
                                     )
                                 } else {
                                     Text(
                                         text = "SIGN UP",
-                                        color = Color.White,
+                                        color = MaterialTheme.colorScheme.onPrimary,
                                         textAlign = TextAlign.Center,
                                         lineHeight = 1.5.em,
                                         style = TextStyle(
@@ -471,7 +471,7 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                     Image(
                                         painter = painterResource(id = R.drawable.arrow_signup),
                                         contentDescription = "Sign Up",
-                                        colorFilter = ColorFilter.tint(Color.White)
+                                        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onPrimary)
                                     )
                                 }
                             }
@@ -484,12 +484,12 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                     .padding(vertical = 8.dp)
                             ) {
                                 Divider(
-                                    color = Color(0xff2977ff).copy(alpha = 0.1f),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f),
                                     modifier = Modifier.requiredHeight(height = 1.dp).weight(weight = 0.5f)
                                 )
                                 Text(
                                     text = "OR CONTINUE WITH",
-                                    color = Color(0xff94a3b8),
+                                    color = MaterialTheme.colorScheme.outlineVariant,
                                     lineHeight = 1.5.em,
                                     style = TextStyle(
                                         fontSize = 10.sp,
@@ -498,7 +498,7 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                     )
                                 )
                                 Divider(
-                                    color = Color(0xff2977ff).copy(alpha = 0.1f),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f),
                                     modifier = Modifier.requiredHeight(height = 1.dp).weight(weight = 0.5f)
                                 )
                             }
@@ -510,7 +510,7 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                     .fillMaxWidth()
                                     .requiredHeight(height = 56.dp)
                                     .clip(RoundedCornerShape(16.dp))
-                                    .border(1.dp, Color(0xff2977ff).copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
                                     .clickable(enabled = !state.isLoading) {
                                         keyboardController?.hide()
                                         screenModel.signInWithGoogle(activity)
@@ -528,7 +528,7 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text(
                                         text = "GOOGLE",
-                                        color = Color(0xfff1f5f9),
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         textAlign = TextAlign.Center,
                                         lineHeight = 1.5.em,
                                         style = TextStyle(
@@ -552,8 +552,8 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                 Text(
                                     textAlign = TextAlign.Center,
                                     text = buildAnnotatedString {
-                                        withStyle(style = SpanStyle(color = Color(0xff94a3b8), fontSize = 14.sp, fontWeight = FontWeight.Medium)) { append("Already have an account? ") }
-                                        withStyle(style = SpanStyle(color = Color(0xff2977ff), fontSize = 14.sp, fontWeight = FontWeight.Bold)) { append("Sign In") }
+                                        withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, fontWeight = FontWeight.Medium)) { append("Already have an account? ") }
+                                        withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, fontSize = 14.sp, fontWeight = FontWeight.Bold)) { append("Sign In") }
                                     },
                                     modifier = Modifier
                                         .wrapContentHeight(align = Alignment.CenterVertically)
@@ -568,21 +568,21 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                             ) {
                                 Text(
                                     text = "PRIVACY",
-                                    color = Color(0xff475569),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.Center,
                                     lineHeight = 1.5.em,
                                     style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                                 )
                                 Text(
                                     text = "TERMS",
-                                    color = Color(0xff475569),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.Center,
                                     lineHeight = 1.5.em,
                                     style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                                 )
                                 Text(
                                     text = "SUPPORT",
-                                    color = Color(0xff475569),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.Center,
                                     lineHeight = 1.5.em,
                                     style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
