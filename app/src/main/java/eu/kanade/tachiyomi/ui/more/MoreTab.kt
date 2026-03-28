@@ -125,7 +125,15 @@ private class MoreScreenModel(
     private var _downloadQueueState: MutableStateFlow<DownloadQueueState> = MutableStateFlow(DownloadQueueState.Stopped)
     val downloadQueueState: StateFlow<DownloadQueueState> = _downloadQueueState.asStateFlow()
 
-    private val _authState = MutableStateFlow(buildAuthState())
+    private val _authState = MutableStateFlow(
+        AuthState(
+            isLoggedIn = authPrefs.isLoggedIn().get(),
+            userDisplayName = authPrefs.userDisplayName().get(),
+            userEmail = authPrefs.userEmail().get(),
+            lastSyncDisplay = "",
+            isSyncing = syncPrefs.isSyncing().get(),
+        )
+    )
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
     init {
@@ -148,13 +156,13 @@ private class MoreScreenModel(
         // Observe auth preference changes to refresh state
         screenModelScope.launchIO {
             authPrefs.isLoggedIn().changes().collect {
-                _authState.value = buildAuthState()
+                _authState.value = fetchAuthState()
             }
         }
 
         // Refresh stats
         screenModelScope.launchIO {
-            _authState.value = buildAuthState()
+            _authState.value = fetchAuthState()
         }
     }
 
@@ -167,11 +175,11 @@ private class MoreScreenModel(
             authPrefs.userDisplayName().set("")
             authPrefs.lastSyncTime().set(0L)
             SyncWorker.cancelAllSync(context)
-            _authState.value = buildAuthState()
+            _authState.value = fetchAuthState()
         }
     }
 
-    private suspend fun buildAuthState(): AuthState {
+    private suspend fun fetchAuthState(): AuthState {
         val isLoggedIn = authPrefs.isLoggedIn().get()
         val lastSyncTime = authPrefs.lastSyncTime().get()
         
