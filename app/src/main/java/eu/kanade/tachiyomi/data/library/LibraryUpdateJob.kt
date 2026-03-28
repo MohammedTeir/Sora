@@ -303,10 +303,8 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
                                         failedUpdates.add(manga to errorMessage)
                                     }
                                 }
-                                // Delay between same-source updates to avoid rate limiting.
-                                // Sources often block rapid sequential requests; 10s spacing
-                                // keeps us well under typical rate-limit thresholds.
-                                delay(10_000)
+                                // Small delay between same-source requests to avoid rate limiting.
+                                delay(5_000)
                             }
                         }
                     }
