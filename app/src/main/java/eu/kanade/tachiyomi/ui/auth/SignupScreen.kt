@@ -123,28 +123,6 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background)
             ) {
-                // Background blurs
-                Box(
-                    modifier = Modifier
-                        .align(alignment = Alignment.TopStart)
-                        .offset(x = (-39).dp, y = (-91).dp)
-                        .requiredWidth(width = 156.dp)
-                        .requiredHeight(height = 364.dp)
-                        .clip(shape = RoundedCornerShape(9999.dp))
-                        .blur(radius = 120.dp)
-                        .background(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
-                )
-                Box(
-                    modifier = Modifier
-                        .align(alignment = Alignment.BottomEnd)
-                        .offset(x = 39.dp, y = 91.dp)
-                        .requiredWidth(width = 195.dp)
-                        .requiredHeight(height = 455.dp)
-                        .clip(shape = RoundedCornerShape(9999.dp))
-                        .blur(radius = 150.dp)
-                        .background(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.03f))
-                )
-
                 Column(
                     modifier = Modifier
                         .fillMaxSize()

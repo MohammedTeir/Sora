@@ -47,6 +47,10 @@ class AuthScreenModel(
             mutableState.update { it.copy(errorMessage = "Email and password cannot be empty") }
             return
         }
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            mutableState.update { it.copy(errorMessage = "Please enter a valid email address") }
+            return
+        }
 
         screenModelScope.launch {
             mutableState.update { it.copy(isLoading = true, errorMessage = null) }
@@ -72,6 +76,10 @@ class AuthScreenModel(
         when {
             email.isBlank() || password.isBlank() -> {
                 mutableState.update { it.copy(errorMessage = "All fields are required") }
+                return
+            }
+            !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> {
+                mutableState.update { it.copy(errorMessage = "Please enter a valid email address") }
                 return
             }
             password != confirmPassword -> {
@@ -107,6 +115,10 @@ class AuthScreenModel(
     fun sendPasswordResetEmail(email: String) {
         if (email.isBlank()) {
             mutableState.update { it.copy(errorMessage = "Email cannot be empty") }
+            return
+        }
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            mutableState.update { it.copy(errorMessage = "Please enter a valid email address") }
             return
         }
 
@@ -192,6 +204,7 @@ class AuthScreenModel(
     private fun friendlyAuthError(e: Throwable): String {
         val msg = e.message ?: return "Authentication failed"
         return when {
+            "validation_failed" in msg -> "Invalid email or password format."
             "JWT expired" in msg -> "Session expired. Please sign in again."
             "Invalid login credentials" in msg -> "Incorrect email or password."
             "User already registered" in msg -> "An account with this email already exists."

@@ -96,28 +96,6 @@ class ResetPasswordStep3Screen(private val oobCode: String) : Screen {
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background)
             ) {
-                // Blurred Background Elements
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = 80.dp, y = 0.dp)
-                        .fillMaxHeight()
-                        .width(320.dp)
-                        .clip(RoundedCornerShape(9999.dp))
-                        .blur(120.dp)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
-                )
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .offset(x = (-80).dp, y = 0.dp)
-                        .fillMaxHeight()
-                        .width(256.dp)
-                        .clip(RoundedCornerShape(9999.dp))
-                        .blur(100.dp)
-                        .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.03f))
-                )
-
                 // Foreground Content
                 Column(
                     modifier = Modifier
