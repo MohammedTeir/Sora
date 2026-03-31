@@ -46,16 +46,21 @@ class SupabaseAuthService {
         }
     }
 
-    suspend fun signUp(email: String, password: String): Result<String> {
+    suspend fun signUp(email: String, password: String): Result<Pair<String, Boolean>> {
         return try {
-            auth.signUpWith(Email) {
+            val user = auth.signUpWith(Email) {
                 this.email = email
                 this.password = password
             }
-            val uid = auth.currentUserOrNull()?.id
-                ?: return Result.failure(Exception("Sign up succeeded but user is null"))
-            logcat(LogPriority.INFO) { "SupabaseAuthService: created user $uid" }
-            Result.success(uid)
+            // If currentUserOrNull() is not null, the user is fully logged in (no email verification required).
+            // If it is null, but user?.id is present, it means email verification is pending.
+            val sessionUser = auth.currentUserOrNull()
+            val uid = sessionUser?.id ?: user?.id
+                ?: return Result.failure(Exception("Sign up succeeded but user ID is missing"))
+            
+            val isFullyLoggedIn = sessionUser != null
+            logcat(LogPriority.INFO) { "SupabaseAuthService: created user $uid. Logged in: $isFullyLoggedIn" }
+            Result.success(Pair(uid, isFullyLoggedIn))
         } catch (e: Exception) {
             logcat(LogPriority.ERROR) { "SupabaseAuthService: sign up failed: ${e.message}" }
             Result.failure(e)

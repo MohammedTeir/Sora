@@ -35,6 +35,7 @@ class AuthScreenModel(
     sealed interface Event {
         data object LoginSuccess : Event
         data object SignUpSuccess : Event
+        data object SignUpSuccessRequireVerification : Event
         data class PasswordResetEmailSent(val email: String) : Event
         data object PasswordResetSuccess : Event
         data object Dismissed : Event
@@ -95,10 +96,22 @@ class AuthScreenModel(
         screenModelScope.launch {
             mutableState.update { it.copy(isLoading = true, errorMessage = null) }
             authService.signUp(email.trim(), password)
-                .onSuccess { userId ->
-                    persistAuthState(userId, email.trim())
-                    triggerPostLoginSync(context)
-                    _events.send(Event.SignUpSuccess)
+                .onSuccess { (userId, isFullyLoggedIn) ->
+                    if (isFullyLoggedIn) {
+                        persistAuthState(userId, email.trim())
+                        triggerPostLoginSync(context)
+                        mutableState.update { it.copy(isLoading = false) }
+                        _events.send(Event.SignUpSuccess)
+                    } else {
+                        // Email verification required
+                        mutableState.update { 
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = "Signup successful. Please check your email to verify your account."
+                            ) 
+                        }
+                        _events.send(Event.SignUpSuccessRequireVerification)
+                    }
                 }
                 .onFailure { e ->
                     logcat(LogPriority.WARN) { "AuthScreenModel: sign up failed: ${e.message}" }

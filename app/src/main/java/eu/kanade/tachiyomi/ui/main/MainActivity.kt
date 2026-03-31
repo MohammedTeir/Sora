@@ -107,6 +107,8 @@ import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
 import tachiyomi.domain.source.service.SourceManager
 import uy.kohesive.injekt.injectLazy
+import eu.kanade.tachiyomi.data.supabase.SupabaseProvider
+import io.github.jan.supabase.gotrue.handleDeeplinks
 
 class MainActivity : BaseActivity() {
 
@@ -131,6 +133,7 @@ class MainActivity : BaseActivity() {
         val isLaunch = savedInstanceState == null
 
         super.onCreate(savedInstanceState)
+        SupabaseProvider.client.handleDeeplinks(intent)
 
         // Do not let the launcher create a new activity http://stackoverflow.com/questions/16283079
         if (!isTaskRoot) {
@@ -300,7 +303,10 @@ class MainActivity : BaseActivity() {
                 componentActivity.addOnNewIntentListener(consumer)
                 awaitClose { componentActivity.removeOnNewIntentListener(consumer) }
             }
-                .collectLatest { handleIntentAction(it, navigator) }
+                .collectLatest {
+                    SupabaseProvider.client.handleDeeplinks(it)
+                    handleIntentAction(it, navigator)
+                }
         }
     }
 
