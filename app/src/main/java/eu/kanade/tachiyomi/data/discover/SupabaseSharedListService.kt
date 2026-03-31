@@ -163,16 +163,22 @@ class SupabaseSharedListService(
         }
     }
 
+    @Serializable
+    private data class UpdateImportCount(
+        @SerialName("import_count") val importCount: Long
+    )
+
     suspend fun incrementImportCount(listId: String) {
         try {
-            // Use RPC or raw update to increment
-            client.from("shared_lists")
-                .update({
-                    // Fetch current, increment, set — PostgREST doesn't have atomic increment
-                    // So we use a small SQL function instead
-                }) {
+            val row = client.from("shared_lists")
+                .select { filter { eq("id", listId) } }
+                .decodeSingleOrNull<SharedListRow>()
+                
+            if (row != null) {
+                client.from("shared_lists").update(UpdateImportCount(row.importCount + 1)) {
                     filter { eq("id", listId) }
                 }
+            }
         } catch (e: Exception) {
             logcat(LogPriority.WARN) { "SupabaseSharedListService: incrementImportCount failed: ${e.message}" }
         }

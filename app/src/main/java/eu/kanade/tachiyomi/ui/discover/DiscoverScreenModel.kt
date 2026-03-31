@@ -141,13 +141,18 @@ class DiscoverScreenModel(
         screenModelScope.launch {
             mutableState.update { it.copy(isUploadingList = true) }
             try {
-                // 1. Create a new category named after the list
-                createCategoryWithName.await(sharedList.title)
+                // 1. Check if category already exists, saving us from duplicate rows
+                val initialCategories = getCategories.await()
+                var targetCategory = initialCategories.find { it.name.equals(sharedList.title, ignoreCase = true) }
 
-                // 2. Find the newly created category by name
-                val allCategories = getCategories.await()
-                val newCategory = allCategories.find { it.name == sharedList.title }
-                if (newCategory == null) {
+                // 2. If it doesn't exist, create it
+                if (targetCategory == null) {
+                    createCategoryWithName.await(sharedList.title)
+                    val updatedCategories = getCategories.await()
+                    targetCategory = updatedCategories.find { it.name.equals(sharedList.title, ignoreCase = true) }
+                }
+
+                if (targetCategory == null) {
                     mutableState.update {
                         it.copy(
                             isUploadingList = false,
@@ -172,11 +177,13 @@ class DiscoverScreenModel(
                         if (libMatch != null) {
                             // Already in library — just add to the new category
                             val existing = libMatch.categories
-                            setMangaCategories.await(
-                                libMatch.manga.id,
-                                (existing + newCategory.id).distinct(),
-                            )
-                            importedCount++
+                            if (!existing.contains(targetCategory.id)) {
+                                setMangaCategories.await(
+                                    libMatch.manga.id,
+                                    (existing + targetCategory.id).distinct(),
+                                )
+                                importedCount++
+                            }
                             continue
                         }
 
@@ -205,7 +212,7 @@ class DiscoverScreenModel(
                             // Add to the import category
                             setMangaCategories.await(
                                 localManga.id,
-                                listOf(newCategory.id),
+                                listOf(targetCategory.id),
                             )
                             importedCount++
                         } else {

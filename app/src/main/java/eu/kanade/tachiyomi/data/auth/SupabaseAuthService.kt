@@ -6,6 +6,8 @@ import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.Email
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import logcat.LogPriority
 import logcat.logcat
 
@@ -31,6 +33,21 @@ class SupabaseAuthService {
     fun getUserDisplayName(): String? =
         auth.currentUserOrNull()?.userMetadata
             ?.get("full_name")?.toString()?.removeSurrounding("\"")
+
+    fun getUserAvatarUrl(): String? =
+        auth.currentUserOrNull()?.userMetadata
+            ?.get("avatar_url")?.toString()?.removeSurrounding("\"")
+
+    suspend fun updateUserAvatar(url: String): Result<Unit> {
+        return try {
+            auth.updateUser { data = buildJsonObject { put("avatar_url", url) } }
+            logcat(LogPriority.INFO) { "SupabaseAuthService: avatar updated" }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            logcat(LogPriority.ERROR) { "SupabaseAuthService: update avatar failed: ${e.message}" }
+            Result.failure(e)
+        }
+    }
 
     suspend fun signIn(email: String, password: String): Result<String> {
         return try {

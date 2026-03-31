@@ -77,14 +77,8 @@ private fun LibraryRegularToolbar(
     AppBar(
         titleContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Outlined.AutoStories,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = "Sora",
+                    text = "Library",
                     fontWeight = FontWeight.Bold,
                     fontSize = 22.sp,
                     maxLines = 1,

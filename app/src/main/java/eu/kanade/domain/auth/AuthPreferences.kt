@@ -18,5 +18,7 @@ class AuthPreferences(
 
     fun autoSync() = preferenceStore.getBoolean("auth_auto_sync_enabled", true)
 
+    fun profilePicUrl() = preferenceStore.getString("auth_profile_pic_url", "")
+
     fun isGuest() = preferenceStore.getBoolean("auth_is_guest", false)
 }

@@ -12,6 +12,7 @@ import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -131,6 +132,7 @@ class MainActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val isLaunch = savedInstanceState == null
+        val splashScreen = installSplashScreen()
 
         super.onCreate(savedInstanceState)
         SupabaseProvider.client.handleDeeplinks(intent)
@@ -143,8 +145,13 @@ class MainActivity : BaseActivity() {
 
         setComposeContent {
             var didMigration by remember { mutableStateOf<Boolean?>(null) }
+            var isReady by remember { mutableStateOf(false) }
+            
+            splashScreen.setKeepOnScreenCondition { !isReady }
+            
             LaunchedEffect(Unit) {
                 didMigration = Migrator.awaitAndRelease()
+                isReady = true
             }
 
             val context = LocalContext.current

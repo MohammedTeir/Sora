@@ -11,7 +11,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
+import java.io.File
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import io.github.jan.supabase.storage.storage
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CloudSync
 import androidx.compose.material.icons.outlined.Sync
@@ -114,14 +124,35 @@ class SyncSettingsScreen : Screen() {
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // ─── Status Card ───────────────────────────────────────────────
-                Icon(
-                    imageVector = Icons.Outlined.CloudSync,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .align(Alignment.CenterHorizontally),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
+                val context = LocalContext.current
+                val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+                    if (uri != null) {
+                        screenModel.setProfilePicUrl(context, uri)
+                    }
+                }
+
+                if (state.profilePicUrl.isNotEmpty()) {
+                    AsyncImage(
+                        model = state.profilePicUrl,
+                        contentDescription = "Profile Picture",
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clip(CircleShape)
+                            .align(Alignment.CenterHorizontally)
+                            .clickable { launcher.launch("image/*") },
+                        contentScale = ContentScale.Crop,
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.CloudSync,
+                        contentDescription = "Set Profile Picture",
+                        modifier = Modifier
+                            .size(72.dp)
+                            .align(Alignment.CenterHorizontally)
+                            .clickable { launcher.launch("image/*") },
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = state.userEmail,
@@ -371,6 +402,7 @@ private class SyncSettingsScreenModel(
 ) : StateScreenModel<SyncSettingsScreenModel.State>(
     State(
         userEmail = "",
+        profilePicUrl = "",
         lastSyncDisplay = "Never synced",
         isSyncing = false,
         syncOnStartup = true,
@@ -388,9 +420,19 @@ private class SyncSettingsScreenModel(
     val events: Flow<Event> = _events.receiveAsFlow()
 
     init {
+        val savedPicUrl = authPrefs.profilePicUrl().get()
+        val finalPicUrl = if (savedPicUrl.isEmpty() && authService.isLoggedIn()) {
+            val netUrl = authService.getUserAvatarUrl()
+            if (!netUrl.isNullOrEmpty()) {
+                authPrefs.profilePicUrl().set(netUrl)
+                netUrl
+            } else ""
+        } else savedPicUrl
+
         mutableState.update {
             it.copy(
                 userEmail = authPrefs.userEmail().get(),
+                profilePicUrl = finalPicUrl,
                 lastSyncDisplay = formatLastSync(authPrefs.lastSyncTime().get()),
                 syncOnStartup = syncPrefs.syncOnStartup().get(),
                 autoSync = authPrefs.autoSync().get(),
@@ -406,6 +448,7 @@ private class SyncSettingsScreenModel(
 
     data class State(
         val userEmail: String,
+        val profilePicUrl: String,
         val lastSyncDisplay: String,
         val isSyncing: Boolean,
         val syncOnStartup: Boolean,
@@ -422,6 +465,49 @@ private class SyncSettingsScreenModel(
         data object SyncSuccess : Event
         data class SyncError(val message: String) : Event
         data object SignedOut : Event
+    }
+
+    fun setProfilePicUrl(context: android.content.Context, uri: android.net.Uri) {
+        screenModelScope.launchIO {
+            try {
+                val file = File(context.filesDir, "profile_pic.jpg")
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    file.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                
+                // Save locally first for immediate UI update
+                authPrefs.profilePicUrl().set(file.absolutePath)
+                mutableState.update { it.copy(profilePicUrl = file.absolutePath) }
+
+                // Upload to Supabase Storage if logged in
+                if (authService.isLoggedIn()) {
+                    val uid = authService.getUserId()
+                    if (uid != null) {
+                        try {
+                            val bucket = eu.kanade.tachiyomi.data.supabase.SupabaseProvider.client.storage.from("avatars")
+                            val path = "$uid/profile_pic.jpg"
+                            bucket.upload(path, file.readBytes()) {
+                                upsert = true
+                            }
+                            val publicUrl = bucket.publicUrl(path)
+
+                            // Update user metadata in Auth
+                            authService.updateUserAvatar(publicUrl)
+                            
+                            // Save new public URL to preferences
+                            authPrefs.profilePicUrl().set(publicUrl)
+                            mutableState.update { it.copy(profilePicUrl = publicUrl) }
+                        } catch (e: Exception) {
+                            logcat(LogPriority.ERROR) { "Error uploading profile picture to Supabase: ${e.message}" }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR) { "Error saving profile picture: ${e.message}" }
+            }
+        }
     }
 
     fun syncNow() {
