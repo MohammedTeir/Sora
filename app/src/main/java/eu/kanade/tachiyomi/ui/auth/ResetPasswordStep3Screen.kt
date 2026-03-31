@@ -277,7 +277,7 @@ class ResetPasswordStep3Screen(private val oobCode: String) : Screen {
                     // Update Password Button
                     Button(
                         onClick = {
-                            screenModel.confirmPasswordReset(oobCode, newPassword, confirmPassword)
+                            screenModel.confirmPasswordReset(newPassword, confirmPassword)
                         },
                         modifier = Modifier
                             .fillMaxWidth()

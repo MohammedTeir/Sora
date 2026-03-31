@@ -75,7 +75,7 @@ import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
 import eu.kanade.tachiyomi.ui.deeplink.DeepLinkScreen
 import eu.kanade.domain.auth.AuthPreferences
-import eu.kanade.tachiyomi.data.auth.FirebaseAuthService
+import eu.kanade.tachiyomi.data.auth.SupabaseAuthService
 import eu.kanade.tachiyomi.ui.auth.LoginScreen
 import eu.kanade.tachiyomi.ui.home.HomeScreen
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
@@ -118,7 +118,7 @@ class MainActivity : BaseActivity() {
     private val chapterCache: ChapterCache by injectLazy()
 
     private val getIncognitoState: GetIncognitoState by injectLazy()
-    private val authService: FirebaseAuthService by injectLazy()
+    private val authService: SupabaseAuthService by injectLazy()
     private val authPreferences: AuthPreferences by injectLazy()
 
     private var navigator: Navigator? = null
@@ -353,8 +353,8 @@ class MainActivity : BaseActivity() {
                 && navigator.lastItem is HomeScreen
             ) {
                 // Returning user, not authenticated: show auth gate
-                // Checks both Firebase Auth (real-time) and AuthPreferences (persisted)
-                // to avoid forcing re-login when Firebase Auth is still reinitializing.
+                // Checks both Supabase Auth (real-time) and AuthPreferences (persisted)
+                // to avoid forcing re-login when Supabase Auth session is restoring.
                 navigator.push(LoginScreen(fromStartup = true))
             }
         }

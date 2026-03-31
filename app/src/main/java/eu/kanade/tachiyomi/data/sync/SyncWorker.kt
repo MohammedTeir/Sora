@@ -10,7 +10,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import eu.kanade.tachiyomi.data.auth.FirebaseAuthService
+import eu.kanade.tachiyomi.data.auth.SupabaseAuthService
 import logcat.LogPriority
 import logcat.logcat
 import uy.kohesive.injekt.Injekt
@@ -23,8 +23,8 @@ class SyncWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val syncService: SyncService = Injekt.get()
-        val authService: FirebaseAuthService = Injekt.get()
+        val syncService: SupabaseSyncService = Injekt.get()
+        val authService: SupabaseAuthService = Injekt.get()
 
         if (!authService.isLoggedIn()) {
             logcat(LogPriority.INFO) { "SyncWorker: user not logged in, skipping" }

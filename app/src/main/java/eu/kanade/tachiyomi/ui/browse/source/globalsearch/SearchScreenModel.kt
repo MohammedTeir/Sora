@@ -36,7 +36,7 @@ import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.manga.interactor.NetworkToLocalManga
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.source.service.SourceManager
-import eu.kanade.tachiyomi.data.discover.SharedListService
+import eu.kanade.tachiyomi.data.discover.SupabaseSharedListService
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
@@ -55,7 +55,7 @@ abstract class SearchScreenModel(
     private val getManga: GetManga = Injekt.get(),
     private val preferences: SourcePreferences = Injekt.get(),
     private val getLibraryManga: GetLibraryManga = Injekt.get(),
-    private val sharedListService: SharedListService = Injekt.get(),
+    private val sharedListService: SupabaseSharedListService = Injekt.get(),
 ) : StateScreenModel<SearchScreenModel.State>(initialState) {
 
     private val coroutineDispatcher = Executors.newFixedThreadPool(5).asCoroutineDispatcher()
