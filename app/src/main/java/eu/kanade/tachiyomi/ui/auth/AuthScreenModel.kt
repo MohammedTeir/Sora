@@ -207,10 +207,18 @@ class AuthScreenModel(
         mutableState.update { it.copy(errorMessage = null) }
     }
 
+    fun loginAsGuest() {
+        authPrefs.isGuest().set(true)
+        screenModelScope.launch {
+            _events.send(Event.Dismissed)
+        }
+    }
+
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
     private fun persistAuthState(userId: String, email: String) {
         authPrefs.isLoggedIn().set(true)
+        authPrefs.isGuest().set(false)
         authPrefs.userId().set(userId)
         authPrefs.userEmail().set(email)
         authPrefs.userDisplayName().set(authService.getUserDisplayName() ?: "")

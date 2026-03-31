@@ -132,7 +132,7 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                         .requiredHeight(height = 364.dp)
                         .clip(shape = RoundedCornerShape(9999.dp))
                         .blur(radius = 120.dp)
-                        .background(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                        .background(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
                 )
                 Box(
                     modifier = Modifier
@@ -142,7 +142,7 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                         .requiredHeight(height = 455.dp)
                         .clip(shape = RoundedCornerShape(9999.dp))
                         .blur(radius = 150.dp)
-                        .background(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                        .background(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.03f))
                 )
 
                 Column(
@@ -167,74 +167,18 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Box(
-                                        modifier = Modifier.padding(bottom = 24.dp)
-                                    ) {
-                                        Box(
-                                            modifier = Modifier.requiredSize(size = 128.dp)
-                                        ) {
-                                            Column {
-                                                Column(
-                                                    verticalArrangement = Arrangement.Center,
-                                                    modifier = Modifier
-                                                        .requiredSize(size = 128.dp)
-                                                        .clip(shape = RoundedCornerShape(9999.dp))
-                                                        .background(color = MaterialTheme.colorScheme.surfaceVariant)
-                                                        .border(border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)), shape = RoundedCornerShape(9999.dp))
-                                                        .padding(all = 4.dp)
-                                                        .shadow(elevation = 20.dp, shape = RoundedCornerShape(9999.dp))
-                                                ) {
-                                                    Image(
-                                                        painter = painterResource(id = R.drawable.mascot),
-                                                        contentDescription = "Mascot",
-                                                        contentScale = ContentScale.Crop,
-                                                        modifier = Modifier
-                                                            .fillMaxSize()
-                                                            .clip(shape = RoundedCornerShape(9999.dp))
-                                                    )
-                                                }
-                                            }
-                                            Column(
-                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                                modifier = Modifier
-                                                    .align(alignment = Alignment.BottomEnd)
-                                                    .offset(x = 8.dp, y = 8.dp)
-                                                    .clip(shape = RoundedCornerShape(8.dp))
-                                                    .background(color = if (state.isLoading) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primary)
-                                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                                            ) {
-                                                Text(
-                                                    text = "NEW USER",
-                                                    color = MaterialTheme.colorScheme.onPrimary,
-                                                    textAlign = TextAlign.Center,
-                                                    lineHeight = 1.5.em,
-                                                    style = TextStyle(
-                                                        fontSize = 10.sp,
-                                                        fontWeight = FontWeight.Black,
-                                                        letterSpacing = (-0.5).sp
-                                                    ),
-                                                    modifier = Modifier
-                                                        .requiredWidth(width = 49.dp)
-                                                        .wrapContentHeight(align = Alignment.CenterVertically)
-                                                )
-                                            }
-                                        }
-                                    }
-                                    
                                     Text(
                                         textAlign = TextAlign.Center,
                                         text = buildAnnotatedString {
-                                            withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 30.sp, fontWeight = FontWeight.Black)) { append("SORA ") }
-                                            withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, fontSize = 30.sp, fontWeight = FontWeight.Black)) { append("//") }
-                                            withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 30.sp, fontWeight = FontWeight.Black)) { append(" ") }
-                                            withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 30.sp, fontWeight = FontWeight.Black)) { append("CREATE\nACCOUNT") }
+                                            withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 28.sp, fontWeight = FontWeight.Black)) { append("SORA ") }
+                                            withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, fontSize = 28.sp, fontWeight = FontWeight.Black)) { append("//\n") }
+                                            withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 28.sp, fontWeight = FontWeight.Black)) { append("CREATE ACCOUNT") }
                                         },
                                         modifier = Modifier
-                                            .requiredWidth(width = 224.dp)
+                                            .fillMaxWidth()
                                             .wrapContentHeight(align = Alignment.CenterVertically)
                                     )
                                 }
-                            }
                         }
 
                         Column(
@@ -268,7 +212,7 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                             if (fullName.isEmpty()) {
                                                 Text(
                                                     text = "Full Name",
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                                     style = TextStyle(fontSize = 16.sp)
                                                 )
                                             }
@@ -314,7 +258,7 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                             if (email.isEmpty()) {
                                                 Text(
                                                     text = "Email Address",
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                                     style = TextStyle(fontSize = 16.sp)
                                                 )
                                             }
@@ -361,7 +305,7 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                             if (password.isEmpty()) {
                                                 Text(
                                                     text = "Password",
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                                     style = TextStyle(fontSize = 16.sp)
                                                 )
                                             }
@@ -411,7 +355,7 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                             if (confirmPassword.isEmpty()) {
                                                 Text(
                                                     text = "Confirm password",
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                                     style = TextStyle(fontSize = 16.sp)
                                                 )
                                             }
@@ -443,7 +387,17 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                                     .fillMaxWidth()
                                     .requiredHeight(height = 56.dp)
                                     .clip(shape = RoundedCornerShape(16.dp))
-                                    .background(color = MaterialTheme.colorScheme.primary)
+                                    .background(
+                                        brush = if (state.isLoading) 
+                                            androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.surfaceVariant) 
+                                        else 
+                                            androidx.compose.ui.graphics.Brush.linearGradient(
+                                                colors = listOf(
+                                                    MaterialTheme.colorScheme.primary,
+                                                    MaterialTheme.colorScheme.inversePrimary
+                                                )
+                                            )
+                                    )
                                     .clickable(enabled = !state.isLoading) {
                                         keyboardController?.hide()
                                         screenModel.signUp(email, password, confirmPassword, context)
@@ -595,3 +549,5 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
         }
     }
 }
+}
+

@@ -84,7 +84,7 @@ data class ResetPasswordStep2Screen(val email: String) : Screen {
                     .size(500.dp)
                     .clip(RoundedCornerShape(9999.dp))
                     .blur(120.dp)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
             )
 
             Column(
@@ -231,7 +231,14 @@ data class ResetPasswordStep2Screen(val email: String) : Screen {
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clip(RoundedCornerShape(12.dp))
-                                            .background(MaterialTheme.colorScheme.primary)
+                                            .background(
+                                                brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                                    colors = listOf(
+                                                        MaterialTheme.colorScheme.primary,
+                                                        MaterialTheme.colorScheme.inversePrimary
+                                                    )
+                                                )
+                                            )
                                             .clickable {
                                                 val intent = Intent(Intent.ACTION_MAIN).apply {
                                                     addCategory(Intent.CATEGORY_APP_EMAIL)
@@ -241,6 +248,7 @@ data class ResetPasswordStep2Screen(val email: String) : Screen {
                                                 context.startActivity(Intent.createChooser(intent, "Open Email App"))
                                             }
                                             .padding(vertical = 20.dp)
+                                            .shadow(30.dp, RoundedCornerShape(12.dp))
                                     ) {
                                         Text(
                                             text = "Open Email App",
@@ -375,11 +383,6 @@ data class ResetPasswordStep2Screen(val email: String) : Screen {
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(24.dp)
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.soramascot), // Custom logo
-                    contentDescription = "Sora Logo",
-                    modifier = Modifier.size(32.dp).clip(RoundedCornerShape(8.dp))
-                )
                 Text(
                     text = "SORA RESET",
                     color = MaterialTheme.colorScheme.primary,

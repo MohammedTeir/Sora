@@ -350,6 +350,7 @@ class MainActivity : BaseActivity() {
             } else if (preferences.shownOnboardingFlow().get()
                 && !authService.isLoggedIn()
                 && !authPreferences.isLoggedIn().get()
+                && !authPreferences.isGuest().get()
                 && navigator.lastItem is HomeScreen
             ) {
                 // Returning user, not authenticated: show auth gate

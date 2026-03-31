@@ -143,7 +143,7 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                         .requiredSize(size = 384.dp)
                         .clip(shape = RoundedCornerShape(9999.dp))
                         .blur(radius = 120.dp)
-                        .background(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                        .background(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
                 )
                 Box(
                     modifier = Modifier
@@ -152,7 +152,7 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                         .requiredSize(size = 500.dp)
                         .clip(shape = RoundedCornerShape(9999.dp))
                         .blur(radius = 150.dp)
-                        .background(color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.05f))
+                        .background(color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.03f))
                 )
 
                 // Main Content Scrollable Column
@@ -236,14 +236,7 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                 verticalArrangement = Arrangement.spacedBy(40.dp, Alignment.Top),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(shape = RoundedCornerShape(24.dp))
-                                    .background(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
-                                    .border(
-                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
-                                        shape = RoundedCornerShape(24.dp)
-                                    )
-                                    .padding(all = 32.dp)
-                                    .shadow(elevation = 40.dp, shape = RoundedCornerShape(24.dp))
+                                    .padding(horizontal = 8.dp) // Removed the jarring white background box here
                             ) {
                                 Column(
                                     verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.Top),
@@ -259,15 +252,15 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
                                             Text(
-                                                text = "IDENTITY",
+                                                text = "Email Address", // Changed from "IDENTITY"
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 lineHeight = 1.5.em,
                                                 style = TextStyle(
-                                                    fontSize = 10.sp,
+                                                    fontSize = 12.sp,
                                                     fontWeight = FontWeight.Medium,
                                                     letterSpacing = 1.sp
                                                 ),
-                                                modifier = Modifier.wrapContentHeight(align = Alignment.CenterVertically)
+                                                modifier = Modifier.wrapContentHeight(align = Alignment.CenterVertically).padding(bottom = 8.dp)
                                             )
                                         }
                                         Box(
@@ -299,12 +292,12 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                                         keyboardType = KeyboardType.Email,
                                                         imeAction = ImeAction.Next,
                                                     ),
-                                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurfaceVariant),
+                                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                                                     decorationBox = { innerTextField ->
                                                         if (email.isEmpty()) {
                                                             Text(
-                                                                text = "Email Address",
-                                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                text = "your@email.com",
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                                                 style = TextStyle(
                                                                     fontSize = 16.sp,
                                                                     fontWeight = FontWeight.Normal
@@ -335,14 +328,14 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                         Row(
                                             horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.Bottom,
-                                            modifier = Modifier.fillMaxWidth()
+                                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                                         ) {
                                             Text(
-                                                text = "SECURITY KEY",
+                                                text = "Password", // Changed from "SECURITY KEY"
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 lineHeight = 1.5.em,
                                                 style = TextStyle(
-                                                    fontSize = 10.sp,
+                                                    fontSize = 12.sp,
                                                     fontWeight = FontWeight.Medium,
                                                     letterSpacing = 1.sp
                                                 )
@@ -395,12 +388,12 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                                             screenModel.login(email, password, context)
                                                         },
                                                     ),
-                                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurfaceVariant),
+                                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                                                     decorationBox = { innerTextField ->
                                                         if (password.isEmpty()) {
                                                             Text(
-                                                                text = "Password",
-                                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                text = "••••••••",
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                                                 style = TextStyle(
                                                                     fontSize = 16.sp,
                                                                     fontWeight = FontWeight.Normal
@@ -431,7 +424,17 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clip(shape = RoundedCornerShape(24.dp))
-                                            .background(color = if (state.isLoading) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primary)
+                                            .background(
+                                                brush = if (state.isLoading) 
+                                                    androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.surfaceVariant) 
+                                                else 
+                                                    androidx.compose.ui.graphics.Brush.linearGradient(
+                                                        colors = listOf(
+                                                            MaterialTheme.colorScheme.primary,
+                                                            MaterialTheme.colorScheme.inversePrimary
+                                                        )
+                                                    )
+                                            )
                                             .clickable(enabled = !state.isLoading) {
                                                 keyboardController?.hide()
                                                 screenModel.login(email, password, context)
@@ -562,26 +565,24 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                     )
                                 }
                                 
-                                if (!fromStartup) {
-                                    Row(
-                                        horizontalArrangement = Arrangement.Center,
-                                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                                    ) {
-                                        Text(
-                                            text = "CONTINUE AS GUEST",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            textAlign = TextAlign.Center,
-                                            lineHeight = 1.5.em,
-                                            style = TextStyle(
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                letterSpacing = 1.sp
-                                            ),
-                                            modifier = Modifier.clickable {
-                                                navigator.pop()
-                                            }
-                                        )
-                                    }
+                                Row(
+                                    horizontalArrangement = Arrangement.Center,
+                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                                ) {
+                                    Text(
+                                        text = "CONTINUE AS GUEST",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center,
+                                        lineHeight = 1.5.em,
+                                        style = TextStyle(
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            letterSpacing = 1.sp
+                                        ),
+                                        modifier = Modifier.clickable {
+                                            screenModel.loginAsGuest()
+                                        }
+                                    )
                                 }
 
                                 Row(
