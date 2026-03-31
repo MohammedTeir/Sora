@@ -56,6 +56,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import eu.kanade.tachiyomi.R
+import eu.kanade.tachiyomi.ui.profile.avatarForEmail
 import eu.kanade.tachiyomi.ui.more.DownloadQueueState
 import tachiyomi.core.common.Constants
 import tachiyomi.presentation.core.components.material.Scaffold
@@ -142,7 +143,7 @@ fun MoreScreen(
                         .padding(horizontal = 16.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // Avatar
+                    // Avatar — deterministic based on email
                     Box(
                         modifier = Modifier
                             .size(52.dp)
@@ -152,7 +153,7 @@ fun MoreScreen(
                             .padding(2.dp)
                     ) {
                         Image(
-                            painter = painterResource(id = R.drawable.profileavatar),
+                            painter = painterResource(id = avatarForEmail(userEmail)),
                             contentDescription = "Profile Avatar",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier

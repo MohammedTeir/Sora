@@ -78,10 +78,8 @@ import tachiyomi.domain.manga.model.asMangaCover
 
 private val PauseOrange = Color(0xFFFF9800)
 private val ErrorRed = Color(0xFFE53935)
+// Use MaterialTheme.colorScheme for these in the composables
 private val BrandBlue = Color(0xff2977ff)
-private val BgColor = Color.Black
-private val TextMuted = Color(0xff94a3b8)
-private val TextWhite = Color(0xfff1f5f9)
 
 object DownloadQueueScreen : Screen() {
 
@@ -112,7 +110,7 @@ object DownloadQueueScreen : Screen() {
                     onClearCompleted = screenModel::clearCompleted
                 )
             },
-            containerColor = BgColor,
+            containerColor = MaterialTheme.colorScheme.background,
             bottomBar = {
                 // Fake bottom nav just to match design. Usually global nav handles this.
                 Spacer(modifier = Modifier.height(20.dp))
@@ -192,7 +190,7 @@ fun TabItem(label: String, selected: Boolean, onClick: () -> Unit) {
     ) {
         Text(
             text = label,
-            color = if (selected) BrandBlue else Color(0xff64748b),
+            color = if (selected) BrandBlue else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
             textAlign = TextAlign.Center,
             style = TextStyle(
                 fontSize = 18.sp,
@@ -227,18 +225,18 @@ fun StorageSection(modifier: Modifier = Modifier) {
     ) {
         Text(
             text = "DEVICE STORAGE",
-            color = TextMuted,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
         )
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
                 text = "${"%.1f".format(totalGB - freeGB)} GB ",
-                color = TextWhite,
+                color = MaterialTheme.colorScheme.onSurface,
                 style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Black)
             )
             Text(
                 text = "/ $totalGB GB",
-                color = Color(0xff64748b),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Medium)
             )
         }
@@ -273,7 +271,7 @@ fun ParallelDownloadControl(
     ) {
         Text(
             text = "PARALLEL DOWNLOADS",
-            color = TextMuted,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = TextStyle(
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
@@ -294,13 +292,13 @@ fun ParallelDownloadControl(
             ) {
                 Text(
                     text = "−",
-                    color = if (value > 1) BrandBlue else TextMuted.copy(alpha = 0.3f),
+                    color = if (value > 1) BrandBlue else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
                     style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Black),
                 )
             }
             Text(
                 text = "$value",
-                color = TextWhite,
+                color = MaterialTheme.colorScheme.onSurface,
                 style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Black),
                 modifier = Modifier.width(32.dp),
                 textAlign = TextAlign.Center,
@@ -315,7 +313,7 @@ fun ParallelDownloadControl(
             ) {
                 Text(
                     text = "+",
-                    color = if (value < 10) BrandBlue else TextMuted.copy(alpha = 0.3f),
+                    color = if (value < 10) BrandBlue else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
                     style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Black),
                 )
             }
@@ -346,7 +344,7 @@ fun SeriesGroup(group: List<Download>, screenModel: DownloadQueueScreenModel) {
                 )
                 Text(
                     text = "SERIES:\n${manga.title.uppercase()}",
-                    color = TextMuted,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.4.sp),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -426,7 +424,7 @@ fun BigDownloadItem(download: Download, onCancel: () -> Unit) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = download.chapter.name,
-                            color = TextWhite,
+                            color = Color.White, // Always white since background is dark gradient
                             style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Black),
                             maxLines = 2, overflow = TextOverflow.Ellipsis
                         )
@@ -438,7 +436,7 @@ fun BigDownloadItem(download: Download, onCancel: () -> Unit) {
                         }
                         Text(
                             text = statusLabel,
-                            color = TextMuted,
+                            color = Color.White.copy(alpha = 0.7f), // Always readability on dark gradient
                             style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium)
                         )
                     }
@@ -480,7 +478,7 @@ fun BigDownloadItem(download: Download, onCancel: () -> Unit) {
                             .fillMaxWidth()
                             .height(6.dp)
                             .clip(RoundedCornerShape(9999.dp))
-                            .background(Color.White.copy(alpha = 0.1f))
+                            .background(Color.Gray.copy(alpha = 0.2f))
                     ) {
                         Box(
                             modifier = Modifier
@@ -513,21 +511,21 @@ fun SmallDownloadItem(download: Download, onCancel: () -> Unit) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = download.chapter.name,
-                color = TextWhite,
+                color = MaterialTheme.colorScheme.onSurface,
                 style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold),
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             val lbl = if(status == Download.State.ERROR) "ERROR" else "QUEUED"
             Text(
                 text = lbl,
-                color = Color(0xff64748b),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Black)
             )
         }
         Icon(
             Icons.Outlined.Close,
             contentDescription = "Cancel",
-            tint = Color(0xff475569),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
                 .clickable { onCancel() }
                 .padding(8.dp)
@@ -551,13 +549,13 @@ fun CompletedItem(download: Download, onRead: () -> Unit) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = download.manga.title,
-                color = TextWhite,
+                color = MaterialTheme.colorScheme.onSurface,
                 style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold),
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = download.chapter.name,
-                color = Color(0xff64748b),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Black),
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )

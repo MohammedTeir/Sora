@@ -28,6 +28,7 @@ import eu.kanade.tachiyomi.ui.auth.LoginScreen
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
 import eu.kanade.tachiyomi.ui.discover.DiscoverScreen
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
+import eu.kanade.tachiyomi.ui.profile.ProfileScreen
 import eu.kanade.tachiyomi.ui.setting.SettingsScreen
 import eu.kanade.tachiyomi.ui.settings.sync.SyncSettingsScreen
 import eu.kanade.tachiyomi.ui.stats.StatsScreen
@@ -94,7 +95,7 @@ data object MoreTab : Tab {
             isSyncing = authState.isSyncing,
             onClickProfile = {
                 if (authState.isLoggedIn) {
-                    navigator.push(SyncSettingsScreen())
+                    navigator.push(ProfileScreen())
                 } else {
                     navigator.push(LoginScreen())
                 }
