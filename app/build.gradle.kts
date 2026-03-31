@@ -239,15 +239,16 @@ dependencies {
     // Security (encrypted storage)
     implementation(androidx.security.crypto)
 
-    // Firebase Auth + Firestore (Cloud Sync)
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth)
-    implementation(libs.firebase.firestore)
+    // Supabase (Auth + PostgREST + Realtime + Storage)
+    implementation(platform(libs.supabase.bom))
+    implementation(libs.supabase.auth)
+    implementation(libs.supabase.postgrest)
+    implementation(libs.supabase.realtime)
+    implementation(libs.supabase.storage)
+    implementation(libs.ktor.client.okhttp)
 
-    // Google Sign-In via Credential Manager
-    implementation(libs.credentials)
-    implementation(libs.credentials.play.services)
-    implementation(libs.googleid)
+    // Firebase (Crashlytics only — kept for telemetry)
+    implementation(platform(libs.firebase.bom))
 
     // RxJava
     implementation(libs.rxjava)

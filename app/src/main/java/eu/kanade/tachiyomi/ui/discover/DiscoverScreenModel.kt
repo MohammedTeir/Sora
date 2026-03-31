@@ -3,9 +3,9 @@ package eu.kanade.tachiyomi.ui.discover
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import eu.kanade.domain.auth.AuthPreferences
-import eu.kanade.tachiyomi.data.auth.FirebaseAuthService
+import eu.kanade.tachiyomi.data.auth.SupabaseAuthService
 import eu.kanade.tachiyomi.data.discover.SharedList
-import eu.kanade.tachiyomi.data.discover.SharedListService
+import eu.kanade.tachiyomi.data.discover.SupabaseSharedListService
 import eu.kanade.tachiyomi.data.discover.SharedMangaItem
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
@@ -21,8 +21,8 @@ import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
 class DiscoverScreenModel(
-    private val sharedListService: SharedListService = Injekt.get(),
-    private val authService: FirebaseAuthService = Injekt.get(),
+    private val sharedListService: SupabaseSharedListService = Injekt.get(),
+    private val authService: SupabaseAuthService = Injekt.get(),
     private val authPreferences: AuthPreferences = Injekt.get(),
     private val getLibraryManga: GetLibraryManga = Injekt.get(),
     private val getCategories: GetCategories = Injekt.get(),
@@ -34,7 +34,7 @@ class DiscoverScreenModel(
         val trendingLists: List<SharedList> = emptyList(),
         val recentLists: List<SharedList> = emptyList(),
         val myLists: List<SharedList> = emptyList(),
-        // isFetchingLists — true only while the Firestore read queries are in-flight.
+        // isFetchingLists — true only while the PostgREST read queries are in-flight.
         // Used to show/hide the LinearProgressIndicator and the initial full-screen spinner.
         val isFetchingLists: Boolean = false,
         // isUploadingList — true only while an upload or import operation is in-flight.
@@ -64,26 +64,26 @@ class DiscoverScreenModel(
         if (state.value.isFetchingLists) return
 
         screenModelScope.launch {
-            // Check auth status BEFORE starting any Firestore calls so the FAB
+            // Check auth status BEFORE starting any PostgREST calls so the FAB
             // (and "My Lists" section) are shown correctly even when the network
             // calls fail. Previously isLoggedIn was only updated inside the try
             // success block, so a Firestore error on cold-start would leave
             // isLoggedIn = false for the rest of the session.
-            // Check both Firebase Auth (real-time) and AuthPreferences (persisted).
-            // After app restart, Firebase Auth may not have reinitialized yet,
-            // so currentUser is transiently null. The persisted preference
+            // Check both Supabase Auth (real-time) and AuthPreferences (persisted).
+            // After app restart, Supabase Auth may not have restored the session yet,
+            // so the user is transiently null. The persisted preference
             // bridges that gap so we still fetch myLists from cache.
             var loggedIn = authService.isLoggedIn() || authPreferences.isLoggedIn().get()
             // If AuthPreferences says logged in but Firebase Auth isn't ready yet,
             // wait briefly for Firebase to restore the session from its own persistence.
             if (!authService.isLoggedIn() && authPreferences.isLoggedIn().get()) {
-                logcat(LogPriority.INFO) { "DiscoverScreenModel: waiting for Firebase Auth to reinitialize..." }
+                logcat(LogPriority.INFO) { "DiscoverScreenModel: waiting for Supabase Auth to restore session..." }
                 delay(2_000)
                 // Re-check after waiting
                 loggedIn = authService.isLoggedIn() || authPreferences.isLoggedIn().get()
-                logcat(LogPriority.INFO) { "DiscoverScreenModel: after wait — Firebase=${authService.isLoggedIn()}, prefs=${authPreferences.isLoggedIn().get()}" }
+                logcat(LogPriority.INFO) { "DiscoverScreenModel: after wait — Supabase=${authService.isLoggedIn()}, prefs=${authPreferences.isLoggedIn().get()}" }
             }
-            // Refresh the Firebase ID token so Firestore calls use a valid
+            // Refresh the Supabase session token so PostgREST calls use a valid
             // credential. Without this, queries fail silently after token expiry
             // (e.g. app reopened after hours) and getMyLists() returns empty.
             if (authService.isLoggedIn()) {
@@ -93,7 +93,7 @@ class DiscoverScreenModel(
 
             try {
                 // All three fetches run in parallel.
-                // Trending & Recent are public (no auth required by Firestore rules).
+                // Trending & Recent are public (no auth required by RLS policies).
                 // My Lists requires login.
                 val trendingDeferred = async { sharedListService.getTrendingLists() }
                 val recentDeferred   = async { sharedListService.getRecentLists() }
@@ -180,7 +180,7 @@ class DiscoverScreenModel(
                     }
                 }
 
-                // 4. Increment import count in Firestore
+                // 4. Increment import count in Supabase
                 if (sharedList.id.isNotEmpty()) {
                     sharedListService.incrementImportCount(sharedList.id)
                 }
@@ -224,7 +224,7 @@ class DiscoverScreenModel(
         screenModelScope.launch {
             mutableState.update { it.copy(isUploadingList = true) }
 
-            // Refactored to if/else so we can reference the returned docId (String)
+            // Refactored to if/else so we can reference the returned listId (String)
             // for the optimistic SharedList — `.onSuccess { }` is not a suspend lambda
             // so we cannot call suspend functions (getUserId, etc.) inside it.
             val result = sharedListService.uploadList(title, selectedManga)
@@ -234,8 +234,8 @@ class DiscoverScreenModel(
 
                 // Optimistic update: add the newly created list to both myLists and
                 // recentLists immediately so the user sees it without waiting for
-                // Firestore propagation. The background loadLists() call below will
-                // eventually replace this entry with the real Firestore document.
+                // server propagation. The background loadLists() call below will
+                // eventually replace this entry with the real Supabase row.
                 val optimisticList = SharedList(
                     id          = docId,
                     title       = title,
@@ -249,6 +249,8 @@ class DiscoverScreenModel(
                         )
                     },
                     timestamp   = System.currentTimeMillis(),
+                    creatorId   = result.getOrNull() ?: "", // Assuming current user ID logic is handled elsewhere, or empty for optimistic
+                    importCount = 0L,
                 )
 
                 mutableState.update { state ->
@@ -263,8 +265,8 @@ class DiscoverScreenModel(
                         pendingListIds  = state.pendingListIds + docId,
                     )
                 }
-                // Refresh after a short delay so the Firestore server query
-                // picks up the newly written document and replaces the optimistic
+                // Refresh after a short delay so the PostgREST query
+                // picks up the newly written row and replaces the optimistic
                 // entry with the real one.
                 screenModelScope.launch {
                     delay(3_000)

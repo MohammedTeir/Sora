@@ -51,9 +51,9 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.domain.auth.AuthPreferences
 import eu.kanade.domain.sync.SyncPreferences
 import eu.kanade.presentation.util.Screen
-import eu.kanade.tachiyomi.data.auth.FirebaseAuthService
+import eu.kanade.tachiyomi.data.auth.SupabaseAuthService
 import eu.kanade.tachiyomi.data.sync.SyncResult
-import eu.kanade.tachiyomi.data.sync.SyncService
+import eu.kanade.tachiyomi.data.sync.SupabaseSyncService
 import eu.kanade.tachiyomi.data.sync.SyncWorker
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -364,8 +364,8 @@ private fun SyncCategoryToggle(
 // ─── ScreenModel ───────────────────────────────────────────────────────────────
 
 private class SyncSettingsScreenModel(
-    private val authService: FirebaseAuthService = Injekt.get(),
-    private val syncService: SyncService = Injekt.get(),
+    private val authService: SupabaseAuthService = Injekt.get(),
+    private val syncService: SupabaseSyncService = Injekt.get(),
     private val authPrefs: AuthPreferences = Injekt.get(),
     private val syncPrefs: SyncPreferences = Injekt.get(),
 ) : StateScreenModel<SyncSettingsScreenModel.State>(

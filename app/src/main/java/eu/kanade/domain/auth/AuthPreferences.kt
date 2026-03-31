@@ -17,4 +17,6 @@ class AuthPreferences(
     fun lastSyncTime() = preferenceStore.getLong("auth_last_sync_time", 0L)
 
     fun autoSync() = preferenceStore.getBoolean("auth_auto_sync_enabled", true)
+
+    fun isGuest() = preferenceStore.getBoolean("auth_is_guest", false)
 }

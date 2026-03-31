@@ -1,17 +1,21 @@
-
 package eu.kanade.tachiyomi.data.sync
 
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.SetOptions
-import com.google.firebase.firestore.WriteBatch
 import eu.kanade.domain.auth.AuthPreferences
 import eu.kanade.domain.sync.SyncPreferences
-import eu.kanade.tachiyomi.data.auth.FirebaseAuthService
-import tachiyomi.core.common.preference.Preference
-import tachiyomi.core.common.preference.PreferenceStore
-import kotlinx.coroutines.tasks.await
+import eu.kanade.tachiyomi.data.auth.SupabaseAuthService
+import eu.kanade.tachiyomi.data.supabase.CloudCategory
+import eu.kanade.tachiyomi.data.supabase.CloudChapter
+import eu.kanade.tachiyomi.data.supabase.CloudExtensionRepo
+import eu.kanade.tachiyomi.data.supabase.CloudHistory
+import eu.kanade.tachiyomi.data.supabase.CloudManga
+import eu.kanade.tachiyomi.data.supabase.CloudSensitiveSettings
+import eu.kanade.tachiyomi.data.supabase.CloudTrack
+import eu.kanade.tachiyomi.data.supabase.SupabaseProvider
+import io.github.jan.supabase.postgrest.from
 import logcat.LogPriority
 import logcat.logcat
+import tachiyomi.core.common.preference.Preference
+import tachiyomi.core.common.preference.PreferenceStore
 import tachiyomi.data.DatabaseHandler
 import tachiyomi.data.StringListColumnAdapter
 import tachiyomi.data.UpdateStrategyColumnAdapter
@@ -25,26 +29,25 @@ import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.track.model.Track
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import java.util.Date
 import mihon.domain.extensionrepo.model.ExtensionRepo
+import java.util.Date
 
-sealed class SyncResult {
-    data object Success : SyncResult()
-    data class Error(val message: String, val cause: Throwable? = null) : SyncResult()
-}
-
-class SyncService(
+/**
+ * Supabase-backed sync service — replaces [SyncService] (Firestore version).
+ *
+ * Uses PostgREST bulk upsert instead of Firestore batched writes.
+ * No 500-op batch limit; supabase-kt handles auth token injection.
+ * Merge logic (last-write-wins) is identical to the original.
+ */
+class SupabaseSyncService(
     private val handler: DatabaseHandler = Injekt.get(),
-    private val authService: FirebaseAuthService = Injekt.get(),
+    private val authService: SupabaseAuthService = Injekt.get(),
     private val authPrefs: AuthPreferences = Injekt.get(),
     private val syncPrefs: SyncPreferences = Injekt.get(),
     private val preferenceStore: PreferenceStore = Injekt.get(),
 ) {
 
-    private val firestore = FirebaseFirestore.getInstance()
-
-    // Firestore hard limit per batch
-    private val BATCH_SIZE = 400
+    private val client = SupabaseProvider.client
 
     suspend fun syncOnLogin(): SyncResult = runSync()
 
@@ -66,23 +69,22 @@ class SyncService(
             val lastSync = authPrefs.lastSyncTime().get()
             val elapsed = System.currentTimeMillis() - lastSync
             if (elapsed < 10 * 60 * 1000) {
-                logcat(LogPriority.INFO) { "SyncService: sync already in progress, skipping" }
+                logcat(LogPriority.INFO) { "SupabaseSyncService: sync already in progress, skipping" }
                 return SyncResult.Success
             } else {
-                // Stale lock — reset it
-                logcat(LogPriority.WARN) { "SyncService: stale isSyncing flag detected, resetting" }
+                logcat(LogPriority.WARN) { "SupabaseSyncService: stale isSyncing flag detected, resetting" }
                 syncPrefs.isSyncing().set(false)
             }
         }
 
         val tokenRefreshed = authService.refreshToken()
         if (!tokenRefreshed) {
-            logcat(LogPriority.WARN) { "SyncService: token refresh failed, proceeding with existing token" }
+            logcat(LogPriority.WARN) { "SupabaseSyncService: token refresh failed, proceeding with existing token" }
         }
 
         return try {
             syncPrefs.isSyncing().set(true)
-            logcat(LogPriority.INFO) { "SyncService: starting sync for user $userId" }
+            logcat(LogPriority.INFO) { "SupabaseSyncService: starting sync for user $userId" }
 
             // 1. Read all local data
             val localData = readLocalData()
@@ -96,7 +98,7 @@ class SyncService(
             // 4. Write merged data back to local DB
             writeLocalData(merged)
 
-            // 5. Upload merged data to cloud (in safe batches of BATCH_SIZE)
+            // 5. Upload merged data to cloud (PostgREST bulk upsert)
             uploadToCloud(userId, merged)
 
             // 6. Update last sync timestamp
@@ -104,21 +106,22 @@ class SyncService(
             authPrefs.lastSyncTime().set(now)
             syncPrefs.lastSyncTimestamp().set(now)
 
-            logcat(LogPriority.INFO) { "SyncService: sync completed successfully" }
+            logcat(LogPriority.INFO) { "SupabaseSyncService: sync completed successfully" }
             SyncResult.Success
         } catch (e: Exception) {
-            logcat(LogPriority.ERROR) { "SyncService: sync failed: ${e.message}" }
+            logcat(LogPriority.ERROR) { "SupabaseSyncService: sync failed: ${e.message}" }
             val friendlyMessage = when {
-                e.message?.contains("PERMISSION_DENIED") == true ->
+                e.message?.contains("JWT expired") == true ->
+                    "Sync failed: Session expired. Please sign out and sign back in."
+                e.message?.contains("403") == true ||
+                e.message?.contains("new row violates") == true ->
                     "Sync failed: Access denied. Please sign out and sign back in, then try again."
-                e.message?.contains("UNAVAILABLE") == true ||
                 e.message?.contains("Unable to resolve host") == true ->
                     "Sync failed: No internet connection."
                 else -> e.message ?: "Unknown sync error"
             }
             SyncResult.Error(friendlyMessage, e)
         } finally {
-            // Always release the lock — even on crash
             syncPrefs.isSyncing().set(false)
         }
     }
@@ -190,35 +193,40 @@ class SyncService(
 
     // ─── Read Cloud Data ────────────────────────────────────────────────────────
 
-    @Suppress("UNCHECKED_CAST")
     private suspend fun readCloudData(userId: String): SyncData {
-        val userRef = firestore.collection("users").document(userId)
+        val manga = client.from("user_library")
+            .select { filter { eq("user_id", userId) } }
+            .decodeList<CloudManga>()
+            .map { it.toDomain() }
 
-        val mangaDocs    = userRef.collection("library").get().await()
-        val chapterDocs  = userRef.collection("chapters").get().await()
-        val categoryDocs = userRef.collection("categories").get().await()
-        val trackDocs    = userRef.collection("tracking").get().await()
-        val historyDocs  = userRef.collection("history").get().await()
-        val extensionRepoDocs = try { userRef.collection("extensionRepos").get().await() } catch (e: Exception) { null }
+        val chapters = client.from("user_chapters")
+            .select { filter { eq("user_id", userId) } }
+            .decodeList<CloudChapter>()
+            .map { it.toDomain() }
 
-        val manga = mangaDocs.documents.mapNotNull {
-            SyncDataSerializer.mapToManga(it.data as? Map<String, Any?> ?: return@mapNotNull null)
+        val categories = client.from("user_categories")
+            .select { filter { eq("user_id", userId) } }
+            .decodeList<CloudCategory>()
+            .map { it.toDomain() }
+
+        val tracks = client.from("user_tracks")
+            .select { filter { eq("user_id", userId) } }
+            .decodeList<CloudTrack>()
+            .map { it.toDomain() }
+
+        val history = client.from("user_history")
+            .select { filter { eq("user_id", userId) } }
+            .decodeList<CloudHistory>()
+            .map { it.toDomain() }
+
+        val extensionRepos = try {
+            client.from("user_extension_repos")
+                .select { filter { eq("user_id", userId) } }
+                .decodeList<CloudExtensionRepo>()
+                .map { it.toDomain() }
+        } catch (e: Exception) {
+            emptyList()
         }
-        val chapters = chapterDocs.documents.mapNotNull {
-            SyncDataSerializer.mapToChapter(it.data as? Map<String, Any?> ?: return@mapNotNull null)
-        }
-        val categories = categoryDocs.documents.mapNotNull {
-            SyncDataSerializer.mapToCategory(it.data as? Map<String, Any?> ?: return@mapNotNull null)
-        }
-        val tracks = trackDocs.documents.mapNotNull {
-            SyncDataSerializer.mapToTrack(it.data as? Map<String, Any?> ?: return@mapNotNull null)
-        }
-        val history = historyDocs.documents.mapNotNull {
-            SyncDataSerializer.mapToHistory(it.data as? Map<String, Any?> ?: return@mapNotNull null)
-        }
-        val extensionRepos = extensionRepoDocs?.documents?.mapNotNull {
-            SyncDataSerializer.mapToExtensionRepo(it.data as? Map<String, Any?> ?: return@mapNotNull null)
-        } ?: emptyList()
 
         return SyncData(
             manga = manga,
@@ -440,79 +448,55 @@ class SyncService(
     // ─── Upload to Cloud ────────────────────────────────────────────────────────
 
     private suspend fun uploadToCloud(userId: String, data: SyncData) {
-        val userRef = firestore.collection("users").document(userId)
-
-        // Collect all write operations as (docRef, data) pairs
-        val operations = mutableListOf<Pair<com.google.firebase.firestore.DocumentReference, Map<String, Any?>>>()
-
-        if (syncPrefs.syncLibrary().get()) {
-            data.manga.forEach { manga ->
-                operations += userRef.collection("library").document(manga.id.toString()) to
-                    SyncDataSerializer.mangaToMap(manga).filterValues { it != null }
-            }
+        // PostgREST bulk upsert — no Firestore 500-op batch limit
+        if (syncPrefs.syncLibrary().get() && data.manga.isNotEmpty()) {
+            client.from("user_library").upsert(
+                data.manga.map { CloudManga.from(it, userId) },
+            )
         }
 
         if (syncPrefs.syncChapters().get()) {
-            data.chapters
+            val filteredChapters = data.chapters
                 .filter { it.read || it.bookmark || it.lastPageRead > 0 }
-                .forEach { chapter ->
-                    operations += userRef.collection("chapters").document(chapter.id.toString()) to
-                        SyncDataSerializer.chapterToMap(chapter).filterValues { it != null }
-                }
-        }
-
-        if (syncPrefs.syncCategories().get()) {
-            data.categories.forEach { category ->
-                operations += userRef.collection("categories").document(category.id.toString()) to
-                    SyncDataSerializer.categoryToMap(category).filterValues { it != null }
+            if (filteredChapters.isNotEmpty()) {
+                client.from("user_chapters").upsert(
+                    filteredChapters.map { CloudChapter.from(it, userId) },
+                )
             }
         }
 
-        if (syncPrefs.syncTracking().get()) {
-            data.tracks.forEach { track ->
-                operations += userRef.collection("tracking").document(track.id.toString()) to
-                    SyncDataSerializer.trackToMap(track).filterValues { it != null }
-            }
+        if (syncPrefs.syncCategories().get() && data.categories.isNotEmpty()) {
+            client.from("user_categories").upsert(
+                data.categories.map { CloudCategory.from(it, userId) },
+            )
+        }
+
+        if (syncPrefs.syncTracking().get() && data.tracks.isNotEmpty()) {
+            client.from("user_tracks").upsert(
+                data.tracks.map { CloudTrack.from(it, userId) },
+            )
         }
 
         if (syncPrefs.syncHistory().get()) {
-            data.history
-                .filter { it.readAt != null }
-                .forEach { history ->
-                    operations += userRef.collection("history").document(history.chapterId.toString()) to
-                        SyncDataSerializer.historyToMap(history).filterValues { it != null }
-                }
-        }
-
-        data.extensionRepos.forEach { repo ->
-            val docId = android.util.Base64.encodeToString(repo.baseUrl.toByteArray(), android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP)
-            operations += userRef.collection("extensionRepos").document(docId) to
-                SyncDataSerializer.extensionRepoToMap(repo).filterValues { it != null }
-        }
-
-        // Split into chunks of BATCH_SIZE to stay under Firestore's 500-op limit
-        operations.chunked(BATCH_SIZE).forEach { chunk ->
-            val batch: WriteBatch = firestore.batch()
-            chunk.forEach { (docRef, docData) ->
-                batch.set(docRef, docData, SetOptions.merge())
+            val filteredHistory = data.history.filter { it.readAt != null }
+            if (filteredHistory.isNotEmpty()) {
+                client.from("user_history").upsert(
+                    filteredHistory.map { CloudHistory.from(it, userId) },
+                )
             }
-            batch.commit().await()
-            logcat(LogPriority.INFO) { "SyncService: committed batch of ${chunk.size} ops" }
         }
 
-        // Upload sensitive settings separately
-        uploadSensitiveSettings(userRef)
+        if (data.extensionRepos.isNotEmpty()) {
+            client.from("user_extension_repos").upsert(
+                data.extensionRepos.map { CloudExtensionRepo.from(it, userId) },
+            )
+        }
 
-        // Update profile's lastSyncAt
-        userRef.set(
-            mapOf("lastSyncAt" to System.currentTimeMillis()),
-            SetOptions.merge(),
-        ).await()
+        // Upload sensitive settings
+        uploadSensitiveSettings(userId)
     }
 
-    private suspend fun uploadSensitiveSettings(
-        userRef: com.google.firebase.firestore.DocumentReference,
-    ) {
+    private suspend fun uploadSensitiveSettings(userId: String) {
         try {
             val allPrefs = preferenceStore.getAll()
             val privateEntries = allPrefs
@@ -521,21 +505,19 @@ class SyncService(
 
             if (privateEntries.isNotEmpty()) {
                 val json = privateEntries.entries.joinToString(",", "{", "}") { (k, v) ->
-                    "\"${k.replace("\"", "\\\"")}\": \"${v.replace("\"", "\\\"")}\""
+                    "\"${k.replace("\"", "\\\"")}\"" + ": " + "\"${v.replace("\"", "\\\"")}\""
                 }
                 val encrypted = SyncDataSerializer.encryptSensitive(json)
-                userRef.collection("sensitiveSettings").document("encrypted")
-                    .set(
-                        mapOf(
-                            "iv" to encrypted.iv,
-                            "ciphertext" to encrypted.ciphertext,
-                            "updatedAt" to System.currentTimeMillis(),
-                        ),
-                    )
-                    .await()
+                client.from("user_sensitive_settings").upsert(
+                    CloudSensitiveSettings(
+                        userId = userId,
+                        iv = encrypted.iv,
+                        ciphertext = encrypted.ciphertext,
+                    ),
+                )
             }
         } catch (e: Exception) {
-            logcat(LogPriority.WARN) { "SyncService: failed to upload sensitive settings: ${e.message}" }
+            logcat(LogPriority.WARN) { "SupabaseSyncService: failed to upload sensitive settings: ${e.message}" }
         }
     }
 
@@ -559,14 +541,3 @@ class SyncService(
         id: Long, name: String, order: Long, flags: Long, hidden: Boolean,
     ): Category = Category(id = id, name = name, order = order, flags = flags, hidden = hidden)
 }
-
-// ─── Data Container ────────────────────────────────────────────────────────────
-
-data class SyncData(
-    val manga: List<Manga>,
-    val chapters: List<Chapter>,
-    val categories: List<Category>,
-    val tracks: List<Track>,
-    val history: List<History>,
-    val extensionRepos: List<ExtensionRepo> = emptyList(),
-)

@@ -21,7 +21,7 @@ import eu.kanade.domain.base.BasePreferences
 import eu.kanade.domain.sync.SyncPreferences
 import eu.kanade.presentation.more.MoreScreen
 import eu.kanade.presentation.util.Tab
-import eu.kanade.tachiyomi.data.auth.FirebaseAuthService
+import eu.kanade.tachiyomi.data.auth.SupabaseAuthService
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.sync.SyncWorker
 import eu.kanade.tachiyomi.ui.auth.LoginScreen
@@ -114,7 +114,7 @@ private class MoreScreenModel(
     preferences: BasePreferences = Injekt.get(),
     private val authPrefs: AuthPreferences = Injekt.get(),
     private val syncPrefs: SyncPreferences = Injekt.get(),
-    private val authService: FirebaseAuthService = Injekt.get(),
+    private val authService: SupabaseAuthService = Injekt.get(),
     private val getLibraryManga: GetLibraryManga = Injekt.get(),
     private val historyRepository: HistoryRepository = Injekt.get(),
 ) : ScreenModel {

@@ -3,8 +3,8 @@ package eu.kanade.tachiyomi.ui.auth
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import eu.kanade.domain.auth.AuthPreferences
-import eu.kanade.tachiyomi.data.auth.FirebaseAuthService
-import eu.kanade.tachiyomi.data.sync.SyncService
+import eu.kanade.tachiyomi.data.auth.SupabaseAuthService
+import eu.kanade.tachiyomi.data.sync.SupabaseSyncService
 import eu.kanade.tachiyomi.data.sync.SyncWorker
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -17,8 +17,8 @@ import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
 class AuthScreenModel(
-    private val authService: FirebaseAuthService = Injekt.get(),
-    private val syncService: SyncService = Injekt.get(),
+    private val authService: SupabaseAuthService = Injekt.get(),
+    private val syncService: SupabaseSyncService = Injekt.get(),
     private val authPrefs: AuthPreferences = Injekt.get(),
 ) : StateScreenModel<AuthScreenModel.State>(State()) {
 
@@ -129,7 +129,7 @@ class AuthScreenModel(
         }
     }
 
-    fun confirmPasswordReset(code: String, newPassword: String, confirmPassword: String) {
+    fun confirmPasswordReset(newPassword: String, confirmPassword: String) {
         when {
             newPassword.isBlank() || confirmPassword.isBlank() -> {
                 mutableState.update { it.copy(errorMessage = "All fields are required") }
@@ -151,7 +151,7 @@ class AuthScreenModel(
 
         screenModelScope.launch {
             mutableState.update { it.copy(isLoading = true, errorMessage = null) }
-            authService.confirmPasswordReset(code, newPassword)
+            authService.updatePassword(newPassword)
                 .onSuccess {
                     mutableState.update { it.copy(isLoading = false) }
                     _events.send(Event.PasswordResetSuccess)
@@ -172,21 +172,8 @@ class AuthScreenModel(
         screenModelScope.launch {
             mutableState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                // CredentialManager MUST receive an Activity context — a plain
-                // application or Composable context will silently cancel the flow.
-                val activityContext = context as? android.app.Activity ?: context
-
-                val credentialManager = androidx.credentials.CredentialManager.create(activityContext)
-                val signInWithGoogleOption = com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption.Builder(
-                    context.getString(eu.kanade.tachiyomi.R.string.default_web_client_id),
-                ).build()
-                val request = androidx.credentials.GetCredentialRequest.Builder()
-                    .addCredentialOption(signInWithGoogleOption)
-                    .build()
-                val result = credentialManager.getCredential(activityContext, request)
-                val googleCredential = com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-                    .createFrom(result.credential.data)
-                authService.signInWithGoogle(googleCredential.idToken)
+                // Supabase handles the OAuth flow via Custom Tabs — no Credential Manager needed.
+                authService.signInWithGoogle()
                     .onSuccess { userId ->
                         persistAuthState(userId, authService.getUserEmail() ?: "")
                         triggerPostLoginSync(context)
@@ -195,11 +182,6 @@ class AuthScreenModel(
                     .onFailure { e ->
                         mutableState.update { it.copy(isLoading = false, errorMessage = friendlyAuthError(e)) }
                     }
-            } catch (e: androidx.credentials.exceptions.GetCredentialCancellationException) {
-                logcat(LogPriority.WARN) { "AuthScreenModel: Google sign-in cancelled: ${e.message}" }
-                mutableState.update { it.copy(isLoading = false, errorMessage = "Google sign-in was cancelled. Please try again.") }
-            } catch (e: androidx.credentials.exceptions.NoCredentialException) {
-                mutableState.update { it.copy(isLoading = false, errorMessage = "No Google account found on this device.") }
             } catch (e: Exception) {
                 logcat(LogPriority.WARN) { "AuthScreenModel: Google sign-in failed: ${e.message}" }
                 mutableState.update { it.copy(isLoading = false, errorMessage = friendlyAuthError(e)) }
@@ -210,17 +192,13 @@ class AuthScreenModel(
     private fun friendlyAuthError(e: Throwable): String {
         val msg = e.message ?: return "Authentication failed"
         return when {
-            "CONFIGURATION_NOT_FOUND" in msg -> "Sign-in is not configured on the server. Please contact support."
-            "SIGN_IN_CANCELLED" in msg || "activity is cancelled" in msg.lowercase() || "GetCredentialCancellationException" in e.javaClass.name -> "Google sign-in was cancelled."
-            "EXPIRED_OOB_CODE" in msg -> "The password reset link has expired."
-            "INVALID_OOB_CODE" in msg -> "The password reset link is invalid or has already been used."
-            "EMAIL_NOT_FOUND" in msg || "INVALID_EMAIL" in msg -> "Invalid email address."
-            "WEAK_PASSWORD" in msg -> "Password is too weak. Use at least 6 characters."
-            "EMAIL_EXISTS" in msg || "email address is already in use" in msg -> "An account with this email already exists."
-            "INVALID_PASSWORD" in msg || "wrong-password" in msg -> "Incorrect password."
-            "USER_NOT_FOUND" in msg || "no user record" in msg -> "No account found with this email."
-            "NETWORK_ERROR" in msg || "Unable to resolve host" in msg -> "Network error. Check your internet connection."
-            "TOO_MANY_REQUESTS" in msg -> "Too many attempts. Please try again later."
+            "JWT expired" in msg -> "Session expired. Please sign in again."
+            "Invalid login credentials" in msg -> "Incorrect email or password."
+            "User already registered" in msg -> "An account with this email already exists."
+            "WEAK_PASSWORD" in msg || "at least" in msg.lowercase() -> "Password is too weak. Use at least 6 characters."
+            "rate limit" in msg.lowercase() || "too many" in msg.lowercase() -> "Too many attempts. Please try again later."
+            "Unable to resolve host" in msg || "network" in msg.lowercase() -> "Network error. Check your internet connection."
+            "cancelled" in msg.lowercase() -> "Sign-in was cancelled."
             else -> e.localizedMessage ?: "Authentication failed"
         }
     }
@@ -229,10 +207,18 @@ class AuthScreenModel(
         mutableState.update { it.copy(errorMessage = null) }
     }
 
+    fun loginAsGuest() {
+        authPrefs.isGuest().set(true)
+        screenModelScope.launch {
+            _events.send(Event.Dismissed)
+        }
+    }
+
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
     private fun persistAuthState(userId: String, email: String) {
         authPrefs.isLoggedIn().set(true)
+        authPrefs.isGuest().set(false)
         authPrefs.userId().set(userId)
         authPrefs.userEmail().set(email)
         authPrefs.userDisplayName().set(authService.getUserDisplayName() ?: "")
