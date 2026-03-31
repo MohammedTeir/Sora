@@ -35,6 +35,9 @@ android {
         buildConfigField("boolean", "TELEMETRY_INCLUDED", "${Config.includeTelemetry}")
         buildConfigField("boolean", "UPDATER_ENABLED", "${Config.enableUpdater}")
 
+        manifestPlaceholders["supabaseScheme"] = "app.sora"
+        manifestPlaceholders["supabaseHost"] = "auth-callback"
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

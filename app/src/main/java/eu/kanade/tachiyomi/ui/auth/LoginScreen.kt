@@ -135,26 +135,6 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                     .fillMaxSize()
                     .background(color = MaterialTheme.colorScheme.background)
             ) {
-                // Background blurred circles
-                Box(
-                    modifier = Modifier
-                        .align(alignment = Alignment.TopStart)
-                        .offset(x = (-96).dp, y = (-96).dp)
-                        .requiredSize(size = 384.dp)
-                        .clip(shape = RoundedCornerShape(9999.dp))
-                        .blur(radius = 120.dp)
-                        .background(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
-                )
-                Box(
-                    modifier = Modifier
-                        .align(alignment = Alignment.CenterEnd)
-                        .offset(x = 192.dp, y = 250.dp)
-                        .requiredSize(size = 500.dp)
-                        .clip(shape = RoundedCornerShape(9999.dp))
-                        .blur(radius = 150.dp)
-                        .background(color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.03f))
-                )
-
                 // Main Content Scrollable Column
                 Column(
                     modifier = Modifier

@@ -77,16 +77,6 @@ data class ResetPasswordStep2Screen(val email: String) : Screen {
                 .fillMaxSize()
                 .background(color = MaterialTheme.colorScheme.background)
         ) {
-            // Background blur shape
-            Box(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .size(500.dp)
-                    .clip(RoundedCornerShape(9999.dp))
-                    .blur(120.dp)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
-            )
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
