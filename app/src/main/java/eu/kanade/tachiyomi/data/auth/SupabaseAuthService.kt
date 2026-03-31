@@ -4,6 +4,7 @@ import eu.kanade.tachiyomi.data.supabase.SupabaseProvider
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.Email
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import logcat.LogPriority
 import logcat.logcat
@@ -101,22 +102,34 @@ class SupabaseAuthService {
      */
     suspend fun signInWithGoogle(): Result<String> {
         return try {
-            auth.signInWith(Google)
             // signInWith(Google) opens a browser — it does NOT block until auth completes.
-            // We must wait for the deep-link callback to complete the PKCE exchange.
-            // Listen to the session status flow and wait for Authenticated.
-            val session = auth.sessionStatus
-                .first { status ->
-                    status is io.github.jan.supabase.auth.status.SessionStatus.Authenticated ||
-                    status is io.github.jan.supabase.auth.status.SessionStatus.NotAuthenticated
+            auth.signInWith(Google)
+            // The sessionStatus flow already holds the current state (NotAuthenticated).
+            // We must drop(1) to skip that stale value and wait for the NEXT emission,
+            // which will be Authenticated (if the PKCE exchange succeeds via deep link)
+            // or NotAuthenticated (if the user cancels/fails).
+            val session = kotlinx.coroutines.withTimeoutOrNull(120_000L) {
+                auth.sessionStatus
+                    .drop(1) // skip the current (stale) state
+                    .first { status ->
+                        status is io.github.jan.supabase.auth.status.SessionStatus.Authenticated ||
+                        status is io.github.jan.supabase.auth.status.SessionStatus.NotAuthenticated
+                    }
+            }
+            when {
+                session is io.github.jan.supabase.auth.status.SessionStatus.Authenticated -> {
+                    val uid = auth.currentUserOrNull()?.id
+                        ?: return Result.failure(Exception("Google sign-in succeeded but user is null"))
+                    logcat(LogPriority.INFO) { "SupabaseAuthService: Google sign-in user $uid" }
+                    Result.success(uid)
                 }
-            if (session is io.github.jan.supabase.auth.status.SessionStatus.Authenticated) {
-                val uid = auth.currentUserOrNull()?.id
-                    ?: return Result.failure(Exception("Google sign-in succeeded but user is null"))
-                logcat(LogPriority.INFO) { "SupabaseAuthService: Google sign-in user $uid" }
-                Result.success(uid)
-            } else {
-                Result.failure(Exception("Google sign-in was cancelled or failed"))
+                session is io.github.jan.supabase.auth.status.SessionStatus.NotAuthenticated -> {
+                    Result.failure(Exception("Google sign-in was cancelled or failed"))
+                }
+                else -> {
+                    // Timeout — user took too long or deep link didn't fire
+                    Result.failure(Exception("Google sign-in timed out"))
+                }
             }
         } catch (e: Exception) {
             logcat(LogPriority.ERROR) { "SupabaseAuthService: Google sign-in failed: ${e.message}" }

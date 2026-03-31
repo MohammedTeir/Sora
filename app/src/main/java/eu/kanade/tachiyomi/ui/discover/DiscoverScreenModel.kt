@@ -17,6 +17,10 @@ import tachiyomi.domain.category.interactor.CreateCategoryWithName
 import tachiyomi.domain.category.interactor.GetCategories
 import tachiyomi.domain.category.interactor.SetMangaCategories
 import tachiyomi.domain.manga.interactor.GetLibraryManga
+import tachiyomi.domain.manga.interactor.NetworkToLocalManga
+import tachiyomi.domain.manga.model.Manga
+import tachiyomi.domain.manga.model.MangaUpdate
+import tachiyomi.domain.manga.repository.MangaRepository
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
@@ -28,27 +32,22 @@ class DiscoverScreenModel(
     private val getCategories: GetCategories = Injekt.get(),
     private val createCategoryWithName: CreateCategoryWithName = Injekt.get(),
     private val setMangaCategories: SetMangaCategories = Injekt.get(),
+    private val networkToLocalManga: NetworkToLocalManga = Injekt.get(),
+    private val mangaRepository: MangaRepository = Injekt.get(),
 ) : StateScreenModel<DiscoverScreenModel.State>(State()) {
 
     data class State(
         val trendingLists: List<SharedList> = emptyList(),
         val recentLists: List<SharedList> = emptyList(),
         val myLists: List<SharedList> = emptyList(),
-        // isFetchingLists — true only while the PostgREST read queries are in-flight.
-        // Used to show/hide the LinearProgressIndicator and the initial full-screen spinner.
         val isFetchingLists: Boolean = false,
-        // isUploadingList — true only while an upload or import operation is in-flight.
-        // Kept separate so a completed upload can immediately trigger a list refresh
-        // without the guard in loadLists() blocking it.
         val isUploadingList: Boolean = false,
         val isInitialLoad: Boolean = true,
         val isLoggedIn: Boolean = false,
         val pendingListIds: Set<String> = emptySet(),
-        val missingMangaTitles: List<String> = emptyList(),
         val importMessage: String? = null,
         val errorMessage: String? = null,
     ) {
-        // Convenience accessor used by the UI to show progress indicators.
         val isLoading: Boolean get() = isFetchingLists || isUploadingList
     }
 
@@ -158,25 +157,66 @@ class DiscoverScreenModel(
                     return@launch
                 }
 
-                // 3. Match manga in shared list against the user's library by title
-                val libraryManga  = getLibraryManga.await()
-                val mangaItems    = sharedList.getMangaItems()
-                val missingTitles = mutableListOf<String>()
+                // 3. Match manga in shared list against library, or INSERT missing ones
+                val libraryManga = getLibraryManga.await()
+                val mangaItems   = sharedList.getMangaItems()
                 var importedCount = 0
 
                 for (item in mangaItems) {
-                    val match = libraryManga.find {
-                        it.manga.title.equals(item.title, ignoreCase = true)
-                    }
-                    if (match != null) {
-                        val existing = match.categories
-                        setMangaCategories.await(
-                            match.manga.id,
-                            (existing + newCategory.id).distinct(),
-                        )
-                        importedCount++
-                    } else {
-                        missingTitles.add(item.title)
+                    try {
+                        // --- Try 1: exact title match in existing library ---
+                        val libMatch = libraryManga.find {
+                            it.manga.title.equals(item.title, ignoreCase = true)
+                        }
+
+                        if (libMatch != null) {
+                            // Already in library — just add to the new category
+                            val existing = libMatch.categories
+                            setMangaCategories.await(
+                                libMatch.manga.id,
+                                (existing + newCategory.id).distinct(),
+                            )
+                            importedCount++
+                            continue
+                        }
+
+                        // --- Try 2: insert via NetworkToLocalManga ---
+                        if (item.sourceUrl.isNotBlank() && item.sourceId != 0L) {
+                            val domainManga = Manga.create().copy(
+                                url = item.sourceUrl,
+                                title = item.title,
+                                source = item.sourceId,
+                                thumbnailUrl = item.coverUrl.ifBlank { null },
+                            )
+
+                            val localManga = networkToLocalManga.invoke(domainManga)
+
+                            // Mark as favorite (add to library)
+                            if (!localManga.favorite) {
+                                mangaRepository.update(
+                                    MangaUpdate(
+                                        id = localManga.id,
+                                        favorite = true,
+                                        dateAdded = System.currentTimeMillis(),
+                                    ),
+                                )
+                            }
+
+                            // Add to the import category
+                            setMangaCategories.await(
+                                localManga.id,
+                                listOf(newCategory.id),
+                            )
+                            importedCount++
+                        } else {
+                            logcat(LogPriority.WARN) {
+                                "importList: skipping '${item.title}' — no sourceUrl/sourceId"
+                            }
+                        }
+                    } catch (itemError: Exception) {
+                        logcat(LogPriority.WARN) {
+                            "importList: failed to import '${item.title}': ${itemError.message}"
+                        }
                     }
                 }
 
@@ -188,17 +228,15 @@ class DiscoverScreenModel(
                 val message = if (importedCount > 0) {
                     "Imported $importedCount of ${mangaItems.size} manga to '${sharedList.title}'"
                 } else {
-                    "No manga from this list were found in your library."
+                    "No manga could be imported from this list."
                 }
 
                 mutableState.update {
                     it.copy(
-                        isUploadingList    = false,
-                        importMessage      = message,
-                        missingMangaTitles = missingTitles,
+                        isUploadingList = false,
+                        importMessage   = message,
                     )
                 }
-                // Refresh lists so the updated import count is visible.
                 loadLists()
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR) { "DiscoverScreenModel: importList failed: ${e.message}" }
@@ -306,9 +344,5 @@ class DiscoverScreenModel(
     /** Legacy helper kept for compatibility. */
     fun clearMessages() {
         mutableState.update { it.copy(importMessage = null, errorMessage = null) }
-    }
-
-    fun clearMissingManga() {
-        mutableState.update { it.copy(missingMangaTitles = emptyList()) }
     }
 }

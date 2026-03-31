@@ -111,7 +111,7 @@ data class CloudCategory(
     val id: Long,
     @SerialName("user_id") val userId: String,
     val name: String,
-    val order: Long = 0,
+    @SerialName("sort_order") val order: Long = 0,
     val flags: Long = 0,
     val hidden: Boolean = false,
 ) {
