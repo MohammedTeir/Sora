@@ -114,7 +114,7 @@
                 android:resource="@xml/shortcuts" />
         </activity>
 
-        <activitys
+        <activity
             android:name=".crash.CrashActivity"
             android:exported="false"
             android:process=":error_handler" />

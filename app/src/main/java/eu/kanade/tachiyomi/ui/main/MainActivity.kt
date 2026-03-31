@@ -108,7 +108,7 @@ import tachiyomi.presentation.core.util.collectAsState
 import tachiyomi.domain.source.service.SourceManager
 import uy.kohesive.injekt.injectLazy
 import eu.kanade.tachiyomi.data.supabase.SupabaseProvider
-import io.github.jan.supabase.gotrue.handleDeeplinks
+import io.github.jan.supabase.auth.handleDeeplinks
 
 class MainActivity : BaseActivity() {
 
