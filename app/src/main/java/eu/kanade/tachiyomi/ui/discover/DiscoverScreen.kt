@@ -125,41 +125,6 @@ fun Screen.DiscoverContent() {
         screenModel.clearErrorMessage()
     }
 
-    if (state.missingMangaTitles.isNotEmpty()) {
-        AlertDialog(
-            onDismissRequest = { screenModel.clearMissingManga() },
-            title = { Text("Not in your library") },
-            text = {
-                Column {
-                    Text(
-                        "${state.missingMangaTitles.size} manga from this list are not in your library yet. " +
-                            "Search for them in Browse to add them.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    state.missingMangaTitles.take(10).forEach { title ->
-                        Text(
-                            "• $title",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    if (state.missingMangaTitles.size > 10) {
-                        Text(
-                            "… and ${state.missingMangaTitles.size - 10} more",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { screenModel.clearMissingManga() }) {
-                    Text("Got it")
-                }
-            },
-        )
-    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -256,7 +221,7 @@ fun Screen.DiscoverContent() {
                             items(state.myLists) { list ->
                                 SharedListCard(
                                     list = list,
-                                    onImport = { screenModel.importList(list) },
+                                    onClick = { navigator.push(ListDetailScreen(list)) },
                                     onDelete = { screenModel.deleteMyList(list.id) },
                                     showDelete = true,
                                 )
@@ -277,7 +242,7 @@ fun Screen.DiscoverContent() {
                             items(state.trendingLists) { list ->
                                 SharedListCard(
                                     list = list,
-                                    onImport = { screenModel.importList(list) },
+                                    onClick = { navigator.push(ListDetailScreen(list)) },
                                 )
                             }
                         }
@@ -296,7 +261,7 @@ fun Screen.DiscoverContent() {
                             items(state.recentLists) { list ->
                                 SharedListCard(
                                     list = list,
-                                    onImport = { screenModel.importList(list) },
+                                    onClick = { navigator.push(ListDetailScreen(list)) },
                                 )
                             }
                         }
@@ -366,7 +331,7 @@ private fun SectionHeader(title: String) {
 @Composable
 fun SharedListCard(
     list: SharedList,
-    onImport: () -> Unit,
+    onClick: () -> Unit,
     onDelete: (() -> Unit)? = null,
     showDelete: Boolean = false,
 ) {
@@ -449,13 +414,13 @@ fun SharedListCard(
             if (showDelete && onDelete != null) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(
-                        onClick = onImport,
+                        onClick = onClick,
                         modifier = Modifier.weight(1f).height(36.dp),
                         contentPadding = PaddingValues(horizontal = 8.dp),
                     ) {
                         Icon(Icons.Outlined.Download, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Import", fontSize = 12.sp)
+                        Text("View", fontSize = 12.sp)
                     }
                     IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
                         Icon(
@@ -468,14 +433,14 @@ fun SharedListCard(
                 }
             } else {
                 Button(
-                    onClick = onImport,
+                    onClick = onClick,
                     modifier = Modifier.fillMaxWidth().height(36.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = SoraBlue),
                     contentPadding = PaddingValues(horizontal = 8.dp),
                 ) {
                     Icon(Icons.Outlined.Download, contentDescription = null, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Import", fontSize = 12.sp)
+                    Text("View", fontSize = 12.sp)
                 }
             }
         }

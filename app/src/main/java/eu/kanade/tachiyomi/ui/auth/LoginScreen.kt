@@ -111,7 +111,8 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                 when (event) {
                     is AuthScreenModel.Event.LoginSuccess -> navigator.pop()
                     is AuthScreenModel.Event.SignUpSuccess -> navigator.pop()
-                    is AuthScreenModel.Event.PasswordResetEmailSent -> {} // Handled in reset screen
+                    is AuthScreenModel.Event.SignUpSuccessRequireVerification -> {} // Handled by snackbar
+                    is AuthScreenModel.Event.PasswordResetEmailSent -> {} // Handled by snackbar
                     is AuthScreenModel.Event.PasswordResetSuccess -> {} // Handled in step 3 screen
                     is AuthScreenModel.Event.Dismissed -> navigator.pop()
                 }
@@ -158,53 +159,27 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                     ) {
                         // Header text
                         Column(
-                            modifier = Modifier.padding(bottom = 64.dp)
+                            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 48.dp)
                         ) {
-                            Column(
-                                verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Top)
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(
-                                        text = "SORA",
-                                        color = MaterialTheme.colorScheme.primary,
-                                        textAlign = TextAlign.Center,
-                                        lineHeight = 1.em,
-                                        style = TextStyle(
-                                            fontSize = 80.sp,
-                                            fontWeight = FontWeight.Light,
-                                            letterSpacing = (-4).sp,
-                                            shadow = Shadow(
-                                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                                                offset = Offset(0f, 0f),
-                                                blurRadius = 20f
-                                            )
-                                        ),
-                                        modifier = Modifier
-                                            .wrapContentHeight(align = Alignment.CenterVertically)
-                                            .shadow(elevation = 20.dp)
-                                    )
-                                }
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(
-                                        text = "EDITORIAL NOIR / ACCESS PORTAL",
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        textAlign = TextAlign.Center,
-                                        lineHeight = 1.33.em,
-                                        style = TextStyle(
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            letterSpacing = 2.4.sp
-                                        ),
-                                        modifier = Modifier.wrapContentHeight(align = Alignment.CenterVertically)
-                                    )
-                                }
-                            }
+                            Text(
+                                text = "Welcome to Sora",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.headlineLarge.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = (-0.5).sp
+                                )
+                            )
+                            Text(
+                                text = "Please sign in to continue",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
                         }
 
                         // Form Container
@@ -493,11 +468,12 @@ class LoginScreen(private val fromStartup: Boolean = false) : Screen() {
                                 ) {
                                     Image(
                                         painter = painterResource(id = R.drawable.google_svg),
-                                        contentDescription = "SVG",
-                                        modifier = Modifier.requiredSize(size = 20.dp)
+                                        contentDescription = "Google",
+                                        modifier = Modifier.requiredSize(size = 24.dp)
                                     )
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "GOOGLE",
+                                        text = "Sign in with Google",
                                         color = MaterialTheme.colorScheme.onSurface,
                                         textAlign = TextAlign.Center,
                                         lineHeight = 1.33.em,

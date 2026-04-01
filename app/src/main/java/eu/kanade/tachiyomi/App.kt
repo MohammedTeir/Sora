@@ -51,6 +51,7 @@ import eu.kanade.tachiyomi.util.system.notify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import logcat.AndroidLogcatLogger
 import logcat.LogPriority
 import logcat.LogcatLogger
@@ -82,14 +83,7 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
     override fun onCreate() {
         super<Application>.onCreate()
         patchInjekt()
-        TelemetryConfig.init(applicationContext)
-
         GlobalExceptionHandler.initialize(applicationContext, CrashActivity::class.java)
-
-        // TLS 1.3 support for Android < 10
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            Security.insertProviderAt(Conscrypt.newProvider(), 1)
-        }
 
         // Avoid potential crashes
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -101,12 +95,19 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
         Injekt.importModule(AppModule(this))
         Injekt.importModule(DomainModule())
 
-        setupNotificationChannels()
-        eu.kanade.tachiyomi.data.library.WeeklySummaryJob.setup(this)
-
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
 
         val scope = ProcessLifecycleOwner.get().lifecycleScope
+
+        scope.launch(Dispatchers.IO) {
+            TelemetryConfig.init(applicationContext)
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                Security.insertProviderAt(Conscrypt.newProvider(), 1)
+            }
+            setupNotificationChannels()
+            eu.kanade.tachiyomi.data.library.WeeklySummaryJob.setup(this@App)
+            initializeCloudSync()
+        }
 
         // Show notification to disable Incognito Mode when it's enabled
         basePreferences.incognitoMode().changes()
@@ -171,7 +172,6 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
         }
 
         initializeMigrator()
-        initializeCloudSync()
     }
 
     private fun initializeCloudSync() {

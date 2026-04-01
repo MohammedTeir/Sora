@@ -60,6 +60,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Supabase Auth Deep Link Configuration -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="app.sora"
+                    android:host="auth-callback" />
+            </intent-filter>
+
             <!-- Deep link to add repos -->
             <intent-filter android:label="@string/action_add_repo">
                 <action android:name="android.intent.action.VIEW" />

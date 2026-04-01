@@ -100,6 +100,10 @@ class SignupScreen(private val fromStartup: Boolean = false) : Screen() {
                 when (event) {
                     is AuthScreenModel.Event.LoginSuccess -> navigator.pop() // already logged in
                     is AuthScreenModel.Event.SignUpSuccess -> navigator.pop()
+                    is AuthScreenModel.Event.SignUpSuccessRequireVerification -> {
+                        password = ""
+                        confirmPassword = ""
+                    }
                     is AuthScreenModel.Event.PasswordResetEmailSent -> {} // Handled elsewhere
                     is AuthScreenModel.Event.PasswordResetSuccess -> {} // Handled elsewhere
                     is AuthScreenModel.Event.Dismissed -> navigator.pop()

@@ -12,6 +12,7 @@ import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -107,6 +108,8 @@ import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
 import tachiyomi.domain.source.service.SourceManager
 import uy.kohesive.injekt.injectLazy
+import eu.kanade.tachiyomi.data.supabase.SupabaseProvider
+import io.github.jan.supabase.auth.handleDeeplinks
 
 class MainActivity : BaseActivity() {
 
@@ -129,8 +132,10 @@ class MainActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val isLaunch = savedInstanceState == null
+        val splashScreen = installSplashScreen()
 
         super.onCreate(savedInstanceState)
+        SupabaseProvider.client.handleDeeplinks(intent)
 
         // Do not let the launcher create a new activity http://stackoverflow.com/questions/16283079
         if (!isTaskRoot) {
@@ -140,8 +145,13 @@ class MainActivity : BaseActivity() {
 
         setComposeContent {
             var didMigration by remember { mutableStateOf<Boolean?>(null) }
+            var isReady by remember { mutableStateOf(false) }
+            
+            splashScreen.setKeepOnScreenCondition { !isReady }
+            
             LaunchedEffect(Unit) {
                 didMigration = Migrator.awaitAndRelease()
+                isReady = true
             }
 
             val context = LocalContext.current
@@ -300,7 +310,10 @@ class MainActivity : BaseActivity() {
                 componentActivity.addOnNewIntentListener(consumer)
                 awaitClose { componentActivity.removeOnNewIntentListener(consumer) }
             }
-                .collectLatest { handleIntentAction(it, navigator) }
+                .collectLatest {
+                    SupabaseProvider.client.handleDeeplinks(it)
+                    handleIntentAction(it, navigator)
+                }
         }
     }
 

@@ -132,14 +132,8 @@ data object HomeTab : Tab {
             androidx.compose.material3.TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Outlined.Home,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "Sora",
+                            text = "Home",
                             fontWeight = FontWeight.Bold,
                             fontSize = 22.sp,
                             maxLines = 1,
@@ -172,11 +166,25 @@ data object HomeTab : Tab {
                             navigator.push(LoginScreen())
                         }
                     }) {
-                        Icon(
-                            imageVector = Icons.Outlined.Person,
-                            contentDescription = "Profile",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        val authPrefs = Injekt.get<AuthPreferences>()
+                        val profilePicUrl by authPrefs.profilePicUrl().changes().collectAsState(initial = authPrefs.profilePicUrl().get())
+                        
+                        if (profilePicUrl.isNotEmpty()) {
+                            AsyncImage(
+                                model = profilePicUrl,
+                                contentDescription = "Profile",
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop,
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Outlined.Person,
+                                contentDescription = "Profile",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
