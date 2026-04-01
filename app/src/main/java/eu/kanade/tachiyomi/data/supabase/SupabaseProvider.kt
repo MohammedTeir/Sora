@@ -19,6 +19,11 @@ object SupabaseProvider {
 
     val client: SupabaseClient by lazy {
         createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY) {
+            defaultSerializer = io.github.jan.supabase.serializer.KotlinXSerializer(kotlinx.serialization.json.Json {
+                ignoreUnknownKeys = true
+                encodeDefaults = true
+            })
+
             install(Auth) {
                 flowType = FlowType.PKCE
                 scheme = "app.sora"
