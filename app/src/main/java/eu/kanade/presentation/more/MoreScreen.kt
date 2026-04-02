@@ -24,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.Label
+import coil3.compose.AsyncImage
 import androidx.compose.material.icons.outlined.AttachMoney
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.CloudQueue
@@ -82,6 +83,7 @@ fun MoreScreen(
     onClickDiscover: () -> Unit,
     // Auth
     isLoggedIn: Boolean = false,
+    profilePicUrl: String = "",
     userDisplayName: String = "",
     userEmail: String = "",
     lastSyncDisplay: String = "",
@@ -143,7 +145,7 @@ fun MoreScreen(
                         .padding(horizontal = 16.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // Avatar — deterministic based on email
+                    // Avatar — Google profile picture if synced, bounding to deterministic otherwise
                     Box(
                         modifier = Modifier
                             .size(52.dp)
@@ -152,14 +154,25 @@ fun MoreScreen(
                             .border(1.dp, AccentBlue.copy(alpha = 0.2f), CircleShape)
                             .padding(2.dp)
                     ) {
-                        Image(
-                            painter = painterResource(id = avatarForEmail(userEmail)),
-                            contentDescription = "Profile Avatar",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape)
-                        )
+                        if (profilePicUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = profilePicUrl,
+                                contentDescription = "Profile Avatar",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                            )
+                        } else {
+                            Image(
+                                painter = painterResource(id = avatarForEmail(userEmail)),
+                                contentDescription = "Profile Avatar",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.width(16.dp))

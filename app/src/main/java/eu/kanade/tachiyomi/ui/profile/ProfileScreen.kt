@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ExitToApp
 import androidx.compose.material.icons.outlined.ChevronRight
+import coil3.compose.AsyncImage
 import androidx.compose.material.icons.outlined.CloudSync
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Person
@@ -143,14 +144,25 @@ class ProfileScreen : Screen() {
                             .border(2.dp, AccentBlue.copy(alpha = 0.25f), CircleShape)
                             .padding(3.dp)
                     ) {
-                        Image(
-                            painter = painterResource(id = avatarRes),
-                            contentDescription = "Profile Avatar",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape)
-                        )
+                        if (state.profilePicUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = state.profilePicUrl,
+                                contentDescription = "Profile Avatar",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                            )
+                        } else {
+                            Image(
+                                painter = painterResource(id = avatarRes),
+                                contentDescription = "Profile Avatar",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -364,6 +376,7 @@ private class ProfileScreenModel(
         val libraryCount: Int = 0,
         val chaptersRead: Int = 0,
         val lastSyncDisplay: String = "",
+        val profilePicUrl: String = "",
     )
 
     init {
@@ -374,6 +387,7 @@ private class ProfileScreenModel(
                 it.copy(
                     displayName = authPrefs.userDisplayName().get(),
                     userEmail = authPrefs.userEmail().get(),
+                    profilePicUrl = authPrefs.profilePicUrl().get(),
                     libraryCount = libraryManga.size,
                     chaptersRead = libraryManga.sumOf { m -> m.readCount }.toInt(),
                     lastSyncDisplay = if (lastSync == 0L) "" else {

@@ -65,7 +65,10 @@ import kotlin.time.toDuration
 // ──────────────────────────────── helpers ────────────────────────────────────
 
 private fun Long.toHoursMinutes(): String {
-    val duration = this.toDuration(DurationUnit.MILLISECONDS)
+    // Cap to ~99,999 hours to prevent UI overflow from corrupted data
+    val maxMs = 359996400000L
+    val safeMs = this.coerceIn(0L, maxMs)
+    val duration = safeMs.toDuration(DurationUnit.MILLISECONDS)
     val h = duration.inWholeHours
     val m = duration.inWholeMinutes % 60
     return "${h}h ${m}m"
