@@ -14,22 +14,10 @@ class SetupDefaultExtensionReposMigration : Migration {
 
     private val defaultRepos = listOf(
         DefaultRepo(
-            baseUrl = "https://raw.githubusercontent.com/komikku-app/extensions/repo",
-            name = "Komikku Extensions",
-            shortName = "Komikku",
-            website = "https://github.com/komikku-app/extensions",
-        ),
-        DefaultRepo(
-            baseUrl = "https://raw.githubusercontent.com/MiguelMA3/mihon-extensions/refs/heads/mypack",
-            name = "MiguelMA3 Extensions",
-            shortName = "MiguelMA3",
-            website = "https://github.com/MiguelMA3/mihon-extensions",
-        ),
-        DefaultRepo(
-            baseUrl = "https://raw.githubusercontent.com/ThePBone/tachiyomi-extensions-revived/repo",
-            name = "Tachiyomi Extensions Revived",
-            shortName = "Revived",
-            website = "https://github.com/ThePBone/tachiyomi-extensions-revived",
+            baseUrl = "https://raw.githubusercontent.com/mahmoud-teir/extensions/repo",
+            name = "Mahmoud Extensions",
+            shortName = "Mahmoud",
+            website = "https://github.com/mahmoud-teir/extensions",
         ),
     )
 
@@ -37,23 +25,32 @@ class SetupDefaultExtensionReposMigration : Migration {
         val sourcePreferences = migrationContext.get<SourcePreferences>() ?: return@withIOContext false
         val repository = migrationContext.get<ExtensionRepoRepository>() ?: return@withIOContext false
 
-        if (sourcePreferences.hasSeededDefaultExtensionRepos().get()) {
+        val allRepos = repository.getAll()
+        val targetRepo = defaultRepos.first()
+
+        // Check if our new default is already present
+        if (allRepos.any { it.baseUrl == targetRepo.baseUrl }) {
             return@withIOContext true
         }
 
-        for ((index, repo) in defaultRepos.withIndex()) {
-            try {
-                repository.upsertRepo(
-                    repo.baseUrl,
-                    repo.name,
-                    repo.shortName,
-                    repo.website,
-                    "NOFINGERPRINT-default-${index + 1}",
-                )
-            } catch (e: SaveExtensionRepoException) {
-                logcat(LogPriority.ERROR, e) {
-                    "Error seeding default extension repo: ${repo.baseUrl}"
-                }
+        // Delete legacy default repos (Komikku, MiguelMA3, Revived) or any that shouldn't be there
+        // As requested: "delete all default Extension repo"
+        for (repo in allRepos) {
+            repository.deleteRepo(repo.baseUrl)
+        }
+
+        // Seed the new default
+        try {
+            repository.upsertRepo(
+                targetRepo.baseUrl,
+                targetRepo.name,
+                targetRepo.shortName,
+                targetRepo.website,
+                "NOFINGERPRINT-default-mahmoud",
+            )
+        } catch (e: SaveExtensionRepoException) {
+            logcat(LogPriority.ERROR, e) {
+                "Error seeding default extension repo: ${targetRepo.baseUrl}"
             }
         }
 
