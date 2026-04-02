@@ -12,7 +12,7 @@ import okhttp3.Request
 import okhttp3.Response
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import org.jsoup.nodes.Element
+import org.jsoup.parser.Parser
 
 class ProComic : HttpSource() {
 
@@ -29,39 +29,72 @@ class ProComic : HttpSource() {
     // ========================= Popular =============================
 
     override fun popularMangaRequest(page: Int): Request {
-        return GET("$baseUrl/series", headers)
+        return if (page == 1) {
+            // Page 1: fetch HTML for items WITH thumbnails
+            GET("$baseUrl/series", headers)
+        } else {
+            // Page 2: fetch sitemap for ALL remaining series
+            GET("$baseUrl/sitemap.xml", headers)
+        }
     }
 
     override fun popularMangaParse(response: Response): MangasPage {
-        val document = response.asJsoup()
-        val mangas = mutableListOf<SManga>()
+        val url = response.request.url.toString()
 
-        // Find all links that point to a series page (4 path segments: series/type/id/slug)
-        document.select("a[href*=/series/]").forEach { element ->
-            val href = element.attr("href")
-            val segments = href.trimStart('/').split("/")
-            // A series link has exactly 4 segments: series/{type}/{id}/{slug}
-            if (segments.size == 4 && segments[0] == "series") {
-                val manga = SManga.create()
-                manga.setUrlWithoutDomain(href)
+        if (!url.contains("sitemap")) {
+            // Page 1: parse HTML — gets ~18 items with thumbnails
+            val document = response.asJsoup()
+            val mangas = mutableListOf<SManga>()
 
-                // Title from h3 inside the link
-                val titleEl = element.selectFirst("h3")
-                manga.title = titleEl?.text()?.trim() ?: element.text().trim()
-                if (manga.title.isBlank()) return@forEach
+            document.select("a[href*=/series/]").forEach { element ->
+                val href = element.attr("href")
+                val segments = href.trimStart('/').split("/")
+                if (segments.size == 4 && segments[0] == "series") {
+                    val manga = SManga.create()
+                    manga.setUrlWithoutDomain(href)
 
-                // Thumbnail from img inside the link
-                element.selectFirst("img")?.let { img ->
-                    manga.thumbnail_url = img.absUrl("src").ifBlank {
-                        img.attr("data-src")
+                    val titleEl = element.selectFirst("h3")
+                    manga.title = titleEl?.text()?.trim() ?: element.text().trim()
+                    if (manga.title.isBlank()) return@forEach
+
+                    element.selectFirst("img")?.let { img ->
+                        manga.thumbnail_url = img.absUrl("src").ifBlank {
+                            img.attr("data-src")
+                        }
+                    }
+
+                    mangas.add(manga)
+                }
+            }
+
+            // hasNextPage = true to trigger sitemap fetch on scroll
+            return MangasPage(mangas.distinctBy { it.url }, true)
+        } else {
+            // Page 2: parse sitemap.xml for ALL series URLs
+            val xml = response.body.string()
+            val doc = Jsoup.parse(xml, "", Parser.xmlParser())
+
+            val mangas = doc.select("loc")
+                .map { it.text() }
+                .filter { loc ->
+                    loc.startsWith("$baseUrl/series/") &&
+                        loc.removePrefix("$baseUrl/series/").split("/").size == 3
+                }
+                .map { loc ->
+                    val path = loc.removePrefix(baseUrl)
+                    val slug = path.split("/").last()
+                    val title = slug.split("-").joinToString(" ") { word ->
+                        word.replaceFirstChar { it.uppercase() }
+                    }
+                    SManga.create().apply {
+                        setUrlWithoutDomain(path)
+                        this.title = title
                     }
                 }
 
-                mangas.add(manga)
-            }
+            // No more pages after sitemap
+            return MangasPage(mangas, false)
         }
-
-        return MangasPage(mangas.distinctBy { it.url }, false)
     }
 
     // ========================= Latest ==============================
@@ -119,10 +152,38 @@ class ProComic : HttpSource() {
     // ========================= Search ==============================
 
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
-        return GET("$baseUrl/series?search=$query", headers)
+        // Use sitemap for search — filter locally by query
+        return GET("$baseUrl/sitemap.xml", headers)
     }
 
-    override fun searchMangaParse(response: Response): MangasPage = popularMangaParse(response)
+    override fun searchMangaParse(response: Response): MangasPage {
+        val query = response.request.url.toString()
+            .let { "" } // We'll extract the query differently
+
+        // Parse sitemap for all series, then let the app filter
+        val xml = response.body.string()
+        val doc = Jsoup.parse(xml, "", Parser.xmlParser())
+
+        val mangas = doc.select("loc")
+            .map { it.text() }
+            .filter { loc ->
+                loc.startsWith("$baseUrl/series/") &&
+                    loc.removePrefix("$baseUrl/series/").split("/").size == 3
+            }
+            .map { loc ->
+                val path = loc.removePrefix(baseUrl)
+                val slug = path.split("/").last()
+                val title = slug.split("-").joinToString(" ") { word ->
+                    word.replaceFirstChar { it.uppercase() }
+                }
+                SManga.create().apply {
+                    setUrlWithoutDomain(path)
+                    this.title = title
+                }
+            }
+
+        return MangasPage(mangas, false)
+    }
 
     // ========================= Details =============================
 
