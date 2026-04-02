@@ -33,8 +33,8 @@ class ProComic : HttpSource() {
             // Page 1: fetch HTML for items WITH thumbnails
             GET("$baseUrl/series", headers)
         } else {
-            // Page 2: fetch sitemap for ALL remaining series
-            GET("$baseUrl/sitemap.xml", headers)
+            // Page 2+: fetch sitemap for true pagination
+            GET("$baseUrl/sitemap.xml?page=$page&type=popular", headers)
         }
     }
 
@@ -42,7 +42,7 @@ class ProComic : HttpSource() {
         val url = response.request.url.toString()
 
         if (!url.contains("sitemap")) {
-            // Page 1: parse HTML — gets ~18 items with thumbnails
+            // Page 1: parse HTML — gets 18 items with thumbnails
             val document = response.asJsoup()
             val mangas = mutableListOf<SManga>()
 
@@ -68,32 +68,38 @@ class ProComic : HttpSource() {
             }
 
             // hasNextPage = true to trigger sitemap fetch on scroll
-            return MangasPage(mangas.distinctBy { it.url }, true)
+            return MangasPage(mangas.distinctBy { it.url }, mangas.isNotEmpty())
         } else {
-            // Page 2: parse sitemap.xml for ALL series URLs
+            // Page 2+: parse sitemap.xml with regex for safe parsing, apply true pagination
             val xml = response.body.string()
-            val doc = Jsoup.parse(xml, "", Parser.xmlParser())
+            val pageStr = url.substringAfterLast("page=").substringBefore("&")
+            val page = pageStr.toIntOrNull() ?: 2
 
-            val mangas = doc.select("loc")
-                .map { it.text() }
-                .filter { loc ->
-                    loc.startsWith("$baseUrl/series/") &&
-                        loc.removePrefix("$baseUrl/series/").split("/").size == 3
-                }
-                .map { loc ->
-                    val path = loc.removePrefix(baseUrl)
-                    val slug = path.split("/").last()
-                    val title = slug.split("-").joinToString(" ") { word ->
-                        word.replaceFirstChar { it.uppercase() }
-                    }
-                    SManga.create().apply {
-                        setUrlWithoutDomain(path)
-                        this.title = title
-                    }
-                }
+            // Use regex to strictly find all series locations, bypassing any Jsoup XML namespace issues
+            val regex = Regex("""<loc>(https?://[^/]+/series/[^<]+)</loc>""")
+            val allSeriesLocs = regex.findAll(xml).map { it.groupValues[1] }
+                .filter { loc -> loc.removePrefix("$baseUrl/series/").split("/").size == 3 }
+                .toList()
 
-            // No more pages after sitemap
-            return MangasPage(mangas, false)
+            // True lazy loading: 18 items per page
+            val pageSize = 18
+            val startIndex = (page - 1) * pageSize
+            val pagedLocs = allSeriesLocs.drop(startIndex).take(pageSize)
+
+            val mangas = pagedLocs.map { loc ->
+                val path = loc.substringAfter(baseUrl)
+                val slug = path.split("/").last()
+                val title = slug.split("-").joinToString(" ") { word ->
+                    word.replaceFirstChar { it.uppercase() }
+                }
+                SManga.create().apply {
+                    setUrlWithoutDomain(path)
+                    this.title = title
+                }
+            }
+
+            val hasNextPage = (startIndex + pageSize) < allSeriesLocs.size
+            return MangasPage(mangas, hasNextPage)
         }
     }
 
@@ -152,37 +158,51 @@ class ProComic : HttpSource() {
     // ========================= Search ==============================
 
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
-        // Use sitemap for search — filter locally by query
-        return GET("$baseUrl/sitemap.xml", headers)
+        // Embed the page and query in the URL for the parsing step
+        return GET("$baseUrl/sitemap.xml?page=$page&query=${query.trim().replace(" ", "-")}", headers)
     }
 
     override fun searchMangaParse(response: Response): MangasPage {
-        val query = response.request.url.toString()
-            .let { "" } // We'll extract the query differently
+        val url = response.request.url.toString()
+        val query = url.substringAfterLast("query=").substringBefore("&").replace("-", " ")
+        val pageStr = url.substringAfterLast("page=").substringBefore("&")
+        val page = pageStr.toIntOrNull() ?: 1
 
-        // Parse sitemap for all series, then let the app filter
         val xml = response.body.string()
-        val doc = Jsoup.parse(xml, "", Parser.xmlParser())
+        val regex = Regex("""<loc>(https?://[^/]+/series/[^<]+)</loc>""")
+        
+        var allSeriesLocs = regex.findAll(xml).map { it.groupValues[1] }
+            .filter { loc -> loc.removePrefix("$baseUrl/series/").split("/").size == 3 }
+            .toList()
 
-        val mangas = doc.select("loc")
-            .map { it.text() }
-            .filter { loc ->
-                loc.startsWith("$baseUrl/series/") &&
-                    loc.removePrefix("$baseUrl/series/").split("/").size == 3
+        // Filter locally by query if provided
+        if (query.isNotBlank()) {
+            allSeriesLocs = allSeriesLocs.filter { loc ->
+                val slug = loc.substringAfterLast("/")
+                val title = slug.replace("-", " ")
+                title.contains(query, ignoreCase = true)
             }
-            .map { loc ->
-                val path = loc.removePrefix(baseUrl)
-                val slug = path.split("/").last()
-                val title = slug.split("-").joinToString(" ") { word ->
-                    word.replaceFirstChar { it.uppercase() }
-                }
-                SManga.create().apply {
-                    setUrlWithoutDomain(path)
-                    this.title = title
-                }
-            }
+        }
 
-        return MangasPage(mangas, false)
+        // True lazy loading: 18 items per page
+        val pageSize = 18
+        val startIndex = (page - 1) * pageSize
+        val pagedLocs = allSeriesLocs.drop(startIndex).take(pageSize)
+
+        val mangas = pagedLocs.map { loc ->
+            val path = loc.substringAfter(baseUrl)
+            val slug = path.split("/").last()
+            val title = slug.split("-").joinToString(" ") { word ->
+                word.replaceFirstChar { it.uppercase() }
+            }
+            SManga.create().apply {
+                setUrlWithoutDomain(path)
+                this.title = title
+            }
+        }
+
+        val hasNextPage = (startIndex + pageSize) < allSeriesLocs.size
+        return MangasPage(mangas, hasNextPage)
     }
 
     // ========================= Details =============================

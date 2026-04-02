@@ -606,7 +606,7 @@ class ReaderViewModel @JvmOverloads constructor(
 
             val chapterId = readerChapter.chapter.id!!
             val endTime = Date()
-            val sessionReadDuration = chapterReadStartTime?.let { endTime.time - it } ?: 0
+            val sessionReadDuration = chapterReadStartTime?.let { endTime.time - it }?.coerceIn(0L, 86400000L) ?: 0L
 
             upsertHistory.await(HistoryUpdate(chapterId, endTime, sessionReadDuration))
             chapterReadStartTime = null

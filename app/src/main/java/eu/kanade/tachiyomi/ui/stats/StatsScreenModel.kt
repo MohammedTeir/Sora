@@ -105,7 +105,8 @@ class StatsScreenModel(
         val dayDurationMap = mutableMapOf<Long, Long>()
         for ((readAtMs, duration) in historyEntries) {
             val dayKey = getStartOfDay(readAtMs)
-            dayDurationMap[dayKey] = (dayDurationMap[dayKey] ?: 0L) + duration
+            val safeDuration = duration.coerceIn(0L, 86400000L)
+            dayDurationMap[dayKey] = (dayDurationMap[dayKey] ?: 0L) + safeDuration
         }
 
         val today = getStartOfDay(System.currentTimeMillis())

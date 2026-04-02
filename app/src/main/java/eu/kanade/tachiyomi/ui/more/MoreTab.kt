@@ -106,6 +106,7 @@ data object MoreTab : Tab {
             onClickCloudSync = { navigator.push(SyncSettingsScreen()) },
             libraryCount = authState.libraryCount,
             chaptersRead = authState.chaptersRead,
+            profilePicUrl = authState.profilePicUrl,
         )
     }
 }
@@ -133,6 +134,7 @@ private class MoreScreenModel(
             userEmail = authPrefs.userEmail().get(),
             lastSyncDisplay = "",
             isSyncing = syncPrefs.isSyncing().get(),
+            profilePicUrl = authPrefs.profilePicUrl().get(),
         )
     )
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
@@ -196,6 +198,7 @@ private class MoreScreenModel(
             isSyncing = syncPrefs.isSyncing().get(),
             libraryCount = libraryCount,
             chaptersRead = chaptersRead,
+            profilePicUrl = authPrefs.profilePicUrl().get(),
         )
     }
 
@@ -217,6 +220,7 @@ private class MoreScreenModel(
         val isSyncing: Boolean,
         val libraryCount: Int = 0,
         val chaptersRead: Int = 0,
+        val profilePicUrl: String = "",
     )
 }
 

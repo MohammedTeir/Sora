@@ -248,6 +248,7 @@ class AuthScreenModel(
         authPrefs.userId().set(userId)
         authPrefs.userEmail().set(email)
         authPrefs.userDisplayName().set(authService.getUserDisplayName() ?: "")
+        authPrefs.profilePicUrl().set(authService.getUserAvatarUrl() ?: "")
     }
 
     private fun triggerPostLoginSync(context: android.content.Context) {
