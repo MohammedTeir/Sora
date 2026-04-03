@@ -11,7 +11,7 @@ android {
         applicationId = "eu.kanade.tachiyomi.extension.ar.procomic"
         minSdk = 26
         targetSdk = 34
-        versionCode = 7
+        versionCode = 6
         versionName = "1.6.1"
     }
 

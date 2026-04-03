@@ -229,8 +229,7 @@ class ProComic : HttpSource() {
     // ========================= Chapters ============================
 
     override suspend fun getChapterList(manga: SManga): List<SChapter> {
-        val segments = manga.url.split("/").filter { it.isNotBlank() }
-        // Format: series/{type}/{id}/{slug}
+        val segments = manga.url.trim('/').split('/')
         val type = segments.getOrNull(1) ?: "novel"
         val id = segments.getOrNull(2) ?: ""
         val mangaSlug = segments.getOrNull(3) ?: ""
@@ -247,19 +246,9 @@ class ProComic : HttpSource() {
         var page = 1
         val limit = 100
 
-        // Handle pluralization: novel -> novels, manga -> mangas
-        val apiType = if (type.endsWith("s")) type else "${type}s"
-
         while (true) {
-            val url = "$baseUrl/api/public/$apiType/$id/chapters?limit=$limit&page=$page&order=desc"
+            val url = "$baseUrl/api/public/${type}s/$id/chapters?limit=$limit&page=$page&order=desc"
             val response = client.newCall(GET(url, apiHeaders)).await()
-
-            if (!response.isSuccessful) {
-                if (response.code == 404 && !apiType.endsWith("s")) {
-                    // Try alternative if needed, but the current logic always adds 's'
-                }
-                break
-            }
 
             val jsonString = response.body.string()
             val json = try {
@@ -273,34 +262,21 @@ class ProComic : HttpSource() {
                 val item = data.getJSONObject(i)
                 if (item.optString("language", "AR") != "AR") continue
 
-                val chapterId = item.optInt("id", 0)
-                val numStr = item.optString("chapter_number", "")
+                val chapterId = item.getInt("id")
+                val numStr = item.getString("chapter_number")
                 val title = item.optString("title", "")
-
-                if (chapterId == 0 || numStr.isBlank()) continue
 
                 val chapter = SChapter.create()
                 chapter.url = "/series/$type/$id/$mangaSlug/$chapterId/$numStr"
-                chapter.name = if (!title.isNullOrBlank() && title != "null") title else "الفصل $numStr"
+                chapter.name = if (title.isNotBlank()) title else "الفصل $numStr"
                 chapter.chapter_number = numStr.toFloatOrNull() ?: -1f
-                chapter.date_upload = item.optString("published_at").let { 
-                    try {
-                        java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply {
-                            timeZone = java.util.TimeZone.getTimeZone("UTC")
-                        }.parse(it)?.time ?: 0L
-                    } catch (e: Exception) {
-                        0L
-                    }
-                }
+                chapter.date_upload = parseDate(item.optString("published_at"))
                 allChapters.add(chapter)
             }
 
             if (data.length() < limit) break
             page++
         }
-
-        return allChapters.sortedByDescending { it.chapter_number }
-    }
 
         return allChapters.sortedByDescending { it.chapter_number }
     }
