@@ -229,33 +229,38 @@ class ProComic : HttpSource() {
     }
 
     override fun chapterListParse(response: Response): List<SChapter> {
-        val document = response.asJsoup()
+        val html = response.body.string()
+        val document = Jsoup.parse(html, baseUrl)
         val chapters = mutableListOf<SChapter>()
+        val seenUrls = mutableSetOf<String>()
 
-        // Chapter links: /series/{type}/{id}/{slug}/{chapterId}/{chapterNum}
+        // Step 1: build name-map from visible <a> elements
+        val nameMap = mutableMapOf<String, String>()
         document.select("a[href*=/series/]").forEach { element ->
-            val href = element.attr("href")
+            val href = element.attr("href").trimEnd('/')
+            val name = element.selectFirst("span.break-words, span.font-semibold, h3")?.text()?.trim()
+            if (!name.isNullOrBlank()) nameMap[href] = name
+        }
+
+        // Step 2: extract ALL chapter URLs from raw HTML (RSC payload + rendered HTML)
+        // Chapter links: /series/{type}/{id}/{slug}/{chapterId}/{chapterNum}
+        val chapterUrlRegex = Regex("""(/series/[^/"'\s\\]+/\d+/[^/"'\s\\]+/\d+/(\d+(?:\.\d+)?))""")
+        chapterUrlRegex.findAll(html).forEach { match ->
+            val href = match.groupValues[1].trimEnd('/')
+            val numStr = match.groupValues[2]
             val segments = href.trimStart('/').split("/")
-            // Chapter URLs have 6 path segments
-            if (segments.size == 6 && segments[0] == "series") {
+            // Exactly 6 segments: series/{type}/{id}/{slug}/{chapterId}/{chapterNum}
+            if (segments.size == 6 && href !in seenUrls) {
+                seenUrls.add(href)
                 val chapter = SChapter.create()
                 chapter.setUrlWithoutDomain(href)
-
-                // Chapter name
-                val chapterName = element.selectFirst("span.break-words, span.font-semibold, h3")?.text()?.trim()
-                chapter.name = chapterName ?: "الفصل ${segments.last()}"
-
-                // Chapter number
-                val chapterNum = segments.last().toFloatOrNull()
-                if (chapterNum != null) {
-                    chapter.chapter_number = chapterNum
-                }
-
+                chapter.name = nameMap[href] ?: "الفصل $numStr"
+                chapter.chapter_number = numStr.toFloatOrNull() ?: -1f
                 chapters.add(chapter)
             }
         }
 
-        return chapters.distinctBy { it.url }
+        return chapters.distinctBy { it.url }.sortedByDescending { it.chapter_number }
     }
 
     // ========================= Pages ===============================
