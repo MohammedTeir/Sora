@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.extension.ar.procomic
 
 import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.network.await
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.Page
@@ -227,8 +228,9 @@ class ProComic : HttpSource() {
 
     // ========================= Chapters ============================
 
-    override fun chapterListRequest(manga: SManga): Request {
-        val segments = manga.url.trim('/').split('/')
+    override suspend fun getChapterList(manga: SManga): List<SChapter> {
+        val segments = manga.url.split("/").filter { it.isNotBlank() }
+        // Format: series/{type}/{id}/{slug}
         val type = segments.getOrNull(1) ?: "novel"
         val id = segments.getOrNull(2) ?: ""
         val mangaSlug = segments.getOrNull(3) ?: ""
@@ -239,55 +241,72 @@ class ProComic : HttpSource() {
             .set("Sec-Fetch-Mode", "cors")
             .removeAll("Sec-Fetch-User")
             .removeAll("Upgrade-Insecure-Requests")
-            .add("X-Manga-Slug", mangaSlug)
-            .add("X-Manga-Type", type)
-            .add("X-Manga-Id", id)
             .build()
 
-        return GET("$baseUrl/api/public/${type}s/$id/chapters?limit=10000&order=desc", apiHeaders)
+        val allChapters = mutableListOf<SChapter>()
+        var page = 1
+        val limit = 100
+
+        // Handle pluralization: novel -> novels, manga -> mangas
+        val apiType = if (type.endsWith("s")) type else "${type}s"
+
+        while (true) {
+            val url = "$baseUrl/api/public/$apiType/$id/chapters?limit=$limit&page=$page&order=desc"
+            val response = client.newCall(GET(url, apiHeaders)).await()
+
+            if (!response.isSuccessful) {
+                if (response.code == 404 && !apiType.endsWith("s")) {
+                    // Try alternative if needed, but the current logic always adds 's'
+                }
+                break
+            }
+
+            val jsonString = response.body.string()
+            val json = try {
+                org.json.JSONObject(jsonString)
+            } catch (e: Exception) { break }
+
+            val data = json.optJSONArray("data") ?: break
+            if (data.length() == 0) break
+
+            for (i in 0 until data.length()) {
+                val item = data.getJSONObject(i)
+                if (item.optString("language", "AR") != "AR") continue
+
+                val chapterId = item.optInt("id", 0)
+                val numStr = item.optString("chapter_number", "")
+                val title = item.optString("title", "")
+
+                if (chapterId == 0 || numStr.isBlank()) continue
+
+                val chapter = SChapter.create()
+                chapter.url = "/series/$type/$id/$mangaSlug/$chapterId/$numStr"
+                chapter.name = if (!title.isNullOrBlank() && title != "null") title else "الفصل $numStr"
+                chapter.chapter_number = numStr.toFloatOrNull() ?: -1f
+                chapter.date_upload = item.optString("published_at").let { 
+                    try {
+                        java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply {
+                            timeZone = java.util.TimeZone.getTimeZone("UTC")
+                        }.parse(it)?.time ?: 0L
+                    } catch (e: Exception) {
+                        0L
+                    }
+                }
+                allChapters.add(chapter)
+            }
+
+            if (data.length() < limit) break
+            page++
+        }
+
+        return allChapters.sortedByDescending { it.chapter_number }
     }
 
-    override fun chapterListParse(response: Response): List<SChapter> {
-        val jsonString = response.body.string()
-        val json = jsonString.let { 
-            try {
-                org.json.JSONObject(it)
-            } catch (e: Exception) {
-                return emptyList()
-            }
-        }
-        
-        val data = json.optJSONArray("data") ?: return emptyList()
-        val mangaSlug = response.request.header("X-Manga-Slug") ?: ""
-        val type = response.request.header("X-Manga-Type") ?: "novel"
-        val mangaId = response.request.header("X-Manga-Id") ?: ""
-        
-        val chapters = mutableListOf<SChapter>()
-        for (i in 0 until data.length()) {
-            val item = data.getJSONObject(i)
-            if (item.optString("language", "AR") != "AR") continue
-            
-            val chapterId = item.getInt("id")
-            val numStr = item.getString("chapter_number")
-            val title = item.optString("title", "")
-            
-            val chapter = SChapter.create()
-            // Format: /series/{type}/{id}/{slug}/{chapterId}/{chapterNum}
-            chapter.url = "/series/$type/$mangaId/$mangaSlug/$chapterId/$numStr"
-            chapter.name = if (title.isNotBlank()) title else "الفصل $numStr"
-            chapter.chapter_number = numStr.toFloatOrNull() ?: -1f
-            chapter.date_upload = item.optString("published_at").let { 
-                try {
-                    java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).parse(it)?.time ?: 0L
-                } catch (e: Exception) {
-                    0L
-                }
-            }
-            chapters.add(chapter)
-        }
-        
-        return chapters.sortedByDescending { it.chapter_number }
+        return allChapters.sortedByDescending { it.chapter_number }
     }
+
+    override fun chapterListRequest(manga: SManga): Request = throw UnsupportedOperationException()
+    override fun chapterListParse(response: Response): List<SChapter> = throw UnsupportedOperationException()
 
     // ========================= Pages ===============================
 
@@ -396,6 +415,13 @@ class ProComic : HttpSource() {
             setUrlWithoutDomain(path)
             this.title = title
         }
+    }
+
+    private fun parseDate(dateStr: String): Long {
+        return try {
+            java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
+                .parse(dateStr)?.time ?: 0L
+        } catch (e: Exception) { 0L }
     }
 
     private fun Response.asJsoup(): Document {
