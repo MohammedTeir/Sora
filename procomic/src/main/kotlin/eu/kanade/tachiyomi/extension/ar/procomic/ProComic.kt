@@ -16,7 +16,7 @@ import org.jsoup.nodes.Document
 class ProComic : HttpSource() {
 
     override val name = "ProComic"
-    override val baseUrl = "https://procomic.net"
+    override val baseUrl = "https://procomic.pro"
     override val lang = "ar"
     override val supportsLatest = true
 
@@ -225,42 +225,59 @@ class ProComic : HttpSource() {
     // ========================= Chapters ============================
 
     override fun chapterListRequest(manga: SManga): Request {
-        return GET(baseUrl + manga.url, headers)
+        val segments = manga.url.trim('/').split('/')
+        val type = segments.getOrNull(1) ?: "novel"
+        val id = segments.getOrNull(2) ?: ""
+        val mangaSlug = segments.getOrNull(3) ?: ""
+        
+        // Pass slug and type through headers to use in parser
+        return GET("$baseUrl/api/public/${type}s/$id/chapters?limit=10000&order=desc", headers.newBuilder()
+            .add("X-Manga-Slug", mangaSlug)
+            .add("X-Manga-Type", type)
+            .add("X-Manga-Id", id)
+            .build())
     }
 
     override fun chapterListParse(response: Response): List<SChapter> {
-        val html = response.body.string()
-        val document = Jsoup.parse(html, baseUrl)
-        val chapters = mutableListOf<SChapter>()
-        val seenUrls = mutableSetOf<String>()
-
-        // Step 1: build name-map from visible <a> elements
-        val nameMap = mutableMapOf<String, String>()
-        document.select("a[href*=/series/]").forEach { element ->
-            val href = element.attr("href").trimEnd('/')
-            val name = element.selectFirst("span.break-words, span.font-semibold, h3")?.text()?.trim()
-            if (!name.isNullOrBlank()) nameMap[href] = name
-        }
-
-        // Step 2: extract ALL chapter URLs from raw HTML (RSC payload + rendered HTML)
-        // Chapter links: /series/{type}/{id}/{slug}/{chapterId}/{chapterNum}
-        val chapterUrlRegex = Regex("""(/series/[^/"'\s\\]+/\d+/[^/"'\s\\]+/\d+/(\d+(?:\.\d+)?))""")
-        chapterUrlRegex.findAll(html).forEach { match ->
-            val href = match.groupValues[1].trimEnd('/')
-            val numStr = match.groupValues[2]
-            val segments = href.trimStart('/').split("/")
-            // Exactly 6 segments: series/{type}/{id}/{slug}/{chapterId}/{chapterNum}
-            if (segments.size == 6 && href !in seenUrls) {
-                seenUrls.add(href)
-                val chapter = SChapter.create()
-                chapter.setUrlWithoutDomain(href)
-                chapter.name = nameMap[href] ?: "الفصل $numStr"
-                chapter.chapter_number = numStr.toFloatOrNull() ?: -1f
-                chapters.add(chapter)
+        val jsonString = response.body.string()
+        val json = jsonString.let { 
+            try {
+                org.json.JSONObject(it)
+            } catch (e: Exception) {
+                return emptyList()
             }
         }
-
-        return chapters.distinctBy { it.url }.sortedByDescending { it.chapter_number }
+        
+        val data = json.optJSONArray("data") ?: return emptyList()
+        val mangaSlug = response.request.header("X-Manga-Slug") ?: ""
+        val type = response.request.header("X-Manga-Type") ?: "novel"
+        val mangaId = response.request.header("X-Manga-Id") ?: ""
+        
+        val chapters = mutableListOf<SChapter>()
+        for (i in 0 until data.length()) {
+            val item = data.getJSONObject(i)
+            if (item.optString("language", "AR") != "AR") continue
+            
+            val chapterId = item.getInt("id")
+            val numStr = item.getString("chapter_number")
+            val title = item.optString("title", "")
+            
+            val chapter = SChapter.create()
+            // Format: /series/{type}/{id}/{slug}/{chapterId}/{chapterNum}
+            chapter.url = "/series/$type/$mangaId/$mangaSlug/$chapterId/$numStr"
+            chapter.name = if (title.isNotBlank()) title else "الفصل $numStr"
+            chapter.chapter_number = numStr.toFloatOrNull() ?: -1f
+            chapter.date_upload = item.optString("published_at").let { 
+                try {
+                    java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).parse(it)?.time ?: 0L
+                } catch (e: Exception) {
+                    0L
+                }
+            }
+            chapters.add(chapter)
+        }
+        
+        return chapters.sortedByDescending { it.chapter_number }
     }
 
     // ========================= Pages ===============================
