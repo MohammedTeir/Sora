@@ -20,8 +20,6 @@ class ProComic : HttpSource() {
     override val lang = "ar"
     override val supportsLatest = true
 
-    override val mirrorCandidates = listOf("https://procomic.pro")
-
     // In-memory sitemap cache to avoid re-downloading on every scroll page
     private var cachedSitemapEntries: List<String>? = null
     private var sitemapCacheTime: Long = 0L
@@ -29,8 +27,13 @@ class ProComic : HttpSource() {
 
     override fun headersBuilder(): Headers.Builder = super.headersBuilder()
         .add("Referer", "$baseUrl/")
-        .add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+        .add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8")
         .add("Accept-Language", "ar,en-US;q=0.9,en;q=0.8")
+        .add("Sec-Fetch-Dest", "document")
+        .add("Sec-Fetch-Mode", "navigate")
+        .add("Sec-Fetch-Site", "same-origin")
+        .add("Sec-Fetch-User", "?1")
+        .add("Upgrade-Insecure-Requests", "1")
 
     // ========================= Popular =============================
 
@@ -229,13 +232,19 @@ class ProComic : HttpSource() {
         val type = segments.getOrNull(1) ?: "novel"
         val id = segments.getOrNull(2) ?: ""
         val mangaSlug = segments.getOrNull(3) ?: ""
-        
-        // Pass slug and type through headers to use in parser
-        return GET("$baseUrl/api/public/${type}s/$id/chapters?limit=10000&order=desc", headers.newBuilder()
+
+        val apiHeaders = headers.newBuilder()
+            .set("Accept", "application/json, text/plain, */*")
+            .set("Sec-Fetch-Dest", "empty")
+            .set("Sec-Fetch-Mode", "cors")
+            .removeAll("Sec-Fetch-User")
+            .removeAll("Upgrade-Insecure-Requests")
             .add("X-Manga-Slug", mangaSlug)
             .add("X-Manga-Type", type)
             .add("X-Manga-Id", id)
-            .build())
+            .build()
+
+        return GET("$baseUrl/api/public/${type}s/$id/chapters?limit=10000&order=desc", apiHeaders)
     }
 
     override fun chapterListParse(response: Response): List<SChapter> {
