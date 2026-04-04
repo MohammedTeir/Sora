@@ -234,6 +234,8 @@ class ProComic : HttpSource() {
         val id = segments.getOrNull(2) ?: ""
         val mangaSlug = segments.getOrNull(3) ?: ""
 
+        val apiType = if (type == "novel") "novels" else type
+
         val apiHeaders = headers.newBuilder()
             .set("Accept", "application/json, text/plain, */*")
             .set("Sec-Fetch-Dest", "empty")
@@ -242,13 +244,30 @@ class ProComic : HttpSource() {
             .removeAll("Upgrade-Insecure-Requests")
             .build()
 
+        // Try single large request first (most reliable — gets all chapters at once)
+        val allUrl = "$baseUrl/api/public/$apiType/$id/chapters?limit=10000&order=desc"
+        val allResponse = client.newCall(GET(allUrl, apiHeaders)).await()
+
+        if (allResponse.isSuccessful) {
+            val chapters = parseChaptersFromJson(allResponse.body.string(), type, id, mangaSlug)
+            if (chapters.isNotEmpty()) return chapters
+        } else {
+            allResponse.close()
+        }
+
+        // Fallback: paginated fetching with offset
         val allChapters = mutableListOf<SChapter>()
         var page = 1
         val limit = 100
 
         while (true) {
-            val url = "$baseUrl/api/public/${type}s/$id/chapters?limit=$limit&page=$page&order=desc"
+            val url = "$baseUrl/api/public/$apiType/$id/chapters?limit=$limit&offset=${(page - 1) * limit}&order=desc"
             val response = client.newCall(GET(url, apiHeaders)).await()
+
+            if (!response.isSuccessful) {
+                response.close()
+                break
+            }
 
             val jsonString = response.body.string()
             val json = try {
@@ -258,21 +277,7 @@ class ProComic : HttpSource() {
             val data = json.optJSONArray("data") ?: break
             if (data.length() == 0) break
 
-            for (i in 0 until data.length()) {
-                val item = data.getJSONObject(i)
-                if (item.optString("language", "AR") != "AR") continue
-
-                val chapterId = item.getInt("id")
-                val numStr = item.getString("chapter_number")
-                val title = item.optString("title", "")
-
-                val chapter = SChapter.create()
-                chapter.url = "/series/$type/$id/$mangaSlug/$chapterId/$numStr"
-                chapter.name = if (title.isNotBlank()) title else "الفصل $numStr"
-                chapter.chapter_number = numStr.toFloatOrNull() ?: -1f
-                chapter.date_upload = parseDate(item.optString("published_at"))
-                allChapters.add(chapter)
-            }
+            parseChapterArray(data, type, id, mangaSlug, allChapters)
 
             if (data.length() < limit) break
             page++
@@ -390,6 +395,41 @@ class ProComic : HttpSource() {
         return SManga.create().apply {
             setUrlWithoutDomain(path)
             this.title = title
+        }
+    }
+
+    private fun parseChaptersFromJson(jsonString: String, type: String, id: String, mangaSlug: String): List<SChapter> {
+        val json = try {
+            org.json.JSONObject(jsonString)
+        } catch (e: Exception) { return emptyList() }
+
+        val data = json.optJSONArray("data") ?: return emptyList()
+        val chapters = mutableListOf<SChapter>()
+        parseChapterArray(data, type, id, mangaSlug, chapters)
+        return chapters.sortedByDescending { it.chapter_number }
+    }
+
+    private fun parseChapterArray(
+        data: org.json.JSONArray,
+        type: String,
+        id: String,
+        mangaSlug: String,
+        chapters: MutableList<SChapter>,
+    ) {
+        for (i in 0 until data.length()) {
+            val item = data.getJSONObject(i)
+            if (item.optString("language", "AR") != "AR") continue
+
+            val chapterId = item.getInt("id")
+            val numStr = item.getString("chapter_number")
+            val title = item.optString("title", "")
+
+            val chapter = SChapter.create()
+            chapter.url = "/series/$type/$id/$mangaSlug/$chapterId/$numStr"
+            chapter.name = if (title.isNotBlank()) title else "الفصل $numStr"
+            chapter.chapter_number = numStr.toFloatOrNull() ?: -1f
+            chapter.date_upload = parseDate(item.optString("published_at"))
+            chapters.add(chapter)
         }
     }
 
