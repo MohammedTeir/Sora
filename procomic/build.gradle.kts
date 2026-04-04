@@ -15,10 +15,19 @@ android {
         versionName = "1.6.2"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("../../extensions-repo-new/keystore.jks")
+            storePassword = "keystorepass123"
+            keyAlias = "extensions"
+            keyPassword = "keystorepass123"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
