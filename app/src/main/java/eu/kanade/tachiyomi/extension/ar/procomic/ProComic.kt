@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.extension.ar.procomic
 
 import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.network.await
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.Page
@@ -16,11 +17,9 @@ import org.jsoup.nodes.Document
 class ProComic : HttpSource() {
 
     override val name = "ProComic"
-    override val baseUrl = "https://procomic.net"
+    override val baseUrl = "https://procomic.pro"
     override val lang = "ar"
     override val supportsLatest = true
-
-    override val mirrorCandidates = listOf("https://procomic.pro")
 
     // In-memory sitemap cache to avoid re-downloading on every scroll page
     private var cachedSitemapEntries: List<String>? = null
@@ -29,8 +28,13 @@ class ProComic : HttpSource() {
 
     override fun headersBuilder(): Headers.Builder = super.headersBuilder()
         .add("Referer", "$baseUrl/")
-        .add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+        .add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8")
         .add("Accept-Language", "ar,en-US;q=0.9,en;q=0.8")
+        .add("Sec-Fetch-Dest", "document")
+        .add("Sec-Fetch-Mode", "navigate")
+        .add("Sec-Fetch-Site", "same-origin")
+        .add("Sec-Fetch-User", "?1")
+        .add("Upgrade-Insecure-Requests", "1")
 
     // ========================= Popular =============================
 
@@ -224,39 +228,66 @@ class ProComic : HttpSource() {
 
     // ========================= Chapters ============================
 
-    override fun chapterListRequest(manga: SManga): Request {
-        return GET(baseUrl + manga.url, headers)
-    }
+    override suspend fun getChapterList(manga: SManga): List<SChapter> {
+        val segments = manga.url.trim('/').split('/')
+        val type = segments.getOrNull(1) ?: "novel"
+        val id = segments.getOrNull(2) ?: ""
+        val mangaSlug = segments.getOrNull(3) ?: ""
 
-    override fun chapterListParse(response: Response): List<SChapter> {
-        val document = response.asJsoup()
-        val chapters = mutableListOf<SChapter>()
+        val apiType = if (type == "novel") "novels" else type
 
-        // Chapter links: /series/{type}/{id}/{slug}/{chapterId}/{chapterNum}
-        document.select("a[href*=/series/]").forEach { element ->
-            val href = element.attr("href")
-            val segments = href.trimStart('/').split("/")
-            // Chapter URLs have 6 path segments
-            if (segments.size == 6 && segments[0] == "series") {
-                val chapter = SChapter.create()
-                chapter.setUrlWithoutDomain(href)
+        val apiHeaders = headers.newBuilder()
+            .set("Accept", "application/json, text/plain, */*")
+            .set("Sec-Fetch-Dest", "empty")
+            .set("Sec-Fetch-Mode", "cors")
+            .removeAll("Sec-Fetch-User")
+            .removeAll("Upgrade-Insecure-Requests")
+            .build()
 
-                // Chapter name
-                val chapterName = element.selectFirst("span.break-words, span.font-semibold, h3")?.text()?.trim()
-                chapter.name = chapterName ?: "الفصل ${segments.last()}"
+        // Try single large request first (most reliable — gets all chapters at once)
+        val allUrl = "$baseUrl/api/public/$apiType/$id/chapters?limit=10000&order=desc"
+        val allResponse = client.newCall(GET(allUrl, apiHeaders)).await()
 
-                // Chapter number
-                val chapterNum = segments.last().toFloatOrNull()
-                if (chapterNum != null) {
-                    chapter.chapter_number = chapterNum
-                }
-
-                chapters.add(chapter)
-            }
+        if (allResponse.isSuccessful) {
+            val chapters = parseChaptersFromJson(allResponse.body.string(), type, id, mangaSlug)
+            if (chapters.isNotEmpty()) return chapters
+        } else {
+            allResponse.close()
         }
 
-        return chapters.distinctBy { it.url }
+        // Fallback: paginated fetching with offset
+        val allChapters = mutableListOf<SChapter>()
+        var page = 1
+        val limit = 100
+
+        while (true) {
+            val url = "$baseUrl/api/public/$apiType/$id/chapters?limit=$limit&offset=${(page - 1) * limit}&order=desc"
+            val response = client.newCall(GET(url, apiHeaders)).await()
+
+            if (!response.isSuccessful) {
+                response.close()
+                break
+            }
+
+            val jsonString = response.body.string()
+            val json = try {
+                org.json.JSONObject(jsonString)
+            } catch (e: Exception) { break }
+
+            val data = json.optJSONArray("data") ?: break
+            if (data.length() == 0) break
+
+            parseChapterArray(data, type, id, mangaSlug, allChapters)
+
+            if (data.length() < limit) break
+            page++
+        }
+
+        return allChapters.sortedByDescending { it.chapter_number }
     }
+
+    override fun chapterListRequest(manga: SManga): Request = throw UnsupportedOperationException()
+    override fun chapterListParse(response: Response): List<SChapter> = throw UnsupportedOperationException()
 
     // ========================= Pages ===============================
 
@@ -365,6 +396,48 @@ class ProComic : HttpSource() {
             setUrlWithoutDomain(path)
             this.title = title
         }
+    }
+
+    private fun parseChaptersFromJson(jsonString: String, type: String, id: String, mangaSlug: String): List<SChapter> {
+        val json = try {
+            org.json.JSONObject(jsonString)
+        } catch (e: Exception) { return emptyList() }
+
+        val data = json.optJSONArray("data") ?: return emptyList()
+        val chapters = mutableListOf<SChapter>()
+        parseChapterArray(data, type, id, mangaSlug, chapters)
+        return chapters.sortedByDescending { it.chapter_number }
+    }
+
+    private fun parseChapterArray(
+        data: org.json.JSONArray,
+        type: String,
+        id: String,
+        mangaSlug: String,
+        chapters: MutableList<SChapter>,
+    ) {
+        for (i in 0 until data.length()) {
+            val item = data.getJSONObject(i)
+            if (item.optString("language", "AR") != "AR") continue
+
+            val chapterId = item.getInt("id")
+            val numStr = item.getString("chapter_number")
+            val title = item.optString("title", "")
+
+            val chapter = SChapter.create()
+            chapter.url = "/series/$type/$id/$mangaSlug/$chapterId/$numStr"
+            chapter.name = if (title.isNotBlank()) title else "الفصل $numStr"
+            chapter.chapter_number = numStr.toFloatOrNull() ?: -1f
+            chapter.date_upload = parseDate(item.optString("published_at"))
+            chapters.add(chapter)
+        }
+    }
+
+    private fun parseDate(dateStr: String): Long {
+        return try {
+            java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
+                .parse(dateStr)?.time ?: 0L
+        } catch (e: Exception) { 0L }
     }
 
     private fun Response.asJsoup(): Document {

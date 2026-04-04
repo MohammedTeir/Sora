@@ -21,7 +21,6 @@ import tachiyomi.domain.source.model.StubSource
 import tachiyomi.domain.source.repository.StubSourceRepository
 import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.source.local.LocalSource
-import eu.kanade.tachiyomi.extension.ar.procomic.ProComic
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
@@ -53,7 +52,6 @@ class AndroidSourceManager(
         scope.launch {
             extensionManager.installedExtensionsFlow
                 .collectLatest { extensions ->
-                    val proComic = ProComic()
                     val mutableMap = ConcurrentHashMap<Long, Source>(
                         mapOf(
                             LocalSource.ID to LocalSource(
@@ -61,7 +59,6 @@ class AndroidSourceManager(
                                 Injekt.get(),
                                 Injekt.get(),
                             ),
-                            proComic.id to proComic,
                         ),
                     )
                     extensions.forEach { extension ->
