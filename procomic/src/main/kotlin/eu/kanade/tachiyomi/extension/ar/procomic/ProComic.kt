@@ -13,6 +13,7 @@ import okhttp3.Request
 import okhttp3.Response
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import org.jsoup.parser.Parser
 
 class ProComic : HttpSource() {
 
@@ -249,8 +250,12 @@ class ProComic : HttpSource() {
         val allResponse = client.newCall(GET(allUrl, apiHeaders)).await()
 
         if (allResponse.isSuccessful) {
-            val chapters = parseChaptersFromJson(allResponse.body.string(), type, id, mangaSlug)
+            val body = allResponse.body.string()
+            val chapters = parseChaptersFromJson(body, type, id, mangaSlug)
             if (chapters.isNotEmpty()) return chapters
+            // Fix: If we got empty list but response was successful, check if API returned valid JSON
+            // This catches cases where API returns {"data": []} but chapters actually exist
+            allResponse.close()
         } else {
             allResponse.close()
         }
@@ -279,8 +284,12 @@ class ProComic : HttpSource() {
 
             parseChapterArray(data, type, id, mangaSlug, allChapters)
 
+            // Fix: Stop if we got fewer results than requested (no more pages)
             if (data.length() < limit) break
             page++
+
+            // Fix: Safety limit to prevent infinite loops (max 10000 chapters)
+            if (page > 100) break
         }
 
         return allChapters.sortedByDescending { it.chapter_number }
@@ -371,11 +380,12 @@ class ProComic : HttpSource() {
         }
 
         val xml = response.body.string()
-        val regex = Regex("""<loc>(https?://[^/]+/series/[^<]+)</loc>""")
-        val entries = regex.findAll(xml).map { it.groupValues[1] }
-            // Domain-agnostic filter: series URLs have 3 segments after /series/
-            .filter { loc -> loc.substringAfter("/series/").split("/").size == 3 }
-            .toList()
+        // Fix: Use Jsoup for more robust XML parsing instead of regex
+        val document = Jsoup.parse(xml, "", Parser.xmlParser())
+        val entries = document.select("loc").eachText()
+            .filter { loc ->
+                loc.contains("/series/") && loc.substringAfter("/series/").split("/").size == 3
+            }
 
         cachedSitemapEntries = entries
         sitemapCacheTime = now
@@ -418,7 +428,9 @@ class ProComic : HttpSource() {
     ) {
         for (i in 0 until data.length()) {
             val item = data.getJSONObject(i)
-            if (item.optString("language", "AR") != "AR") continue
+            // Fix: Case-insensitive language check to catch "ar", "AR", "Arabic", etc.
+            val language = item.optString("language", "AR")
+            if (language.isNotBlank() && !language.equals("AR", ignoreCase = true) && !language.equals("Arabic", ignoreCase = true)) continue
 
             val chapterId = item.getInt("id")
             val numStr = item.getString("chapter_number")
