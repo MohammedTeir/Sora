@@ -27,7 +27,7 @@ class HistoryRepositoryImpl(
     }
 
     override suspend fun getTotalReadDuration(): Long {
-        return handler.awaitOne { historyQueries.getReadDuration() }
+        return handler.awaitOne { historyQueries.getReadDuration() }.toLong()
     }
 
     override suspend fun getHistoryByMangaId(mangaId: Long): List<History> {
