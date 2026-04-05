@@ -27,7 +27,9 @@ class HistoryRepositoryImpl(
     }
 
     override suspend fun getTotalReadDuration(): Long {
-        return handler.awaitOne { historyQueries.getReadDuration() }
+        // Compute sum in Kotlin to avoid SQLite integer overflow
+        val durations = handler.awaitList { historyQueries.getTimeReadValues() }
+        return durations.sumOf { it }
     }
 
     override suspend fun getHistoryByMangaId(mangaId: Long): List<History> {

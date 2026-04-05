@@ -3,6 +3,18 @@ plugins {
     kotlin("android")
 }
 
+// Prevent kotlin stdlib from being bundled into the extension APK.
+// Extensions run inside the host app which already provides kotlin-stdlib.
+configurations {
+    all {
+        if (name.contains("runtime", ignoreCase = true)) {
+            exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
+            exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib-common")
+            exclude(group = "org.jetbrains", module = "annotations")
+        }
+    }
+}
+
 android {
     namespace = "eu.kanade.tachiyomi.extension.ar.procomic"
     compileSdk = 34
@@ -15,10 +27,19 @@ android {
         versionName = "1.6.2"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("../../extensions-repo-new/keystore.jks")
+            storePassword = "keystorepass123"
+            keyAlias = "extensions"
+            keyPassword = "keystorepass123"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
@@ -48,4 +69,17 @@ dependencies {
     compileOnly(libs.rxjava)
     compileOnly(libs.injekt)
     compileOnly(kotlinx.serialization.json)
+    compileOnly(kotlinx.coroutines.android)
+}
+
+android {
+    packaging {
+        resources {
+            excludes += listOf(
+                "META-INF/*.version",
+                "META-INF/*.kotlin_module",
+                "**/*.kotlin_builtins",
+            )
+        }
+    }
 }

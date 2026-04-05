@@ -73,6 +73,10 @@ getReadDuration:
 SELECT coalesce(sum(time_read), 0)
 FROM history;
 
+getTimeReadValues:
+SELECT time_read
+FROM history;
+
 getReadingHistorySince:
 SELECT
     last_read,
