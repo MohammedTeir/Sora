@@ -70,7 +70,11 @@ SET
 WHERE chapter_id = :chapterId;
 
 getReadDuration:
-SELECT coalesce(CAST(sum(time_read) AS REAL), 0.0)
+SELECT coalesce(sum(time_read), 0)
+FROM history;
+
+getTimeReadValues:
+SELECT time_read
 FROM history;
 
 getReadingHistorySince:
